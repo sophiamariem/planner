@@ -232,7 +232,7 @@ export const days = [
         title: "Fly home: Paphos → London",
         photoQ: "London skyline",
         photos: [
-            "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/London_Skyline_%28125508655%29.jpeg/330px-London_Skyline_%28125508655%29.jpeg"
+            "https://cdn.theatlantic.com/media/img/photo/2017/01/a-dizzying-view-of-london/01JasonHawkes-0753-1/original.jpg"
         ],
         hasMap: false,
         route: mapDir("Paphos (PFO)", "London Stansted (STN)"),
