@@ -33,10 +33,12 @@ jobs:
         run: npm ci
 
       - name: Build
-        working-directory: cyprus/
+        working-directory: cyprus
         env:
-          PUBLIC_URL: ${{ github.server_url }}/${{ github.repository_owner }}/${{ github.event.repository.name }}/
-        run: npm run build
+          PUBLIC_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+        run: |
+          npm run build
+          cp build/index.html build/404.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
