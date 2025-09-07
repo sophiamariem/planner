@@ -76,7 +76,7 @@ export const days = [
             { name: "Coral Bay Beach", q: "Coral Bay Beach Cyprus", ll: ll["Coral Bay Beach"] },
             { name: "Paphos Harbour", q: "Paphos Harbour", ll: ll["Paphos Harbour"] },
         ],
-        notes: ["Family hellos", "Beach + gelato"],
+        notes: ["Family hellos", "Beach", "gelato"],
     },
     {
         id: "17",
@@ -200,9 +200,10 @@ export const days = [
         hasMap: false,
         route: mapDir("Paphos", "Paphos", ["Sea Caves Paphos", "White River Beach", "Olive Tree Beach"]),
         pins: [
+            { name: "Oniro by the Sea", q: "Oniro by the Sea", ll: ll["Oniro"] },
             { name: "Sea Caves", q: "Paphos Sea Caves", ll: ll["Sea Caves"] },
-            { name: "White River Beach", q: "White River Beach Cyprus", ll: ll["White River Beach"] },
-            { name: "Secret Olive Beach", q: "Secret Olive Beach Cyprus", ll: ll["Secret Olive Beach"] }
+            { name: "Secret Olive Beach", q: "Secret Olive Beach Cyprus", ll: ll["Secret Olive Beach"] },
+            { name: "White River Beach", q: "White River Beach Cyprus", ll: ll["White River Beach"] }
         ],
         notes: ["Swim spots", "Sunset"]
     },
@@ -223,7 +224,7 @@ export const days = [
             { name: "Governor's Beach", q: "Governor's Beach Cyprus", ll: ll["Governor's Beach"] },
             { name: "Koureion", q: "Koureion", ll: ll["Koureion"] }
         ],
-        notes: ["Stroll + lunch", "Amphitheatre", "Drive back"]
+        notes: ["Stroll + lunch", "Amphitheatre"]
     },
     {
         id: "24",
@@ -244,4 +245,4 @@ export const days = [
     }
 ];
 
-export const dayBadges = { 15: ['✈️'], 16: ['🏖️'], 17: ['🚗','⛰️'], 18: ['🎂','🛥️'], 19: ['🚗','🏝️'], 20: ['🏖️','🤿'], 21: ['💍'], 22: ['🌅'], 23: ['⚓️'], 24: ['✈️'] };
+export const dayBadges = { 15: ['✈️'], 16: ['🏖️'], 17: ['🚗','⛰️'], 18: ['🎂','🛥️'], 19: ['🚗','🏝️'], 20: ['🏖️'], 21: ['💍'], 22: ['🌅'], 23: ['⚓️'], 24: ['✈️'] };

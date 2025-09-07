@@ -81,7 +81,6 @@ export default function CyprusTripShare() {
                   <span className="px-2 py-1 rounded-full bg-white/80 border border-zinc-200">🛥️ Boat</span>
                   <span className="px-2 py-1 rounded-full bg-white/80 border border-zinc-200">💍 Wedding</span>
                   <span className="px-2 py-1 rounded-full bg-white/80 border border-zinc-200">🏖️ Beach</span>
-                  <span className="px-2 py-1 rounded-full bg-white/80 border border-zinc-200">🤿 Snorkel</span>
                   <span className="px-2 py-1 rounded-full bg-white/80 border border-zinc-200">⚓️ Marina</span>
                   <span className="px-2 py-1 rounded-full bg-white/80 border border-zinc-200">🌅 Sunset</span>
                 </div>
