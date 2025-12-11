@@ -11,8 +11,8 @@ export const tripConfig = {
     // Footer text
     footer: "Cyprus ☀️ Sept 2025",
 
-    // Favicon URL (or set to null for default)
-    favicon: "https://www.worldtravelguide.net/wp-content/uploads/2017/04/Think-Cyprus-AyiaNapa-514991484-Kirillm-copy.jpg",
+    // Favicon URL (defaults to the bundled favicon.png when null)
+    favicon: "/favicon.png",
 
     // Calendar display settings (month is 0-indexed: 0=Jan, 8=Sep, etc.)
     calendar: {
