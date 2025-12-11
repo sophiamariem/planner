@@ -1,70 +1,293 @@
-# Getting Started with Create React App
+# 🗺️ Trip Planner Template
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A beautiful, interactive trip planning app built with React. Perfect for creating shareable itineraries for vacations, road trips, and adventures!
 
-## Available Scripts
+![Screenshot](https://img.shields.io/badge/Built%20with-React-61DAFB?logo=react)
 
-In the project directory, you can run:
+## ✨ Features
+
+- 📅 **Dual View Modes**: Switch between card-based timeline and calendar view
+- 🗺️ **Interactive Maps**: Leaflet maps showing routes and locations
+- 🖼️ **Photo Galleries**: Support for multiple photos per day with responsive layouts
+- ✈️ **Flight Cards**: Dedicated flight information display
+- 🔍 **Smart Filtering**: Search across days, locations, and notes
+- 🎨 **Customizable Styling**: Easy color palette customization with Tailwind CSS
+- 📱 **Mobile Responsive**: Works beautifully on all screen sizes
+- 🖨️ **Print Support**: Generate printable itineraries
+
+## 🚀 Quick Start
+
+### For Your Own Trip
+
+1. **Clone or fork this repository**
+   ```bash
+   git clone https://github.com/yourusername/trip-planner.git my-trip
+   cd my-trip
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Customize your trip** (see [Customization Guide](#-customization-guide) below)
+
+4. **Run locally**
+   ```bash
+   npm start
+   ```
+   Open [http://localhost:3000](http://localhost:3000) to view your planner
+
+5. **Build for deployment**
+   ```bash
+   npm run build
+   ```
+
+## 📝 Customization Guide
+
+All trip data lives in one file: `src/data/trip.js`
+
+### 1. Trip Configuration
+
+Edit the `tripConfig` object at the top of `trip.js`:
+
+```javascript
+export const tripConfig = {
+    title: "My Amazing Trip • June 2025",
+    footer: "Adventure awaits! 🌍",
+    favicon: "https://your-favicon-url.com/image.jpg",
+    calendar: {
+        year: 2025,
+        month: 5,  // 0=January, 5=June, 11=December
+    },
+    badgeLegend: [
+        { emoji: "✈️", label: "Flight" },
+        { emoji: "🏖️", label: "Beach" },
+        // Add your own badge types
+    ]
+};
+```
+
+### 2. Color Palette
+
+Customize your planner's look with Tailwind CSS classes:
+
+```javascript
+export const palette = {
+    bg: "from-blue-100 via-cyan-50 to-teal-50",  // Background gradient
+    date: "bg-blue-600 text-white",              // Date badge
+    day: "bg-teal-600 text-white",               // Day of week badge
+    note: "bg-blue-50 text-blue-800 border border-blue-200",
+    card: "bg-white/90 border border-zinc-200 shadow-sm",
+    route: "bg-blue-600 text-white",             // Route button
+    pin: "bg-zinc-900 text-white",               // Map pins
+};
+```
+
+### 3. Location Coordinates
+
+Add coordinates for all locations you'll visit (used for maps):
+
+```javascript
+export const ll = {
+    "Paris": [48.8566, 2.3522],
+    "Eiffel Tower": [48.8584, 2.2945],
+    "Louvre Museum": [48.8606, 2.3376],
+    // Find coordinates at https://www.latlong.net/
+};
+```
+
+### 4. Flights (Optional)
+
+```javascript
+export const flights = [
+    {
+        title: "Outbound Flight",
+        num: "BA123",
+        route: "London → Paris",
+        date: "Mon, 15 Jun 2025",
+        times: "10:00 → 12:30",
+        codes: "LHR → CDG"
+    },
+    // Add return flight
+];
+```
+
+### 5. Daily Itinerary
+
+This is where the magic happens! Each day is an object with:
+
+```javascript
+export const days = [
+    {
+        id: "15",                     // Day number (matches calendar date)
+        dow: "Mon",                   // Day of week
+        date: "15 Jun",               // Formatted date
+        title: "Arrive in Paris",     // Day headline
+        photoQ: "Paris Eiffel Tower", // Unsplash search fallback
+        photos: [                     // Photo URLs (or leave empty to use photoQ)
+            "https://image-url-1.jpg",
+            "https://image-url-2.jpg"
+        ],
+        hasMap: true,                 // Show route map on card?
+        route: mapDir("CDG Airport", "Hotel", ["Eiffel Tower"]),
+        pins: [                       // Location markers
+            { name: "CDG", q: "Paris CDG Airport", ll: ll["Paris"] },
+            { name: "Eiffel Tower", q: "Eiffel Tower", ll: ll["Eiffel Tower"] }
+        ],
+        notes: [                      // Bullet points
+            "Check in at hotel",
+            "Evening walk to Eiffel Tower"
+        ],
+        highlight: false              // Special styling?
+    },
+    // Add more days...
+];
+```
+
+#### Helper Function: `mapDir()`
+
+Creates Google Maps direction URLs:
+
+```javascript
+import { mapDir } from "../utils/maps";
+
+// Simple point-to-point
+mapDir("Start Location", "End Location")
+
+// Multi-stop route
+mapDir("Start", "End", ["Stop 1", "Stop 2", "Stop 3"])
+```
+
+### 6. Calendar Day Badges
+
+Add emoji badges to calendar days:
+
+```javascript
+export const dayBadges = {
+    15: ['✈️'],           // Just flight
+    16: ['🏖️', '🍽️'],    // Beach and dinner
+    17: ['🚗', '⛰️'],     // Road trip
+    // ...
+};
+```
+
+## 📂 Project Structure
+
+```
+trip-planner/
+├── public/
+│   ├── index.html          # HTML template
+│   └── manifest.json       # PWA config
+├── src/
+│   ├── components/         # Reusable React components
+│   │   ├── DayCard.jsx     # Main day display card
+│   │   ├── FlightCard.jsx  # Flight information
+│   │   ├── CalendarView.jsx # Calendar with emoji badges
+│   │   ├── DayMap.jsx      # Leaflet route map
+│   │   ├── PhotoCollage.jsx # Photo grid layouts
+│   │   └── ...
+│   ├── data/
+│   │   └── trip.js         # ⭐ YOUR TRIP DATA GOES HERE
+│   ├── utils/
+│   │   ├── maps.js         # Google Maps & Leaflet utilities
+│   │   └── tailwind.js     # Tailwind CDN loader
+│   ├── App.jsx             # Main app component
+│   └── index.js            # React entry point
+└── package.json
+```
+
+## 🎨 Tips & Tricks
+
+### Finding Coordinates
+
+1. Go to [LatLong.net](https://www.latlong.net/)
+2. Search for your location
+3. Copy the coordinates in `[latitude, longitude]` format
+
+### Finding Great Photos
+
+- Search [Unsplash](https://unsplash.com/) for high-quality travel photos
+- Right-click → "Copy image address" to get the URL
+- Or leave `photos: []` empty and the app will auto-fetch from Unsplash using `photoQ`
+
+### Customizing Colors
+
+Browse [Tailwind CSS Colors](https://tailwindcss.com/docs/customizing-colors) and update the `palette` object with your favorite color scheme.
+
+### Creating Multiple Trip Planners
+
+Want to track multiple trips? Just duplicate this project folder and customize each one:
+
+```bash
+cp -r cyprus iceland-trip
+cd iceland-trip
+# Edit src/data/trip.js with Iceland data
+npm start
+```
+
+## 🌐 Deployment
+
+### GitHub Pages
+
+1. Update `homepage` in `package.json`:
+   ```json
+   "homepage": "https://yourusername.github.io/your-repo-name"
+   ```
+
+2. Install gh-pages:
+   ```bash
+   npm install --save-dev gh-pages
+   ```
+
+3. Add to `package.json` scripts:
+   ```json
+   "predeploy": "npm run build",
+   "deploy": "gh-pages -d build"
+   ```
+
+4. Deploy:
+   ```bash
+   npm run deploy
+   ```
+
+### Other Platforms
+
+Build your app and deploy the `build/` folder to:
+- **Netlify**: Drag & drop the build folder
+- **Vercel**: Connect your GitHub repo
+- **Firebase Hosting**: `firebase deploy`
+
+## 🛠️ Available Scripts
 
 ### `npm start`
-
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
-
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
-
-### `npm test`
-
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Runs the app in development mode at [http://localhost:3000](http://localhost:3000)
 
 ### `npm run build`
+Builds the app for production to the `build` folder
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### `npm test`
+Launches the test runner
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 🤝 Contributing
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+This is a template project! Feel free to:
+- Fork it and make it your own
+- Submit PRs with improvements
+- Share your customized versions
 
-### `npm run eject`
+## 📄 License
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+MIT License - feel free to use this for your personal or commercial trip planning needs!
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## 💡 Example Trips
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Check out these example trips using this template:
+- [Cyprus 2025](https://sophiamariem.github.io/planner/) - Mediterranean adventure
+- *Add your trip here with a PR!*
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+---
 
-## Learn More
+**Happy travels! ✈️🗺️**
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Built with ❤️ using React, Tailwind CSS, and Leaflet

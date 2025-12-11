@@ -1,5 +1,42 @@
 import { mapDir } from "../utils/maps";
 
+// ============================================================================
+// TRIP CONFIGURATION
+// ============================================================================
+// Customize these values for your own trip!
+export const tripConfig = {
+    // Trip title shown in header
+    title: "Cyprus Trip • 15–24 Sep 2025",
+
+    // Footer text
+    footer: "Cyprus ☀️ Sept 2025",
+
+    // Favicon URL (or set to null for default)
+    favicon: "https://www.worldtravelguide.net/wp-content/uploads/2017/04/Think-Cyprus-AyiaNapa-514991484-Kirillm-copy.jpg",
+
+    // Calendar display settings (month is 0-indexed: 0=Jan, 8=Sep, etc.)
+    calendar: {
+        year: 2025,
+        month: 8,  // 0=January, 8=September
+    },
+
+    // Calendar badge legend (emoji explanations shown below calendar)
+    badgeLegend: [
+        { emoji: "✈️", label: "Flight" },
+        { emoji: "🎂", label: "Birthday" },
+        { emoji: "🚗", label: "Drive" },
+        { emoji: "🛥️", label: "Boat" },
+        { emoji: "💍", label: "Wedding" },
+        { emoji: "🏖️", label: "Beach" },
+        { emoji: "⚓️", label: "Marina" },
+        { emoji: "🌅", label: "Sunset" },
+    ]
+};
+
+// ============================================================================
+// COLOR PALETTE
+// ============================================================================
+// Customize the look & feel of your planner with Tailwind CSS classes
 export const palette = {
     bg: "from-pink-100 via-rose-50 to-amber-50",
     date: "bg-fuchsia-600 text-white",
@@ -10,6 +47,11 @@ export const palette = {
     pin: "bg-zinc-900 text-white",
 };
 
+// ============================================================================
+// LOCATION COORDINATES (for maps)
+// ============================================================================
+// Add lat/lng coordinates for all locations you'll visit
+// Format: "Location Name": [latitude, longitude]
 export const ll = {
     Paphos: [34.772, 32.429],
     "Coral Bay Beach": [34.857, 32.372],
@@ -36,11 +78,30 @@ export const ll = {
     STN: [51.885, 0.235],
 };
 
+// ============================================================================
+// FLIGHTS
+// ============================================================================
+// Optional: Add your flight information
 export const flights = [
     { title: "Flight out", num: "FR3131", route: "London (Stansted) → Paphos", date: "Mon, 15 Sep 2025", times: "18:35 → 01:00", codes: "STN → PFO" },
     { title: "Flight back", num: "FR3132", route: "Paphos → London (Stansted)", date: "Wed, 24 Sep 2025", times: "05:50 → 08:35", codes: "PFO → STN" },
 ];
 
+// ============================================================================
+// DAILY ITINERARY
+// ============================================================================
+// Each day object contains:
+//   - id: day number (string)
+//   - dow: day of week abbreviation
+//   - date: formatted date string
+//   - title: headline for the day
+//   - photoQ: Unsplash search query (fallback if photos array is empty)
+//   - photos: array of photo URLs
+//   - hasMap: boolean - show route map on card?
+//   - route: Google Maps directions URL (use mapDir helper)
+//   - pins: array of location markers {name, q (search query), ll (coordinates)}
+//   - notes: array of bullet points
+//   - highlight: optional boolean for special styling
 export const days = [
     {
         id: "15",
@@ -245,4 +306,9 @@ export const days = [
     }
 ];
 
+// ============================================================================
+// CALENDAR DAY BADGES
+// ============================================================================
+// Add emoji badges to calendar days (shows on calendar view)
+// Format: dayNumber: ['emoji1', 'emoji2', ...]
 export const dayBadges = { 15: ['✈️'], 16: ['🏖️'], 17: ['🚗','⛰️'], 18: ['🎂','🛥️'], 19: ['🚗','🏝️'], 20: ['🏖️'], 21: ['💍'], 22: ['🌅'], 23: ['⚓️'], 24: ['✈️'] };
