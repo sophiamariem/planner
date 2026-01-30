@@ -52,6 +52,36 @@ export default function TripBuilder({ tripData, onSave, onCancel }) {
         setDays(days.filter((_, i) => i !== index));
     };
 
+    const addDayPhoto = (dayIndex) => {
+        const updated = [...days];
+        const photos = updated[dayIndex].photos ? [...updated[dayIndex].photos] : [];
+        photos.push('');
+        updated[dayIndex] = { ...updated[dayIndex], photos };
+        setDays(updated);
+    };
+
+    const updateDayPhoto = (dayIndex, photoIndex, value) => {
+        const updated = [...days];
+        const photos = updated[dayIndex].photos ? [...updated[dayIndex].photos] : [];
+        photos[photoIndex] = value;
+        updated[dayIndex] = { ...updated[dayIndex], photos };
+        setDays(updated);
+    };
+
+    const removeDayPhoto = (dayIndex, photoIndex) => {
+        const updated = [...days];
+        const photos = updated[dayIndex].photos ? [...updated[dayIndex].photos] : [];
+        updated[dayIndex] = { ...updated[dayIndex], photos: photos.filter((_, i) => i !== photoIndex) };
+        setDays(updated);
+    };
+
+    const pruneEmptyPhotos = (dayIndex) => {
+        const updated = [...days];
+        const photos = updated[dayIndex].photos ? updated[dayIndex].photos.filter(p => p.trim() !== '') : [];
+        updated[dayIndex] = { ...updated[dayIndex], photos };
+        setDays(updated);
+    };
+
     const addFlight = () => {
         setFlights([...flights, {
             title: "Flight",
@@ -336,6 +366,46 @@ export default function TripBuilder({ tripData, onSave, onCancel }) {
                                     placeholder="Photo search query (e.g. Paris Eiffel Tower)"
                                     className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                 />
+
+                                <div className="border border-zinc-200 rounded-lg p-4">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-sm font-medium text-zinc-700">Photo URLs (optional)</label>
+                                        <button
+                                            type="button"
+                                            onClick={() => addDayPhoto(index)}
+                                            className="px-3 py-1.5 rounded-lg bg-zinc-900 text-white text-xs font-medium hover:bg-zinc-800"
+                                        >
+                                            + Add Photo URL
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-zinc-500 mt-1">
+                                        Add one or more web image URLs. If provided, these override the search query above.
+                                    </p>
+                                    <div className="mt-3 space-y-2">
+                                        {(day.photos || []).length === 0 && (
+                                            <p className="text-sm text-zinc-500 italic">No photos added yet.</p>
+                                        )}
+                                        {(day.photos || []).map((photoUrl, photoIndex) => (
+                                            <div key={`${index}-photo-${photoIndex}`} className="flex items-center gap-2">
+                                                <input
+                                                    type="url"
+                                                    value={photoUrl}
+                                                    onChange={e => updateDayPhoto(index, photoIndex, e.target.value)}
+                                                    onBlur={() => pruneEmptyPhotos(index)}
+                                                    placeholder="https://example.com/photo.jpg"
+                                                    className="flex-1 px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeDayPhoto(index, photoIndex)}
+                                                    className="px-2 py-2 rounded-lg text-red-600 hover:text-red-700 text-sm font-medium"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
 
                                 <div className="border-t border-zinc-200 pt-4 mt-4">
                                     <div className="flex items-center justify-between mb-3">
