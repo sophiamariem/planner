@@ -90,8 +90,9 @@ export default function TripPlannerApp() {
   const flights = tripData?.flights || [];
   const days = tripData?.days || [];
   const dayBadges = tripData?.dayBadges || {};
+  const activePalette = tripData?.palette || palette;
 
-  const eventIds = useMemo(() => days.map(d => Number(d.id)).sort((a,b)=>a-b), [days]);
+  const eventIds = useMemo(() => (days || []).map(d => Number(d.id)).sort((a,b)=>a-b), [days]);
   const [selectedId, setSelectedId] = useState(eventIds[0] || null);
   const selectedDay = useMemo(() => days.find(d => Number(d.id) === selectedId) || null, [selectedId, days]);
 
@@ -168,18 +169,34 @@ export default function TripPlannerApp() {
 
   const handleImportJson = () => {
     try {
+      if (!importJson.trim()) {
+        setImportError("Please paste some JSON data first.");
+        return;
+      }
       const parsed = JSON.parse(importJson);
-      if (validateTripData(parsed)) {
-        setTripData(parsed);
+      const validation = validateTripData(parsed);
+      
+      if (validation.valid) {
+        // Ensure optional fields exist for the app state
+        const sanitizedData = {
+          ...parsed,
+          flights: parsed.flights || [],
+          days: parsed.days || [],
+          ll: parsed.ll || {},
+          dayBadges: parsed.dayBadges || {},
+          palette: parsed.palette || palette
+        };
+        
+        setTripData(sanitizedData);
         setMode('view');
         setShowImportModal(false);
         setImportJson("");
         setImportError("");
         // Save it so it persists
-        saveTripToLocalStorage(parsed);
-        updateURLWithTrip(parsed);
+        saveTripToLocalStorage(sanitizedData);
+        updateURLWithTrip(sanitizedData);
       } else {
-        setImportError("Invalid trip data structure. Please check the JSON format.");
+        setImportError(`Invalid trip data: ${validation.error}`);
       }
     } catch (e) {
       setImportError("Invalid JSON format. Please check your syntax.");
@@ -351,7 +368,7 @@ export default function TripPlannerApp() {
 
   // View mode
   return (
-    <div className={`min-h-screen bg-gradient-to-b ${palette.bg}`}>
+    <div className={`min-h-screen bg-gradient-to-b ${activePalette.bg}`}>
       <header className="sticky top-0 z-50 backdrop-blur bg-white/80 border-b border-zinc-200">
         <div className="max-w-5xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
@@ -454,7 +471,7 @@ export default function TripPlannerApp() {
               <>
                 <nav className="overflow-x-auto no-scrollbar" id="timeline">
                   <div className="flex items-center gap-2 w-max">
-                    {days.map(d => (
+                    {(days || []).map(d => (
                       <a key={d.id} href={`#day-${d.id}`} className="px-4 py-2 rounded-2xl bg-zinc-900 text-white text-sm hover:opacity-90 active:scale-[.99]">{d.dow} {d.date}</a>
                     ))}
                   </div>
@@ -476,7 +493,7 @@ export default function TripPlannerApp() {
                 />
                 {tripConfig.badgeLegend && tripConfig.badgeLegend.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2 text-xs text-zinc-600">
-                    {tripConfig.badgeLegend.map((badge, i) => (
+                    {(tripConfig.badgeLegend || []).map((badge, i) => (
                       <span key={i} className="px-2 py-1 rounded-full bg-white/80 border border-zinc-200">
                         {badge.emoji} {badge.label}
                       </span>
@@ -487,7 +504,7 @@ export default function TripPlannerApp() {
                   {selectedDay ? (
                     <DayCard d={selectedDay} showMaps={showMaps} imgClass={imgClass}/>
                   ) : (
-                    <div className={'rounded-3xl p-5 ' + palette.card}>
+                    <div className={'rounded-3xl p-5 ' + activePalette.card}>
                       <p className="text-sm text-zinc-600">Pick a highlighted date to see its plan.</p>
                     </div>
                   )}

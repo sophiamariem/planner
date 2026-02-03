@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { palette } from '../data/trip';
+import { validateTripData } from '../utils/tripData';
 
 export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
     const [config, setConfig] = useState(tripData?.tripConfig || {
@@ -108,16 +109,17 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
     const handleJsonImport = () => {
         try {
             const parsed = JSON.parse(jsonInput);
-            // Basic validation
-            if (parsed.tripConfig && Array.isArray(parsed.days) && Array.isArray(parsed.flights)) {
+            const validation = validateTripData(parsed);
+            
+            if (validation.valid) {
                 setConfig(parsed.tripConfig);
                 setDays(parsed.days);
-                setFlights(parsed.flights);
+                setFlights(parsed.flights || []);
                 setLocations(parsed.ll || {});
                 setJsonError("");
                 alert("JSON imported successfully!");
             } else {
-                setJsonError("Invalid trip data structure. Please ensure tripConfig, days, and flights are present.");
+                setJsonError(`Invalid trip data: ${validation.error}`);
             }
         } catch (e) {
             setJsonError("Invalid JSON format. Please check your syntax.");

@@ -1,6 +1,12 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import App from './App';
 
+beforeEach(() => {
+  window.localStorage.clear();
+  window.location.hash = "";
+  jest.clearAllMocks();
+});
+
 test('renders trip planner title', () => {
   render(<App />);
   const titleElement = screen.getByText(/Trip Planner/i);
@@ -8,18 +14,6 @@ test('renders trip planner title', () => {
 });
 
 test('can reset from view mode', () => {
-  // Mock localStorage
-  const localStorageMock = (function() {
-    let store = {};
-    return {
-      getItem: function(key) { return store[key] || null; },
-      setItem: function(key, value) { store[key] = value.toString(); },
-      removeItem: function(key) { delete store[key]; },
-      clear: function() { store = {}; }
-    };
-  })();
-  Object.defineProperty(window, 'localStorage', { value: localStorageMock });
-  
   // Mock confirm
   window.confirm = jest.fn(() => true);
 
@@ -68,4 +62,47 @@ test('can import trip via JSON from onboarding', () => {
   
   // Should be in view mode with imported title
   expect(screen.getByText("Imported Trip")).toBeInTheDocument();
+});
+
+test('shows specific error message when JSON is missing required fields', () => {
+  render(<App />);
+  
+  // Wait for onboarding to be visible
+  const importButton = screen.getByText(/Import JSON/i);
+  fireEvent.click(importButton);
+  
+  // Provide JSON missing 'days' (required)
+  const invalidTrip = {
+    tripConfig: { title: "Invalid Trip", calendar: { year: 2026, month: 3 } }
+  };
+  
+  const textarea = screen.getByPlaceholderText(/\{ "tripConfig":/);
+  fireEvent.change(textarea, { target: { value: JSON.stringify(invalidTrip) } });
+  
+  const submitButton = screen.getByText("Import Data");
+  fireEvent.click(submitButton);
+  
+  // Should show specific error message.
+  expect(screen.getByText(/Invalid trip data: Missing or invalid 'days' array/i)).toBeInTheDocument();
+});
+
+test('successfully imports JSON even if flights are missing', () => {
+  render(<App />);
+  
+  const importButton = screen.getByText(/Import JSON/i);
+  fireEvent.click(importButton);
+  
+  const tripWithoutFlights = {
+    tripConfig: { title: "No Flights Trip", calendar: { year: 2026, month: 3 } },
+    days: [{ id: "1", title: "Day 1", dow: "Wed", date: "1 Apr", notes: [] }]
+  };
+  
+  const textarea = screen.getByPlaceholderText(/\{ "tripConfig":/);
+  fireEvent.change(textarea, { target: { value: JSON.stringify(tripWithoutFlights) } });
+  
+  const submitButton = screen.getByText("Import Data");
+  fireEvent.click(submitButton);
+  
+  // Should successfully import and show view mode
+  expect(screen.getByText("No Flights Trip")).toBeInTheDocument();
 });

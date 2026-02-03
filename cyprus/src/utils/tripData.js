@@ -104,17 +104,28 @@ export function generateShareURL(tripData) {
  * Validates trip data structure
  */
 export function validateTripData(data) {
-    if (!data || typeof data !== 'object') return false;
-    
-    // Basic structural check
-    const requiredKeys = ['tripConfig', 'days', 'flights'];
-    for (const key of requiredKeys) {
-        if (!(key in data)) return false;
+    if (!data || typeof data !== 'object') {
+        return { valid: false, error: "Invalid JSON object." };
     }
     
-    if (typeof data.tripConfig !== 'object') return false;
-    if (!Array.isArray(data.days)) return false;
-    if (!Array.isArray(data.flights)) return false;
+    // Check tripConfig
+    if (!data.tripConfig || typeof data.tripConfig !== 'object') {
+        return { valid: false, error: "Missing or invalid 'tripConfig' object." };
+    }
     
-    return true;
+    // Check days
+    if (!data.days || !Array.isArray(data.days)) {
+        return { valid: false, error: "Missing or invalid 'days' array." };
+    }
+
+    // Optional but should be array if present
+    if (data.flights && !Array.isArray(data.flights)) {
+        return { valid: false, error: "'flights' must be an array." };
+    }
+
+    if (data.palette && typeof data.palette !== 'object') {
+        return { valid: false, error: "'palette' must be an object." };
+    }
+    
+    return { valid: true };
 }
