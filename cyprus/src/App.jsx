@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { tripConfig as defaultTripConfig, flights as defaultFlights, days as defaultDays, dayBadges as defaultDayBadges, palette, ll as defaultLocations } from "./data/trip";
 import useFavicon from "./hooks/useFavicon";
 import { ensureTailwindCDN } from "./utils/tailwind";
-import { getTripFromURL, updateURLWithTrip, saveTripToLocalStorage, loadTripFromLocalStorage, generateShareURL, clearLocalStorageTrip } from "./utils/tripData";
+import { getTripFromURL, updateURLWithTrip, saveTripToLocalStorage, loadTripFromLocalStorage, generateShareURL, clearLocalStorageTrip, validateTripData } from "./utils/tripData";
 
 import FlightCard from "./components/FlightCard";
 import DayCard from "./components/DayCard";
@@ -18,6 +18,47 @@ export default function TripPlannerApp() {
   const [view, setView] = useState("cards");
   const [showShareModal, setShowShareModal] = useState(false);
   const [showSaveNotification, setShowSaveNotification] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importJson, setImportJson] = useState("");
+  const [importError, setImportError] = useState("");
+
+  const templateJSON = JSON.stringify({
+    tripConfig: {
+      title: "My Amazing Trip",
+      footer: "Adventure awaits!",
+      favicon: "https://example.com/favicon.png",
+      calendar: { year: 2025, month: 5 },
+      badgeLegend: [{ emoji: "✈️", label: "Flight" }, { emoji: "🏖️", label: "Beach" }]
+    },
+    flights: [
+      { title: "Flight Out", num: "BA123", route: "LHR → LCA", date: "Mon, 15 Jun", times: "10:00 → 16:30", codes: "LHR → LCA" }
+    ],
+    days: [
+      {
+        id: "1",
+        dow: "Mon",
+        date: "15 Jun",
+        title: "Arrival & Beach",
+        photos: ["https://images.unsplash.com/photo-1544620347-c4fd4a3d5957"],
+        hasMap: true,
+        pins: [{ name: "Larnaca Airport", q: "Larnaca Airport", ll: [34.8751, 33.6138] }],
+        notes: ["Pick up rental car", "Check-in at hotel"]
+      }
+    ],
+    ll: {
+      "Larnaca Airport": [34.8751, 33.6138]
+    },
+    palette: {
+      bg: "from-blue-100 via-cyan-50 to-teal-50",
+      card: "bg-white/90 border border-zinc-200 shadow-sm"
+    }
+  }, null, 2);
+
+  const openImportModal = () => {
+    setImportJson(templateJSON);
+    setShowImportModal(true);
+    setImportError("");
+  };
 
   // Load trip data on mount (only runs once)
   useEffect(() => {
@@ -125,6 +166,26 @@ export default function TripPlannerApp() {
     setMode('builder');
   };
 
+  const handleImportJson = () => {
+    try {
+      const parsed = JSON.parse(importJson);
+      if (validateTripData(parsed)) {
+        setTripData(parsed);
+        setMode('view');
+        setShowImportModal(false);
+        setImportJson("");
+        setImportError("");
+        // Save it so it persists
+        saveTripToLocalStorage(parsed);
+        updateURLWithTrip(parsed);
+      } else {
+        setImportError("Invalid trip data structure. Please check the JSON format.");
+      }
+    } catch (e) {
+      setImportError("Invalid JSON format. Please check your syntax.");
+    }
+  };
+
   const handleShare = () => {
     setShowShareModal(true);
   };
@@ -185,7 +246,58 @@ export default function TripPlannerApp() {
                 </div>
               </div>
             </button>
+
+            <button
+              onClick={openImportModal}
+              className="w-full p-6 rounded-xl border-2 border-dashed border-zinc-300 hover:border-zinc-400 hover:bg-zinc-50 transition-colors text-left group"
+            >
+              <div className="flex items-start gap-4">
+                <div className="text-3xl">💻</div>
+                <div>
+                  <h3 className="font-bold text-xl text-zinc-900 mb-2 group-hover:text-zinc-700">
+                    Import JSON (Tech-savvy)
+                  </h3>
+                  <p className="text-zinc-600">
+                    Paste your own trip JSON data to immediately load your itinerary
+                  </p>
+                </div>
+              </div>
+            </button>
           </div>
+
+          {showImportModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowImportModal(false)}>
+              <div className="bg-white rounded-2xl p-6 max-w-2xl w-full" onClick={e => e.stopPropagation()}>
+                <h2 className="text-2xl font-bold text-zinc-900 mb-4">Import Trip JSON</h2>
+                <p className="text-zinc-600 mb-4 text-sm">
+                  Paste your trip data JSON below. We've provided a complete template for you — just edit the values to match your trip!
+                </p>
+                <textarea
+                  value={importJson}
+                  onChange={(e) => setImportJson(e.target.value)}
+                  className="w-full h-64 p-3 border border-zinc-300 rounded-lg font-mono text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder='{ "tripConfig": { ... }, "days": [], "flights": [] }'
+                />
+                {importError && (
+                  <p className="text-red-600 text-sm mt-2">{importError}</p>
+                )}
+                <div className="flex gap-2 mt-6">
+                  <button
+                    onClick={() => setShowImportModal(false)}
+                    className="flex-1 px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleImportJson}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                  >
+                    Import Data
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="mt-8 pt-8 border-t border-zinc-200">
             <h4 className="font-semibold text-zinc-900 mb-3">Features:</h4>

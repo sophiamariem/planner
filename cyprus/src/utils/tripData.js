@@ -99,3 +99,22 @@ export function generateShareURL(tripData) {
     const baseURL = window.location.origin + window.location.pathname;
     return `${baseURL}#trip=${encoded}`;
 }
+
+/**
+ * Validates trip data structure
+ */
+export function validateTripData(data) {
+    if (!data || typeof data !== 'object') return false;
+    
+    // Basic structural check
+    const requiredKeys = ['tripConfig', 'days', 'flights'];
+    for (const key of requiredKeys) {
+        if (!(key in data)) return false;
+    }
+    
+    if (typeof data.tripConfig !== 'object') return false;
+    if (!Array.isArray(data.days)) return false;
+    if (!Array.isArray(data.flights)) return false;
+    
+    return true;
+}

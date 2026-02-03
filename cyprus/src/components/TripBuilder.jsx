@@ -14,6 +14,8 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
     const [flights, setFlights] = useState(tripData?.flights || []);
     const [locations, setLocations] = useState(tripData?.ll || {});
     const [currentTab, setCurrentTab] = useState('basic');
+    const [jsonInput, setJsonInput] = useState(JSON.stringify(tripData || {}, null, 2));
+    const [jsonError, setJsonError] = useState("");
 
     // Auto-save to localStorage (but don't trigger preview)
     useEffect(() => {
@@ -103,6 +105,30 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
         setFlights(flights.filter((_, i) => i !== index));
     };
 
+    const handleJsonImport = () => {
+        try {
+            const parsed = JSON.parse(jsonInput);
+            // Basic validation
+            if (parsed.tripConfig && Array.isArray(parsed.days) && Array.isArray(parsed.flights)) {
+                setConfig(parsed.tripConfig);
+                setDays(parsed.days);
+                setFlights(parsed.flights);
+                setLocations(parsed.ll || {});
+                setJsonError("");
+                alert("JSON imported successfully!");
+            } else {
+                setJsonError("Invalid trip data structure. Please ensure tripConfig, days, and flights are present.");
+            }
+        } catch (e) {
+            setJsonError("Invalid JSON format. Please check your syntax.");
+        }
+    };
+
+    const updateJsonFromState = () => {
+        const currentTripData = { tripConfig: config, days, flights, ll: locations, palette, dayBadges: {} };
+        setJsonInput(JSON.stringify(currentTripData, null, 2));
+    };
+
     return (
         <div className="min-h-screen bg-zinc-50">
             <header className="sticky top-0 z-50 bg-white border-b border-zinc-200 shadow-sm">
@@ -133,17 +159,20 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
 
                     {/* Tab Navigation */}
                     <div className="flex gap-2 mt-4 overflow-x-auto">
-                        {['basic', 'flights', 'days', 'locations'].map(tab => (
+                        {['basic', 'flights', 'days', 'locations', 'JSON (Advanced)'].map(tab => (
                             <button
                                 key={tab}
-                                onClick={() => setCurrentTab(tab)}
+                                onClick={() => {
+                                    setCurrentTab(tab);
+                                    if (tab === 'JSON (Advanced)') updateJsonFromState();
+                                }}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${
                                     currentTab === tab
                                         ? 'bg-blue-100 text-blue-700'
                                         : 'hover:bg-zinc-100 text-zinc-600'
                                 }`}
                             >
-                                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                {tab === 'JSON (Advanced)' ? 'JSON (Advanced)' : tab.charAt(0).toUpperCase() + tab.slice(1)}
                             </button>
                         ))}
                     </div>
@@ -556,6 +585,36 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                             <div className="bg-white rounded-lg p-12 shadow-sm text-center text-zinc-500">
                                 No locations added yet. Click "Add Location" to get started.
                             </div>
+                        )}
+                    </div>
+                )}
+
+                {currentTab === 'JSON (Advanced)' && (
+                    <div className="bg-white rounded-lg p-6 shadow-sm space-y-6">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-xl font-bold text-zinc-900">Direct JSON Edit</h2>
+                            <button
+                                onClick={handleJsonImport}
+                                className="px-4 py-2 rounded-lg bg-zinc-900 text-white hover:bg-zinc-800 text-sm font-medium"
+                            >
+                                Apply JSON Changes
+                            </button>
+                        </div>
+
+                        <p className="text-sm text-zinc-600">
+                            For tech-savvy users: You can edit the entire trip data structure directly as JSON. 
+                            Changes will only be applied when you click "Apply JSON Changes".
+                        </p>
+
+                        <textarea
+                            value={jsonInput}
+                            onChange={(e) => setJsonInput(e.target.value)}
+                            className="w-full h-[500px] p-4 border border-zinc-300 rounded-lg font-mono text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder='{ "tripConfig": { ... }, "days": [], "flights": [] }'
+                        />
+
+                        {jsonError && (
+                            <p className="text-red-600 text-sm">{jsonError}</p>
                         )}
                     </div>
                 )}

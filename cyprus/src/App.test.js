@@ -43,3 +43,29 @@ test('can reset from view mode', () => {
   expect(screen.getByText("Start with Cyprus Template")).toBeInTheDocument();
   expect(localStorage.getItem('current-trip')).toBeNull();
 });
+
+test('can import trip via JSON from onboarding', () => {
+  render(<App />);
+  
+  // Click "Import JSON" button
+  const importButton = screen.getByText(/Import JSON/i);
+  fireEvent.click(importButton);
+  
+  // Should see the modal
+  expect(screen.getByText("Import Trip JSON")).toBeInTheDocument();
+  
+  const validTrip = {
+    tripConfig: { title: "Imported Trip", calendar: { year: 2025, month: 5 } },
+    days: [],
+    flights: []
+  };
+  
+  const textarea = screen.getByPlaceholderText(/\{ "tripConfig":/);
+  fireEvent.change(textarea, { target: { value: JSON.stringify(validTrip) } });
+  
+  const submitButton = screen.getByText("Import Data");
+  fireEvent.click(submitButton);
+  
+  // Should be in view mode with imported title
+  expect(screen.getByText("Imported Trip")).toBeInTheDocument();
+});
