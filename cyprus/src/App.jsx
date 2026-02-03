@@ -193,6 +193,28 @@ export default function TripPlannerApp() {
           });
         }
 
+        // Automatically extract badges from notes if dayBadges is empty
+        const importedBadges = parsed.dayBadges || {};
+        const extractedBadges = { ...importedBadges };
+
+        if (Object.keys(extractedBadges).length === 0 && parsed.days && Array.isArray(parsed.days)) {
+          parsed.days.forEach(day => {
+            const dayId = Number(day.id);
+            if (isNaN(dayId)) return;
+            
+            const emojis = [];
+            (day.notes || []).forEach(note => {
+              // Extract common emojis used for badges
+              const found = note.match(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu);
+              if (found) emojis.push(...found);
+            });
+            
+            if (emojis.length > 0) {
+              extractedBadges[dayId] = [...new Set(emojis)]; // Unique emojis
+            }
+          });
+        }
+
         // Ensure optional fields exist for the app state
         const sanitizedData = {
           ...parsed,
@@ -203,7 +225,7 @@ export default function TripPlannerApp() {
             notes: day.notes || []
           })),
           ll: extractedLl,
-          dayBadges: parsed.dayBadges || {},
+          dayBadges: extractedBadges,
           palette: parsed.palette || palette
         };
         

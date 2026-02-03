@@ -147,3 +147,40 @@ test('automatically extracts locations from pins if ll is empty during JSON impo
   expect(screen.getByDisplayValue("10")).toBeInTheDocument();
   expect(screen.getByDisplayValue("20")).toBeInTheDocument();
 });
+
+test('automatically extracts badges from notes if dayBadges is empty during JSON import', () => {
+  render(<App />);
+  
+  const importButton = screen.getByText(/Import JSON/i);
+  fireEvent.click(importButton);
+  
+  const tripWithNotesButNoBadges = {
+    tripConfig: { title: "Badges Trip", calendar: { year: 2026, month: 3 } },
+    days: [
+      { 
+        id: "1", 
+        title: "Day 1", 
+        dow: "Wed", 
+        date: "1 Apr", 
+        notes: ["Flight ✈️ to Hanoi", "Coffee ☕ time"]
+      }
+    ],
+    dayBadges: {} // Empty dayBadges
+  };
+  
+  const textarea = screen.getByPlaceholderText(/\{ "tripConfig":/);
+  fireEvent.change(textarea, { target: { value: JSON.stringify(tripWithNotesButNoBadges) } });
+  
+  const submitButton = screen.getByText("Import Data");
+  fireEvent.click(submitButton);
+  
+  // Switch to Calendar view
+  const calendarTab = screen.getByText("Calendar");
+  fireEvent.click(calendarTab);
+  
+  // Should see the emojis in the calendar day cell
+  // CalendarView renders badges in a div with text content
+  // Note: Emoji rendering in JSDOM/Testing Library can be tricky with variation selectors
+  expect(screen.getByText(/✈/)).toBeInTheDocument();
+  expect(screen.getByText(/☕/)).toBeInTheDocument();
+});

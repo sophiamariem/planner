@@ -14,6 +14,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
     const [days, setDays] = useState(tripData?.days || []);
     const [flights, setFlights] = useState(tripData?.flights || []);
     const [locations, setLocations] = useState(tripData?.ll || {});
+    const [dayBadges, setDayBadges] = useState(tripData?.dayBadges || {});
     const [currentTab, setCurrentTab] = useState('basic');
     const [jsonInput, setJsonInput] = useState(JSON.stringify(tripData || {}, null, 2));
     const [jsonError, setJsonError] = useState("");
@@ -21,13 +22,13 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
     // Auto-save to localStorage (but don't trigger preview)
     useEffect(() => {
         const autoSaveTimer = setTimeout(() => {
-            const tripData = { tripConfig: config, days, flights, ll: locations, palette, dayBadges: {} };
+            const tripData = { tripConfig: config, days, flights, ll: locations, palette, dayBadges };
             // Just save to localStorage, don't call onSave which would exit builder mode
             localStorage.setItem('current-trip', JSON.stringify(tripData));
         }, 1000);
         return () => clearTimeout(autoSaveTimer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [config, days, flights, locations]);
+    }, [config, days, flights, locations, dayBadges]);
 
     const addDay = () => {
         const newDay = {
@@ -128,6 +129,27 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                   });
                 }
 
+                // Automatically extract badges from notes if dayBadges is empty
+                const importedBadges = parsed.dayBadges || {};
+                const extractedBadges = { ...importedBadges };
+
+                if (Object.keys(extractedBadges).length === 0 && parsed.days && Array.isArray(parsed.days)) {
+                  parsed.days.forEach(day => {
+                    const dayId = Number(day.id);
+                    if (isNaN(dayId)) return;
+                    
+                    const emojis = [];
+                    (day.notes || []).forEach(note => {
+                      const found = note.match(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu);
+                      if (found) emojis.push(...found);
+                    });
+                    
+                    if (emojis.length > 0) {
+                      extractedBadges[dayId] = [...new Set(emojis)];
+                    }
+                  });
+                }
+
                 setConfig(parsed.tripConfig);
                 setDays((parsed.days || []).map(day => ({
                     ...day,
@@ -136,6 +158,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                 })));
                 setFlights(parsed.flights || []);
                 setLocations(extractedLl);
+                setDayBadges(extractedBadges);
                 setJsonError("");
                 alert("JSON imported successfully!");
             } else {
@@ -147,7 +170,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
     };
 
     const updateJsonFromState = () => {
-        const currentTripData = { tripConfig: config, days, flights, ll: locations, palette, dayBadges: {} };
+        const currentTripData = { tripConfig: config, days, flights, ll: locations, palette, dayBadges };
         setJsonInput(JSON.stringify(currentTripData, null, 2));
     };
 
@@ -171,7 +194,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                                 Cancel
                             </button>
                             <button
-                                onClick={() => onSave({ tripConfig: config, days, flights, ll: locations, palette, dayBadges: {} })}
+                                onClick={() => onSave({ tripConfig: config, days, flights, ll: locations, palette, dayBadges })}
                                 className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium"
                             >
                                 Save & Preview
