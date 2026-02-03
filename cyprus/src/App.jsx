@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { tripConfig as defaultTripConfig, flights as defaultFlights, days as defaultDays, dayBadges as defaultDayBadges, palette, ll as defaultLocations } from "./data/trip";
 import useFavicon from "./hooks/useFavicon";
 import { ensureTailwindCDN } from "./utils/tailwind";
-import { getTripFromURL, updateURLWithTrip, saveTripToLocalStorage, loadTripFromLocalStorage, generateShareURL } from "./utils/tripData";
+import { getTripFromURL, updateURLWithTrip, saveTripToLocalStorage, loadTripFromLocalStorage, generateShareURL, clearLocalStorageTrip } from "./utils/tripData";
 
 import FlightCard from "./components/FlightCard";
 import DayCard from "./components/DayCard";
@@ -82,6 +82,15 @@ export default function TripPlannerApp() {
 
   const handleCancelEdit = () => {
     setMode('view');
+  };
+
+  const handleReset = () => {
+    if (window.confirm("Are you sure you want to reset? This will clear your current trip data and return you to the home screen.")) {
+      clearLocalStorageTrip();
+      window.location.hash = "";
+      setTripData(null);
+      setMode('onboarding');
+    }
   };
 
   const handleStartFromTemplate = () => {
@@ -223,6 +232,7 @@ export default function TripPlannerApp() {
         tripData={tripData}
         onSave={handleSaveAndPreview}
         onCancel={handleCancelEdit}
+        onReset={handleReset}
       />
     );
   }
@@ -236,6 +246,9 @@ export default function TripPlannerApp() {
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-zinc-900">{tripConfig.title}</h1>
           </div>
           <div className="flex gap-2 items-center flex-wrap">
+            <button type="button" onClick={handleReset} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50 flex items-center gap-1 text-zinc-600 font-medium" title="Reset and go Home">
+              <span>Reset</span>
+            </button>
             <div className="inline-flex rounded-2xl overflow-hidden border border-zinc-300">
               <button type="button" onClick={()=>setView('cards')} className={`px-3 py-2 text-sm ${view==='cards' ? 'bg-zinc-900 text-white' : 'bg-white'}`}>Cards</button>
               <button type="button" onClick={()=>setView('calendar')} className={`px-3 py-2 text-sm border-l border-zinc-300 ${view==='calendar' ? 'bg-zinc-900 text-white' : 'bg-white'}`}>Calendar</button>
