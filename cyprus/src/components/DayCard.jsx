@@ -47,7 +47,7 @@ export default function DayCard({ d, showMaps = true, imgClass = "h-56 md:h-72" 
                                 <div className="mt-3 rounded-2xl p-3 bg-gradient-to-br from-amber-100 to-pink-100">
                                     <div className="text-xs text-zinc-600">Plan</div>
                                     <ol className="mt-1 space-y-2">
-                                        {d.pins.map((p, i) => (
+                                        {(d.pins || []).map((p, i) => (
                                             <li key={i} className="flex items-center gap-2">
                                                 <span className="w-6 h-6 rounded-full bg-zinc-900 text-white grid place-content-center text-xs font-bold">{i+1}</span>
                                                 <a className="text-sm font-medium underline decoration-dashed" href={mapSearch(p.q)} target="_blank" rel="noopener noreferrer">{p.name}</a>

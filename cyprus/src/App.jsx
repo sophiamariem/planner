@@ -177,12 +177,32 @@ export default function TripPlannerApp() {
       const validation = validateTripData(parsed);
       
       if (validation.valid) {
+        // Automatically extract locations (ll) from pins if they are missing from top-level ll
+        const importedLl = parsed.ll || {};
+        const extractedLl = { ...importedLl };
+        
+        if (parsed.days && Array.isArray(parsed.days)) {
+          parsed.days.forEach(day => {
+            if (day.pins && Array.isArray(day.pins)) {
+              day.pins.forEach(pin => {
+                if (pin.name && pin.ll && !extractedLl[pin.name]) {
+                  extractedLl[pin.name] = pin.ll;
+                }
+              });
+            }
+          });
+        }
+
         // Ensure optional fields exist for the app state
         const sanitizedData = {
           ...parsed,
           flights: parsed.flights || [],
-          days: parsed.days || [],
-          ll: parsed.ll || {},
+          days: (parsed.days || []).map(day => ({
+            ...day,
+            pins: day.pins || [],
+            notes: day.notes || []
+          })),
+          ll: extractedLl,
           dayBadges: parsed.dayBadges || {},
           palette: parsed.palette || palette
         };

@@ -112,10 +112,30 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
             const validation = validateTripData(parsed);
             
             if (validation.valid) {
+                // Automatically extract locations (ll) from pins if they are missing from top-level ll
+                const importedLl = parsed.ll || {};
+                const extractedLl = { ...importedLl };
+                
+                if (parsed.days && Array.isArray(parsed.days)) {
+                  parsed.days.forEach(day => {
+                    if (day.pins && Array.isArray(day.pins)) {
+                      day.pins.forEach(pin => {
+                        if (pin.name && pin.ll && !extractedLl[pin.name]) {
+                          extractedLl[pin.name] = pin.ll;
+                        }
+                      });
+                    }
+                  });
+                }
+
                 setConfig(parsed.tripConfig);
-                setDays(parsed.days);
+                setDays((parsed.days || []).map(day => ({
+                    ...day,
+                    pins: day.pins || [],
+                    notes: day.notes || []
+                })));
                 setFlights(parsed.flights || []);
-                setLocations(parsed.ll || {});
+                setLocations(extractedLl);
                 setJsonError("");
                 alert("JSON imported successfully!");
             } else {

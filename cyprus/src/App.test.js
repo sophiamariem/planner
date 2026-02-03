@@ -106,3 +106,44 @@ test('successfully imports JSON even if flights are missing', () => {
   // Should successfully import and show view mode
   expect(screen.getByText("No Flights Trip")).toBeInTheDocument();
 });
+
+test('automatically extracts locations from pins if ll is empty during JSON import', () => {
+  render(<App />);
+  
+  const importButton = screen.getByText(/Import JSON/i);
+  fireEvent.click(importButton);
+  
+  const tripWithPinsButNoLL = {
+    tripConfig: { title: "Pins Trip", calendar: { year: 2026, month: 3 } },
+    days: [
+      { 
+        id: "1", 
+        title: "Day 1", 
+        dow: "Wed", 
+        date: "1 Apr", 
+        notes: [],
+        pins: [{ name: "Test Location", q: "Test Q", ll: [10, 20] }]
+      }
+    ],
+    ll: {} // Empty ll
+  };
+  
+  const textarea = screen.getByPlaceholderText(/\{ "tripConfig":/);
+  fireEvent.change(textarea, { target: { value: JSON.stringify(tripWithPinsButNoLL) } });
+  
+  const submitButton = screen.getByText("Import Data");
+  fireEvent.click(submitButton);
+  
+  // Click Edit to go to TripBuilder
+  const editButton = screen.getByText("Edit");
+  fireEvent.click(editButton);
+  
+  // Go to Locations tab
+  const locationsTab = screen.getByText("Locations");
+  fireEvent.click(locationsTab);
+  
+  // Should see the location that was extracted from pins
+  expect(screen.getByText("Test Location")).toBeInTheDocument();
+  expect(screen.getByDisplayValue("10")).toBeInTheDocument();
+  expect(screen.getByDisplayValue("20")).toBeInTheDocument();
+});
