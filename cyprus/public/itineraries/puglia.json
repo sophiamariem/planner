@@ -1,0 +1,240 @@
+{
+  "tripConfig": {
+    "title": "Weekend in Puglia",
+    "footer": "Puglia Road Trip 26 🩷",
+    "favicon": null,
+    "calendar": {
+      "year": 2026,
+      "month": 1
+    },
+    "badgeLegend": []
+  },
+  "days": [
+    {
+      "id": "27",
+      "dow": "Fri",
+      "date": "27 Feb",
+      "title": "Arrival + Coast (Bari → Polignano a Mare → Lecce)",
+      "photoQ": "",
+      "photos": [
+        "https://www.photohound.co/images/1031855l.jpg"
+      ],
+      "hasMap": false,
+      "route": "",
+      "pins": [
+        {
+          "name": "Polignano a Mare",
+          "q": "Polignano a Mare",
+          "ll": [
+            40.9949,
+            17.2225
+          ]
+        },
+        {
+          "name": "Lama Monachile",
+          "q": "Lama Monachile",
+          "ll": [
+            41,
+            17.13
+          ]
+        },
+        {
+          "name": "Lecce",
+          "q": "Lecce",
+          "ll": [
+            40.3515,
+            18.175
+          ]
+        }
+      ],
+      "notes": [
+        "Cliff viewpoints",
+        "Old towns",
+        "Baroque stroll at golden hour",
+        "Aperitivo",
+        "Dinner in the historic centre"
+      ]
+    },
+    {
+      "id": "28",
+      "dow": "Sat",
+      "date": "28 Feb",
+      "title": "Valle d’Itria (Lecce → Alberobello → Locorotondo → Lecce)",
+      "photoQ": "",
+      "photos": [
+        "https://www.pocruises.com/content/dam/po/inventory-assets/excursions/TNO/TNO_004/TNO_004.jpg.image.1536.1152.medium.jpg",
+        "https://as1.ftcdn.net/v2/jpg/02/20/54/48/1000_F_220544816_ryJL1vNzAlum2Z1e8AsfRZauLXeO9W2r.jpg",
+        "https://www.giovannicarrieri.com/photography/italy/lecce/webp/lecce-basilica-di-santa-croce.webp"
+      ],
+      "hasMap": false,
+      "route": "",
+      "pins": [
+        {
+          "name": "Santa Croce",
+          "q": "Santa Croce",
+          "ll": [
+            46.155,
+            12.33
+          ]
+        },
+        {
+          "name": "Piazza del Duomo",
+          "q": "Piazza del Duomo",
+          "ll": [
+            40.3521,
+            18.1686
+          ]
+        },
+        {
+          "name": "Alberobello",
+          "q": "Alberobello",
+          "ll": [
+            40.7865,
+            17.2409
+          ]
+        },
+        {
+          "name": "Locorotondo",
+          "q": "Locorotondo",
+          "ll": [
+            40.7559,
+            17.3263
+          ]
+        },
+        {
+          "name": "Martina Franca",
+          "q": "Martina Franca",
+          "ll": [
+            40.7028,
+            17.3394
+          ]
+        }
+      ],
+      "notes": [
+        "Coffee + pasticciotto in Lecce",
+        "Valle d’Itria",
+        "Wine bar + cozy dinner"
+      ]
+    },
+    {
+      "id": "1",
+      "dow": "Sun",
+      "date": "1 March",
+      "title": "Coast + Late Flight (Lecce → Otranto → Monopoli → Bari → Fly 9:20pm)",
+      "photoQ": "",
+      "photos": [
+        "https://media-cdn.tripadvisor.com/media/attractions-splice-spp-720x480/10/7d/5a/ae.jpg",
+        "https://static.wixstatic.com/media/099728_3fa0f172609b4d859b4e7491799bc76e~mv2.jpg/v1/fill/w_1480,h_832,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/099728_3fa0f172609b4d859b4e7491799bc76e~mv2.jpg",
+        "https://italien.expert/wp-content/uploads/2025/05/Bari-Vecchia-Altstadt-von-Bari-Apulien-Italien-Foto-%C2%A9-Italien.expert-by-Canva.com_.jpg"
+      ],
+      "hasMap": false,
+      "route": "",
+      "pins": [
+        {
+          "name": "Otranto",
+          "q": "Otranto",
+          "ll": [
+            40.1441,
+            18.4912
+          ]
+        },
+        {
+          "name": "Monopoli",
+          "q": "Monopoli",
+          "ll": [
+            40.9525,
+            17.2986
+          ]
+        },
+        {
+          "name": "Bari Vecchia",
+          "q": "Bari Vecchia",
+          "ll": [
+            41.1291,
+            16.8691
+          ]
+        }
+      ],
+      "notes": [
+        "Cathedral mosaic",
+        "Sea views",
+        "Old town wander",
+        "Focaccia barese"
+      ]
+    }
+  ],
+  "flights": [
+    {
+      "title": "To Bari",
+      "num": "FR1905",
+      "route": "London (Stansted) - Bari",
+      "date": "Fri, 27 Feb 2026",
+      "times": "07:30 → 11:30",
+      "codes": "STN → BRI"
+    },
+    {
+      "title": "To London (Stansted)",
+      "num": "FR1906",
+      "route": "Bari - London (Stansted)",
+      "date": "Sun, 01 Mar 2026",
+      "times": "21:20 → 23:20",
+      "codes": "BRI → STN"
+    }
+  ],
+  "ll": {
+    "Polignano a Mare": [
+      40.9949,
+      17.2225
+    ],
+    "Lama Monachile": [
+      41,
+      17.13
+    ],
+    "Lecce": [
+      40.3515,
+      18.175
+    ],
+    "Santa Croce": [
+      46.155,
+      12.33
+    ],
+    "Piazza del Duomo": [
+      40.3521,
+      18.1686
+    ],
+    "Alberobello": [
+      40.7865,
+      17.2409
+    ],
+    "Locorotondo": [
+      40.7559,
+      17.3263
+    ],
+    "Martina Franca": [
+      40.7028,
+      17.3394
+    ],
+    "Otranto": [
+      40.1441,
+      18.4912
+    ],
+    "Monopoli": [
+      40.9525,
+      17.2986
+    ],
+    "Bari Vecchia": [
+      41.1291,
+      16.8691
+    ]
+  },
+  "palette": {
+    "bg": "from-pink-100 via-rose-50 to-amber-50",
+    "date": "bg-fuchsia-600 text-white",
+    "day": "bg-sky-600 text-white",
+    "note": "bg-teal-50 text-teal-800 border border-teal-200",
+    "card": "bg-white/90 border border-zinc-200 shadow-sm",
+    "route": "bg-blue-600 text-white",
+    "pin": "bg-zinc-900 text-white"
+  },
+  "dayBadges": {}
+}

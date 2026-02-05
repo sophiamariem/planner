@@ -1,0 +1,1040 @@
+{
+  "tripConfig": {
+    "title": "Vietnam Trip • 1–16 Apr 2026",
+    "footer": "Vietnam 🇻🇳",
+    "favicon": "/favicon.png",
+    "calendar": {
+      "year": 2026,
+      "month": 3
+    },
+    "badgeLegend": [
+      {
+        "emoji": "✈️",
+        "label": "Flight"
+      },
+      {
+        "emoji": "🚆",
+        "label": "Train"
+      },
+      {
+        "emoji": "🚐",
+        "label": "Transfer"
+      },
+      {
+        "emoji": "🚢",
+        "label": "Cruise"
+      },
+      {
+        "emoji": "🏞️",
+        "label": "Nature"
+      },
+      {
+        "emoji": "☕",
+        "label": "Cafe"
+      },
+      {
+        "emoji": "🛍️",
+        "label": "Shopping"
+      },
+      {
+        "emoji": "💆",
+        "label": "Spa"
+      }
+    ]
+  },
+  "days": [
+    {
+      "id": "1",
+      "dow": "Wed",
+      "date": "1 Apr",
+      "title": "Arrival in Ho Chi Minh City + Cafés",
+      "photoQ": "Ho Chi Minh City skyline",
+      "photos": [
+        "https://www.yourtourdesk.com/wp-content/uploads/2025/06/Ho-Chi-Minh-City.jpg",
+        "https://bloganchoi.com/wp-content/uploads/2024/06/review-quan-ca-phe-noong-oi-tai-thanh-pho-ho-chi-minh-1-696x464.jpg",
+        "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/31/e2/f2/db/caption.jpg?w=1100&h=-1&s=1",
+        "https://vietnamdiscovery.com/wp-content/uploads/2020/11/Ho-Chi-Minh-Sunset-Cruise-Tour-christina.vn_.webp"
+      ],
+      "hasMap": false,
+      "pins": [
+        {
+          "name": "SGN",
+          "q": "Tan Son Nhat International Airport",
+          "ll": [
+            10.8188,
+            106.6518
+          ]
+        },
+        {
+          "name": "Tiệm cà phê Noọng Ơi",
+          "q": "Tiệm cà phê Noọng Ơi",
+          "ll": [
+            22.3367,
+            103.8431
+          ]
+        },
+        {
+          "name": "Oasis Cafe",
+          "q": "Oasis Cafe Ho Chi Minh City",
+          "ll": [
+            10.787,
+            106.6896
+          ]
+        }
+      ],
+      "notes": [
+        "Light café hopping: Tiệm cà phê Noọng Ơi, Oasis Cafe",
+        "Short District 1 walk"
+      ]
+    },
+    {
+      "id": "2",
+      "dow": "Thu",
+      "date": "2 Apr",
+      "title": "Cu Chi Tunnels + Afternoon Cafés",
+      "photoQ": "Cu Chi Tunnels",
+      "photos": [
+        "https://www.wendywutours.co.uk/resource/upload/841/banner-cu-chi-tunnels-2x.jpg.webp",
+        "https://cdn.prod.rexby.com/image/39c09ccd7ebc497480da4fe1c214aae7?format=webp&width=2048&height=2560",
+        "https://scontent-lhr6-2.xx.fbcdn.net/v/t39.30808-6/549455358_122145209444831663_3514799138959159496_n.jpg?_nc_cat=105&ccb=1-7&_nc_sid=127cfc&_nc_ohc=q1GN7pJOUdoQ7kNvwGKpdao&_nc_oc=AdnxQeRNMi9JH2LUAUWX_IwcSGQzy12OZ3znocQpnREgjv-DPsEpfvAB7TuVJYu4QRo&_nc_zt=23&_nc_ht=scontent-lhr6-2.xx&_nc_gid=uESPFBv51TGu7uGs7PFwtQ&oh=00_Aft77TB8UuVnaHQpFkNAm7g75qlznfvlvgsd7pHRE33bLQ&oe=69880CF6"
+      ],
+      "hasMap": false,
+      "pins": [
+        {
+          "name": "Cu Chi Tunnels",
+          "q": "Cu Chi Tunnels",
+          "ll": [
+            11.1429,
+            106.4643
+          ]
+        },
+        {
+          "name": "The Cafe Apartment",
+          "q": "The Cafe Apartment Nguyen Hue",
+          "ll": [
+            10.7759,
+            106.7034
+          ]
+        },
+        {
+          "name": "Café Sân Vườn Miền Thảo Mộc",
+          "q": "Café Sân Vườn Miền Thảo Mộc",
+          "ll": [
+            10.779,
+            106.693
+          ]
+        },
+        {
+          "name": "Đi Cùng Mưa",
+          "q": "Đi Cùng Mưa",
+          "ll": [
+            10.777,
+            106.689
+          ]
+        },
+        {
+          "name": "Cái Tổ Chim",
+          "q": "Cái Tổ Chim",
+          "ll": [
+            10.78,
+            106.692
+          ]
+        },
+        {
+          "name": "Saigon River Walk (D1)",
+          "q": "Saigon River Walk (D1)",
+          "ll": [
+            10.7733,
+            106.7071
+          ]
+        },
+        {
+          "name": "Mặn Mòi – Tao Đàn",
+          "q": "Mặn Mòi Tao Đàn",
+          "ll": [
+            10.7746,
+            106.6899
+          ]
+        },
+        {
+          "name": "Thao Dien",
+          "q": "Thao Dien District 2",
+          "ll": [
+            10.8048,
+            106.7376
+          ]
+        }
+      ],
+      "notes": [
+        "Morning: Cu Chi Tunnels tour",
+        "Afternoon: café hopping (The Cafe Apartment !!!, Café Sân Vườn Miền Thảo Mộc !!!, Đi Cùng Mưa !!, Cái Tổ Chim !, Mặn Mòi – Tao Đàn (! - food/snacks))",
+        "Early evening: Saigon River sunset walk OR short boat ride",
+        "Dinner in Thao Dien"
+      ]
+    },
+    {
+      "id": "3",
+      "dow": "Fri",
+      "date": "3 Apr",
+      "title": "Spa & Boutique Shopping Day",
+      "photoQ": "Golden Lotus Spa & shopping",
+      "photos": [
+        "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0d/cb/ad/72/foot-spa-green-oasis.jpg?w=400&h=-1&s=1",
+        "https://static.vinwonders.com/production/shopping-mall-in-hanoi-banner.jpeg"
+      ],
+      "hasMap": false,
+      "pins": [
+        {
+          "name": "Golden Lotus Spa & Massage Club",
+          "q": "Golden Lotus Spa & Massage Club",
+          "ll": [
+            10.777,
+            106.7
+          ]
+        },
+        {
+          "name": "Mozaic Space",
+          "q": "Mozaic Space",
+          "ll": [
+            10.78,
+            106.695
+          ]
+        },
+        {
+          "name": "11 Garmentory",
+          "q": "11 Garmentory",
+          "ll": [
+            10.776,
+            106.696
+          ]
+        },
+        {
+          "name": "Kane JT",
+          "q": "Kane JT",
+          "ll": [
+            10.779,
+            106.698
+          ]
+        },
+        {
+          "name": "Kido Studiowear",
+          "q": "Kido Studiowear",
+          "ll": [
+            10.78,
+            106.699
+          ]
+        },
+        {
+          "name": "Tinfour",
+          "q": "Tinfour",
+          "ll": [
+            10.781,
+            106.7
+          ]
+        },
+        {
+          "name": "District Tone Shop",
+          "q": "District Tone Shop",
+          "ll": [
+            10.782,
+            106.701
+          ]
+        },
+        {
+          "name": "Mieu",
+          "q": "Mieu",
+          "ll": [
+            10.783,
+            106.702
+          ]
+        },
+        {
+          "name": "Paradise",
+          "q": "Paradise",
+          "ll": [
+            10.784,
+            106.703
+          ]
+        },
+        {
+          "name": "The New Playground",
+          "q": "The New Playground",
+          "ll": [
+            10.785,
+            106.704
+          ]
+        },
+        {
+          "name": "Chill Skybar",
+          "q": "Chill Skybar",
+          "ll": [
+            10.7731,
+            106.7036
+          ]
+        }
+      ],
+      "notes": [
+        "Morning: spa treatment 💆(Golden Lotus Spa & Massage Club)",
+        "Afternoon: boutique & clothes shopping 🛍️ (Mozaic Space, 11 Garmentory, Kane JT, Kido Studiowear, Tinfour, District Tone Shop, Mieu, Paradise, The New Playground)",
+        "Evening: Chill Skybar"
+      ]
+    },
+    {
+      "id": "4",
+      "dow": "Sat",
+      "date": "4 Apr",
+      "title": "Flight to Hanoi + Cafés",
+      "photoQ": "Flight window Vietnam",
+      "photos": [
+        "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0e/2a/9d/51/hang-gai-05.jpg?w=2000&h=-1&s=1"
+      ],
+      "hasMap": false,
+      "route": "[https://www.google.com/maps/dir/?api=1&origin=Noi%20Bai%20Airport&destination=Ninh%20Binh](https://www.google.com/maps/dir/?api=1&origin=Noi%20Bai%20Airport&destination=Ninh%20Binh)",
+      "pins": [
+        {
+          "name": "Ben Thanh Market",
+          "q": "Ben Thanh Market",
+          "ll": [
+            10.7725,
+            106.698
+          ]
+        },
+        {
+          "name": "SGN",
+          "q": "Tan Son Nhat Airport",
+          "ll": [
+            10.8188,
+            106.6518
+          ]
+        },
+        {
+          "name": "HAN",
+          "q": "Noi Bai Airport",
+          "ll": [
+            21.2142,
+            105.8044
+          ]
+        }
+      ],
+      "notes": [
+        "Ben Thanh Market",
+        "Morning: flight ✈️",
+        "light cafés & short wander",
+        ""
+      ]
+    },
+    {
+      "id": "5",
+      "dow": "Sun",
+      "date": "5 Apr",
+      "title": "Ninh Binh: Tam Coc • Bich Dong",
+      "photoQ": "Tam Coc Ninh Binh",
+      "photos": [
+        "https://statics.vinpearl.com/tam-coc-vietnam-1_1681231160.jpg",
+        "https://chrisandwrensworld.com/wp-content/uploads/2025/05/bich-dong-pagoda-vietnam.jpeg",
+        "https://ginkgovoyage.com/wp-content/uploads/2025/11/biking-along-rice-field-ninh-binh-1024x683.jpg"
+      ],
+      "hasMap": false,
+      "pins": [
+        {
+          "name": "Tam Coc",
+          "q": "Tam Coc",
+          "ll": [
+            20.2156,
+            105.9333
+          ]
+        },
+        {
+          "name": "Bich Dong Pagoda",
+          "q": "Bich Dong Pagoda",
+          "ll": [
+            20.215,
+            105.9312
+          ]
+        },
+        {
+          "name": "Tam Coc Rice Fields",
+          "q": "Tam Coc rice fields cycling",
+          "ll": [
+            20.2142,
+            105.9355
+          ]
+        }
+      ],
+      "notes": [
+        "Tam Coc boat ride",
+        "Bich Dong Pagoda",
+        "Cycling through rice fields"
+      ]
+    },
+    {
+      "id": "6",
+      "dow": "Mon",
+      "date": "6 Apr",
+      "title": "Ninh Binh: Trang An • Mua Cave",
+      "photoQ": "Trang An boat",
+      "photos": [
+        "https://vpt-en.b-cdn.net/wp-content/uploads/n/26/Ninh-Binh-Trang-An-Scenic-Landscape-Complex-1024x699.jpg",
+        "https://app-api.glodival.vn/storage/4/images/mua-cave-17316586254eU1I.jpg"
+      ],
+      "hasMap": false,
+      "pins": [
+        {
+          "name": "Trang An",
+          "q": "Trang An Scenic Landscape",
+          "ll": [
+            20.2506,
+            105.9077
+          ]
+        },
+        {
+          "name": "Mua Cave",
+          "q": "Hang Mua Viewpoint",
+          "ll": [
+            20.217,
+            105.9446
+          ]
+        }
+      ],
+      "notes": [
+        "Trang An scenic boat ride",
+        "Mua Cave viewpoint",
+        "Final countryside evening"
+      ]
+    },
+    {
+      "id": "7",
+      "dow": "Tue",
+      "date": "7 Apr",
+      "title": "Transfer: Ninh Binh → Hanoi",
+      "photoQ": "Hanoi Old Quarter",
+      "photos": [
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Old_Quarter_Street_Scene_-_Hanoi_-_Vietnam_%2848256301206%29.jpg/500px-Old_Quarter_Street_Scene_-_Hanoi_-_Vietnam_%2848256301206%29.jpg"
+      ],
+      "hasMap": false,
+      "pins": [
+        {
+          "name": "Hanoi Old Quarter",
+          "q": "Hanoi Old Quarter",
+          "ll": [
+            21.0338,
+            105.85
+          ]
+        },
+        {
+          "name": "Hoan Kiem Lake",
+          "q": "Hoan Kiem Lake",
+          "ll": [
+            21.0287,
+            105.8522
+          ]
+        }
+      ],
+      "notes": [
+        "Late morning transfer",
+        "Hotel check-in",
+        "Street food walk"
+      ]
+    },
+    {
+      "id": "8",
+      "dow": "Wed",
+      "date": "8 Apr",
+      "title": "Hanoi culture • cafés",
+      "photoQ": "Hanoi coffee",
+      "photos": [
+        "https://pub-e12fbd31c4784b7e84101a288c658b02.r2.dev/2025/10/hanoi.jpg",
+        "https://izitour.com/media/blog/temple-literature-hanoi-vietnam.webp"
+      ],
+      "hasMap": false,
+      "pins": [
+        {
+          "name": "Temple of Literature",
+          "q": "Temple of Literature",
+          "ll": [
+            21.0288,
+            105.8355
+          ]
+        },
+        {
+          "name": "Train Street",
+          "q": "Hanoi Train Street",
+          "ll": [
+            21.0285,
+            105.847
+          ]
+        },
+        {
+          "name": "Hanoi Old Quarter",
+          "q": "Hanoi Old Quarter",
+          "ll": [
+            21.0338,
+            105.85
+          ]
+        },
+        {
+          "name": "Cà Phê Trứng 3T – Trung Sơ",
+          "q": "Cà Phê Trứng 3T – Trung Sơ",
+          "ll": [
+            21.0283,
+            105.8506
+          ]
+        }
+      ],
+      "notes": [
+        "Egg coffee → Cà Phê Trứng 3T – Trung Sơ",
+        "Temple of Literature",
+        "Train Street coffee (check train schedule)",
+        "Evening Old Quarter wander"
+      ]
+    },
+    {
+      "id": "9",
+      "dow": "Thu",
+      "date": "9 Apr",
+      "title": "Ha Long Bay cruise (overnight)",
+      "photoQ": "Ha Long Bay cruise",
+      "photos": [
+        "https://lp-cms-production.imgix.net/2023-10/GettyRF92865967.jpg?auto=format,compress&q=72&w=1440&h=810&fit=crop"
+      ],
+      "hasMap": false,
+      "pins": [
+        {
+          "name": "Ha Long Bay",
+          "q": "Ha Long Bay",
+          "ll": [
+            20.9101,
+            107.1839
+          ]
+        }
+      ],
+      "notes": [
+        "Morning pickup",
+        "Cruise boarding 🚢",
+        "Kayaking + sunset",
+        "Overnight onboard"
+      ],
+      "highlight": true
+    },
+    {
+      "id": "10",
+      "dow": "Fri",
+      "date": "10 Apr",
+      "title": "Ha Long Bay → Hanoi",
+      "photoQ": "Ha Long sunrise",
+      "photos": [
+        "https://lyracruises.com/wp-content/uploads/2025/07/kayaking-in-halong-bay-1.jpg",
+        "https://static.vinwonders.com/2023/02/night-market-hanoi-01.jpeg"
+      ],
+      "hasMap": false,
+      "pins": [
+        {
+          "name": "West Lake",
+          "q": "West Lake Hanoi",
+          "ll": [
+            21.0575,
+            105.8236
+          ]
+        },
+        {
+          "name": "Hanoi",
+          "q": "Hanoi",
+          "ll": [
+            21.0285,
+            105.8542
+          ]
+        }
+      ],
+      "notes": [
+        "Sunrise on deck",
+        "Return to Hanoi by evening",
+        "Rest night"
+      ]
+    },
+    {
+      "id": "11",
+      "dow": "Sat",
+      "date": "11 Apr",
+      "title": "Night train: Hanoi → Sapa",
+      "photoQ": "Vietnam night train",
+      "photos": [
+        "https://dynamic-media.tacdn.com/media/photo-o/2e/e3/ca/a7/caption.jpg?w=1400&h=1000&s=1"
+      ],
+      "hasMap": false,
+      "pins": [
+        {
+          "name": "Sapa",
+          "q": "Sapa",
+          "ll": [
+            22.3364,
+            103.8438
+          ]
+        },
+        {
+          "name": "Sailing Cafe Sapa",
+          "q": "Sailing Cafe Sapa",
+          "ll": [
+            22.3372,
+            103.8435
+          ]
+        }
+      ],
+      "notes": [
+        "Easy daytime",
+        "Overnight sleeper train 🚆",
+        "Sailing Cafe Sapa (views)"
+      ]
+    },
+    {
+      "id": "12",
+      "dow": "Sun",
+      "date": "12 Apr",
+      "title": "Arrive Sapa • cafés & views",
+      "photoQ": "Sapa town",
+      "photos": [
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Th%E1%BB%8B_tr%E1%BA%A5n_Sa_Pa.jpg/960px-Th%E1%BB%8B_tr%E1%BA%A5n_Sa_Pa.jpg"
+      ],
+      "hasMap": false,
+      "pins": [
+        {
+          "name": "Sapa",
+          "q": "Sapa",
+          "ll": [
+            22.3364,
+            103.8438
+          ]
+        },
+        {
+          "name": "Nhà Bên Suối",
+          "q": "Nhà Bên Suối Sapa",
+          "ll": [
+            22.3359,
+            103.8466
+          ]
+        },
+        {
+          "name": "Suối Bình Yên",
+          "q": "Suối Bình Yên Sapa",
+          "ll": [
+            22.3348,
+            103.8489
+          ]
+        }
+      ],
+      "notes": [
+        "Cafe → Nhà Bên Suối",
+        "Sapa town wander",
+        "Mountain café →  Suối Bình Yên (optional)"
+      ]
+    },
+    {
+      "id": "13",
+      "dow": "Mon",
+      "date": "13 Apr",
+      "title": "Cat Cat Village • Moana Sapa",
+      "photoQ": "Cat Cat Village",
+      "photos": [
+        "https://duaelbluiumc3.cloudfront.net/Media/Images/InboundImages/Blog/cat-cat-village-vietnam-what-is-cat-cat-village-famous-for.jpg"
+      ],
+      "hasMap": false,
+      "pins": [
+        {
+          "name": "Cat Cat Village",
+          "q": "Cat Cat Village",
+          "ll": [
+            22.333,
+            103.84
+          ]
+        },
+        {
+          "name": "Moana Sapa",
+          "q": "Moana Sapa",
+          "ll": [
+            22.3316,
+            103.8579
+          ]
+        },
+        {
+          "name": "Tiệm cà phê Noọng Ơi",
+          "q": "Tiệm cà phê Noọng Ơi Sapa",
+          "ll": [
+            22.3367,
+            103.8431
+          ]
+        },
+        {
+          "name": "Chảo Restaurant",
+          "q": "Chảo Restaurant Sapa",
+          "ll": [
+            22.3369,
+            103.8422
+          ]
+        }
+      ],
+      "notes": [
+        "Cat Cat Village walk",
+        "Moana Sapa viewpoint",
+        "Sunset → Coffee stop (for views → Tiệm cà phê Noọng Ơi)",
+        "Dinner: Chảo Restaurant"
+      ]
+    },
+    {
+      "id": "14",
+      "dow": "Tue",
+      "date": "14 Apr",
+      "title": "Return: Sapa → Hanoi",
+      "photoQ": "Vietnam countryside road",
+      "photos": [
+        "https://static.vinwonders.com/production/vietnam-countryside-3.jpg?_gl=1*9y1jne*_gcl_au*MTM2MzY4NDUxNC4xNzcwMTM3NjU0"
+      ],
+      "hasMap": false,
+      "pins": [
+        {
+          "name": "Hanoi",
+          "q": "Hanoi",
+          "ll": [
+            21.0285,
+            105.8542
+          ]
+        },
+        {
+          "name": "Hoan Kiem Lake",
+          "q": "Hoan Kiem Lake",
+          "ll": [
+            21.0287,
+            105.8522
+          ]
+        }
+      ],
+      "notes": [
+        "Morning transfer",
+        "Afternoon rest in Hanoi"
+      ]
+    },
+    {
+      "id": "15",
+      "dow": "Wed",
+      "date": "15 Apr",
+      "title": "Final Hanoi day",
+      "photoQ": "Hoan Kiem Lake",
+      "photos": [
+        "https://lirp.cdn-website.com/9c039c04/dms3rep/multi/opt/ho-hoan-kiem-2-1920w.jpg"
+      ],
+      "hasMap": false,
+      "pins": [
+        {
+          "name": "Ho Chi Minh Mausoleum",
+          "q": "Ho Chi Minh Mausoleum",
+          "ll": [
+            21.0369,
+            105.834
+          ]
+        },
+        {
+          "name": "Hoan Kiem Lake",
+          "q": "Hoan Kiem Lake",
+          "ll": [
+            21.0287,
+            105.8522
+          ]
+        }
+      ],
+      "notes": [
+        "Ho Chi Minh Mausoleum",
+        "Hoan Kiem Lake",
+        "Last shopping"
+      ]
+    },
+    {
+      "id": "16",
+      "dow": "Thu",
+      "date": "16 Apr",
+      "title": "Departure from Hanoi",
+      "photoQ": "Noi Bai Airport",
+      "photos": [
+        "https://www.traveloffpath.com/wp-content/uploads/2024/09/Plane-Flying-Over-Central-London-On-The-Way-To-London-City-Airport-With-A-View-Of-Tower-Bridge-London-United-Kingdom.jpg"
+      ],
+      "hasMap": false,
+      "pins": [
+        {
+          "name": "HAN",
+          "q": "Noi Bai Airport",
+          "ll": [
+            21.2142,
+            105.8044
+          ]
+        }
+      ],
+      "notes": [
+        "International departure ✈️"
+      ]
+    }
+  ],
+  "flights": [
+    {
+      "title": "Flight out • London → Doha",
+      "num": "QR10",
+      "route": "London Heathrow → Doha",
+      "date": "Tue, 31 Mar 2026",
+      "times": "09:00 → 17:55",
+      "codes": "LHR → DOH",
+      "terminal": "LHR T4 → DOH",
+      "airline": "Qatar Airways",
+      "cabin": "Economy",
+      "duration": "06:55"
+    },
+    {
+      "title": "Flight out • Doha → Ho Chi Minh City",
+      "num": "QR974",
+      "route": "Doha → Ho Chi Minh City",
+      "date": "Tue–Wed, 31 Mar–1 Apr 2026",
+      "times": "20:15 → 07:40 (+1)",
+      "codes": "DOH → SGN",
+      "terminal": "DOH → SGN T2",
+      "airline": "Qatar Airways",
+      "cabin": "Economy",
+      "duration": "07:25"
+    },
+    {
+      "title": "Domestic Flight • Ho Chi Minh City → Hanoi",
+      "num": "VNXXX",
+      "route": "Ho Chi Minh City → Hanoi",
+      "date": "Fri, 4 Apr",
+      "times": "09:00 → 11:10",
+      "codes": "SGN → HAN"
+    },
+    {
+      "title": "Flight home • Hanoi → Doha",
+      "num": "QR983",
+      "route": "Hanoi → Doha",
+      "date": "Thu, 16 Apr 2026",
+      "times": "09:35 → 12:55",
+      "codes": "HAN → DOH",
+      "terminal": "HAN T2 → DOH",
+      "airline": "Qatar Airways",
+      "cabin": "Economy",
+      "duration": "07:20"
+    },
+    {
+      "title": "Flight home • Doha → London",
+      "num": "QR5",
+      "route": "Doha → London Heathrow",
+      "date": "Thu, 16 Apr 2026",
+      "times": "16:35 → 22:00",
+      "codes": "DOH → LHR",
+      "terminal": "DOH → LHR T4",
+      "airline": "Qatar Airways",
+      "cabin": "Economy",
+      "duration": "07:25"
+    }
+  ],
+  "ll": {
+    "SGN": [
+      10.8188,
+      106.6518
+    ],
+    "Cu Chi Tunnels": [
+      11.1429,
+      106.4643
+    ],
+    "The Cafe Apartment": [
+      10.7759,
+      106.7034
+    ],
+    "Café Sân Vườn Miền Thảo Mộc": [
+      10.779,
+      106.693
+    ],
+    "Đi Cùng Mưa": [
+      10.777,
+      106.689
+    ],
+    "Cái Tổ Chim": [
+      10.78,
+      106.692
+    ],
+    "Saigon River Walk (D1)": [
+      10.7733,
+      106.7071
+    ],
+    "Mặn Mòi – Tao Đàn": [
+      10.7746,
+      106.6899
+    ],
+    "Golden Lotus Spa & Massage Club": [
+      10.777,
+      106.7
+    ],
+    "Mozaic Space": [
+      10.78,
+      106.695
+    ],
+    "11 Garmentory": [
+      10.776,
+      106.696
+    ],
+    "Kane JT": [
+      10.779,
+      106.698
+    ],
+    "Kido Studiowear": [
+      10.78,
+      106.699
+    ],
+    "Tinfour": [
+      10.781,
+      106.7
+    ],
+    "District Tone Shop": [
+      10.782,
+      106.701
+    ],
+    "Mieu": [
+      10.783,
+      106.702
+    ],
+    "Paradise": [
+      10.784,
+      106.703
+    ],
+    "The New Playground": [
+      10.785,
+      106.704
+    ],
+    "Chill Skybar": [
+      10.7731,
+      106.7036
+    ],
+    "Ben Thanh Market": [
+      10.7725,
+      106.698
+    ],
+    "HAN": [
+      21.2142,
+      105.8044
+    ],
+    "Tam Coc": [
+      20.2156,
+      105.9333
+    ],
+    "Trang An": [
+      20.2506,
+      105.9077
+    ],
+    "Mua Cave": [
+      20.217,
+      105.9446
+    ],
+    "Hanoi Old Quarter": [
+      21.0338,
+      105.85
+    ],
+    "Temple of Literature": [
+      21.0288,
+      105.8355
+    ],
+    "Train Street": [
+      21.0285,
+      105.847
+    ],
+    "Cà Phê Trứng 3T – Trung Sơ": [
+      21.0283,
+      105.8506
+    ],
+    "Ha Long Bay": [
+      20.9101,
+      107.1839
+    ],
+    "Sapa": [
+      22.3364,
+      103.8438
+    ],
+    "Nhà Bên Suối": [
+      22.3359,
+      103.8466
+    ],
+    "Suối Bình Yên": [
+      22.3348,
+      103.8489
+    ],
+    "Cat Cat Village": [
+      22.333,
+      103.84
+    ],
+    "Moana Sapa": [
+      22.3316,
+      103.8579
+    ],
+    "Tiệm cà phê Noọng Ơi": [
+      22.3367,
+      103.8431
+    ],
+    "Chảo Restaurant": [
+      22.3369,
+      103.8422
+    ],
+    "Ho Chi Minh Mausoleum": [
+      21.0369,
+      105.834
+    ],
+    "Hoan Kiem Lake": [
+      21.0287,
+      105.8522
+    ],
+    "Oasis Cafe": [
+      10.787,
+      106.6896
+    ],
+    "Thao Dien": [
+      10.8048,
+      106.7376
+    ],
+    "Bich Dong Pagoda": [
+      20.215,
+      105.9312
+    ],
+    "Tam Coc Rice Fields": [
+      20.2142,
+      105.9355
+    ],
+    "West Lake": [
+      21.0575,
+      105.8236
+    ],
+    "Hanoi": [
+      21.0285,
+      105.8542
+    ],
+    "Sailing Cafe Sapa": [
+      22.3372,
+      103.8435
+    ]
+  },
+  "palette": {
+    "bg": "from-pink-100 via-rose-50 to-amber-50",
+    "date": "bg-fuchsia-600 text-white",
+    "day": "bg-sky-600 text-white",
+    "note": "bg-teal-50 text-teal-800 border border-teal-200",
+    "card": "bg-white/90 border border-zinc-200 shadow-sm",
+    "route": "bg-blue-600 text-white",
+    "pin": "bg-zinc-900 text-white"
+  },
+  "dayBadges": {
+    "3": [
+      "💆",
+      "🛍"
+    ],
+    "4": [
+      "✈"
+    ],
+    "9": [
+      "🚢"
+    ],
+    "11": [
+      "🚆"
+    ],
+    "16": [
+      "✈"
+    ]
+  }
+}
