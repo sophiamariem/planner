@@ -117,7 +117,7 @@ export default function TripPlannerApp() {
   // Get active trip config and data
   const tripConfig = tripData?.tripConfig || defaultTripConfig;
   const flights = tripData?.flights || [];
-  const days = tripData?.days || [];
+  const days = useMemo(() => tripData?.days || [], [tripData?.days]);
   const dayBadges = tripData?.dayBadges || {};
   const activePalette = tripData?.palette || palette;
 
@@ -196,29 +196,6 @@ export default function TripPlannerApp() {
     setMode('builder');
   };
 
-  const handleLoadSource = (url) => {
-    setMode('loading');
-    setSourceUrl(url);
-    fetch(url)
-      .then(res => res.json())
-      .then(data => {
-        const validation = validateTripData(data);
-        if (validation.valid) {
-          setTripData(data);
-          setMode('view');
-          window.location.hash = `#source=${encodeURIComponent(url)}`;
-        } else {
-          alert(`Invalid trip data: ${validation.error}`);
-          setMode('onboarding');
-        }
-      })
-      .catch(err => {
-        console.error("Error fetching trip data:", err);
-        alert("Error loading trip data. Please check the console.");
-        setMode('onboarding');
-      });
-  };
-
   const handleImportJson = () => {
     try {
       if (!importJson.trim()) {
@@ -295,16 +272,6 @@ export default function TripPlannerApp() {
     } catch (e) {
       setImportError("Invalid JSON format. Please check your syntax.");
     }
-  };
-
-  const handleDownloadJson = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tripData, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `${tripConfig.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
   };
 
   const handleShare = () => {
