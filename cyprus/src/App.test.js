@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import App from './App';
 
 beforeEach(() => {
@@ -36,6 +36,111 @@ test('can reset from view mode', () => {
   // Should be back in onboarding mode
   expect(screen.getByText("Start with Cyprus Template")).toBeInTheDocument();
   expect(localStorage.getItem('current-trip')).toBeNull();
+});
+
+test('can generate a view-only share link', () => {
+  const tripData = {
+    tripConfig: { title: "Test Trip", calendar: { year: 2025, month: 5 } },
+    days: [],
+    flights: []
+  };
+  localStorage.setItem('current-trip', JSON.stringify(tripData));
+  
+  render(<App />);
+  
+  // Open share modal
+  const shareButton = screen.getByText("Share");
+  fireEvent.click(shareButton);
+  
+  // Find view only checkbox
+  const checkbox = screen.getByLabelText("View Only Mode");
+  fireEvent.click(checkbox);
+  
+  // The input value should now contain view=1
+  const inputs = screen.getAllByRole("textbox");
+  const shareInput = inputs.find(i => i.value.includes("#trip=") || i.value.includes("#source="));
+  expect(shareInput.value).toContain("view=1");
+});
+
+test('can load trip from source link', async () => {
+  const tripData = {
+    tripConfig: { title: "Custom Trip", calendar: { year: 2026, month: 3 } },
+    days: [],
+    flights: []
+  };
+
+  // Mock successful fetch
+  global.fetch = jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve(tripData),
+    })
+  );
+
+  // Set hash before rendering
+  window.location.hash = "#puglia";
+
+  render(<App />);
+
+  // Should show loading then view mode
+  await waitFor(() => {
+    expect(screen.getByText("Custom Trip")).toBeInTheDocument();
+  });
+
+  expect(global.fetch).toHaveBeenCalledWith('itineraries/puglia.json');
+
+  // Edit button should NOT be there because it's a source trip
+  expect(screen.queryByText("Edit")).not.toBeInTheDocument();
+  // Reset button should NOT be there
+  expect(screen.queryByText("Reset")).not.toBeInTheDocument();
+});
+
+test('hides edit button in view-only mode', () => {
+  // Directly set a trip in localStorage and set hash to view=1
+  const tripData = {
+    tripConfig: { title: "Vietnam Trip", calendar: { year: 2026, month: 3 } },
+    days: [],
+    flights: []
+  };
+  localStorage.setItem('current-trip', JSON.stringify(tripData));
+  window.location.hash = "#view=1";
+  
+  render(<App />);
+  
+  // Title should be there (Vietnam Trip)
+  expect(screen.getByText(/Vietnam Trip/i)).toBeInTheDocument();
+  
+  // Edit button should NOT be there
+  expect(screen.queryByText("Edit")).not.toBeInTheDocument();
+  // Reset button should NOT be there
+  expect(screen.queryByText("Reset")).not.toBeInTheDocument();
+});
+
+test('can load trip from external source', async () => {
+  const mockTrip = {
+    tripConfig: { title: "External Trip", calendar: { year: 2025, month: 5 } },
+    days: [],
+    flights: []
+  };
+  
+  // Mock fetch
+  global.fetch = jest.fn(() =>
+    Promise.resolve({
+      json: () => Promise.resolve(mockTrip),
+    })
+  );
+
+  window.location.hash = "#source=https://example.com/trip.json";
+  
+  render(<App />);
+  
+  // Should show loading initially
+  expect(screen.getByText(/Loading your trip/i)).toBeInTheDocument();
+  
+  // Wait for external trip to load
+  const title = await screen.findByText("External Trip");
+  expect(title).toBeInTheDocument();
+  expect(global.fetch).toHaveBeenCalledWith("https://example.com/trip.json");
 });
 
 test('can import trip via JSON from onboarding', () => {

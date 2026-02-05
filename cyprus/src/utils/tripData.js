@@ -29,16 +29,56 @@ export function decodeTripData(encoded) {
 }
 
 /**
- * Gets trip data from URL hash
+ * Gets trip data from URL hash or source URL
  */
 export function getTripFromURL() {
     const hash = window.location.hash;
-    if (!hash || !hash.includes('trip=')) return null;
+    if (!hash) return null;
 
-    const match = hash.match(/trip=([^&]+)/);
-    if (!match) return null;
+    // Check for encoded trip data
+    if (hash.includes('trip=')) {
+        const match = hash.match(/trip=([^&]+)/);
+        if (match) return decodeTripData(match[1]);
+    }
 
-    return decodeTripData(match[1]);
+    return null;
+}
+
+/**
+ * Gets source URL from hash if present
+ */
+export function getSourceFromURL() {
+    const hash = window.location.hash;
+    if (!hash) return null;
+
+    // Support #source=URL
+    if (hash.includes('source=')) {
+        const match = hash.match(/source=([^&]+)/);
+        return match ? decodeURIComponent(match[1]) : null;
+    }
+
+    // Support simplified links (e.g. #puglia)
+    if (hash && !hash.includes('=') && !hash.includes('view=') && hash.length > 1) {
+        const path = hash.substring(1); // remove #
+        // If it contains a dot, it might have an extension already or be an external URL
+        if (path.includes('.')) {
+            if (path.endsWith('.json')) {
+                return path.includes('/') ? path : `itineraries/${path}`;
+            }
+            return null; // Don't match other extensions
+        }
+        // No dot, assume it's a name in itineraries/
+        return `itineraries/${path}.json`;
+    }
+
+    return null;
+}
+
+/**
+ * Checks if view-only mode is enabled in URL
+ */
+export function isViewOnlyFromURL() {
+    return window.location.hash.includes('view=1') || window.location.search.includes('view=1');
 }
 
 /**
@@ -92,12 +132,28 @@ export function clearLocalStorageTrip() {
 /**
  * Generates a shareable URL
  */
-export function generateShareURL(tripData) {
-    const encoded = encodeTripData(tripData);
-    if (!encoded) return null;
-
+export function generateShareURL(tripData, options = {}) {
     const baseURL = window.location.origin + window.location.pathname;
-    return `${baseURL}#trip=${encoded}`;
+    let url = baseURL;
+
+    if (options.source) {
+        // If the source is in itineraries/, we use the simplified format (without .json)
+        if (options.source.startsWith('itineraries/') && options.source.endsWith('.json') && !options.source.substring(12).includes('/')) {
+            url += `#${options.source.substring(12, options.source.length - 5)}`;
+        } else {
+            url += `#source=${encodeURIComponent(options.source)}`;
+        }
+    } else {
+        const encoded = encodeTripData(tripData);
+        if (!encoded) return null;
+        url += `#trip=${encoded}`;
+    }
+
+    if (options.viewOnly) {
+        url += `${url.includes('#') ? '&' : '#'}view=1`;
+    }
+
+    return url;
 }
 
 /**

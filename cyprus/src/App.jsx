@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { tripConfig as defaultTripConfig, flights as defaultFlights, days as defaultDays, dayBadges as defaultDayBadges, palette, ll as defaultLocations } from "./data/trip";
 import useFavicon from "./hooks/useFavicon";
 import { ensureTailwindCDN } from "./utils/tailwind";
-import { getTripFromURL, updateURLWithTrip, saveTripToLocalStorage, loadTripFromLocalStorage, generateShareURL, clearLocalStorageTrip, validateTripData } from "./utils/tripData";
+import { getTripFromURL, updateURLWithTrip, saveTripToLocalStorage, loadTripFromLocalStorage, generateShareURL, clearLocalStorageTrip, validateTripData, getSourceFromURL, isViewOnlyFromURL } from "./utils/tripData";
 
 import FlightCard from "./components/FlightCard";
 import DayCard from "./components/DayCard";
@@ -12,6 +12,8 @@ import TripBuilder from "./components/TripBuilder";
 export default function TripPlannerApp() {
   const [mode, setMode] = useState('loading'); // 'loading', 'onboarding', 'builder', 'view'
   const [tripData, setTripData] = useState(null);
+  const [isViewOnly, setIsViewOnly] = useState(false);
+  const [sourceUrl, setSourceUrl] = useState(null);
   const [filter, setFilter] = useState("");
   const [showMaps] = useState(true);
   const [dense] = useState(false);
@@ -64,7 +66,34 @@ export default function TripPlannerApp() {
   useEffect(() => {
     ensureTailwindCDN();
 
-    // Check URL first
+    const viewOnly = isViewOnlyFromURL();
+    setIsViewOnly(viewOnly);
+
+    // Check for source URL first
+    const source = getSourceFromURL();
+    if (source) {
+      setSourceUrl(source);
+      setIsViewOnly(true); // Default to view-only for source trips
+      fetch(source)
+        .then(res => res.json())
+        .then(data => {
+          const validation = validateTripData(data);
+          if (validation.valid) {
+            setTripData(data);
+            setMode('view');
+          } else {
+            console.error("Invalid trip data from source:", validation.error);
+            setMode('onboarding');
+          }
+        })
+        .catch(err => {
+          console.error("Error fetching trip data from source:", err);
+          setMode('onboarding');
+        });
+      return;
+    }
+
+    // Check URL next
     const urlTrip = getTripFromURL();
     if (urlTrip) {
       setTripData(urlTrip);
@@ -167,6 +196,29 @@ export default function TripPlannerApp() {
     setMode('builder');
   };
 
+  const handleLoadSource = (url) => {
+    setMode('loading');
+    setSourceUrl(url);
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        const validation = validateTripData(data);
+        if (validation.valid) {
+          setTripData(data);
+          setMode('view');
+          window.location.hash = `#source=${encodeURIComponent(url)}`;
+        } else {
+          alert(`Invalid trip data: ${validation.error}`);
+          setMode('onboarding');
+        }
+      })
+      .catch(err => {
+        console.error("Error fetching trip data:", err);
+        alert("Error loading trip data. Please check the console.");
+        setMode('onboarding');
+      });
+  };
+
   const handleImportJson = () => {
     try {
       if (!importJson.trim()) {
@@ -245,12 +297,22 @@ export default function TripPlannerApp() {
     }
   };
 
+  const handleDownloadJson = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tripData, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `${tripConfig.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
   const handleShare = () => {
     setShowShareModal(true);
   };
 
   const copyShareLink = () => {
-    const shareURL = generateShareURL(tripData);
+    const shareURL = generateShareURL(tripData, { viewOnly: isViewOnly, source: sourceUrl });
     if (shareURL) {
       navigator.clipboard.writeText(shareURL);
       alert('Link copied to clipboard!');
@@ -305,6 +367,7 @@ export default function TripPlannerApp() {
                 </div>
               </div>
             </button>
+
 
             <button
               onClick={openImportModal}
@@ -417,9 +480,11 @@ export default function TripPlannerApp() {
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-zinc-900">{tripConfig.title}</h1>
           </div>
           <div className="flex gap-2 items-center flex-wrap">
-            <button type="button" onClick={handleReset} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50 flex items-center gap-1 text-zinc-600 font-medium" title="Reset and go Home">
-              <span>Reset</span>
-            </button>
+            {!isViewOnly && !sourceUrl && (
+              <button type="button" onClick={handleReset} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50 flex items-center gap-1 text-zinc-600 font-medium" title="Reset and go Home">
+                <span>Reset</span>
+              </button>
+            )}
             <div className="inline-flex rounded-2xl overflow-hidden border border-zinc-300">
               <button type="button" onClick={()=>setView('cards')} className={`px-3 py-2 text-sm ${view==='cards' ? 'bg-zinc-900 text-white' : 'bg-white'}`}>Cards</button>
               <button type="button" onClick={()=>setView('calendar')} className={`px-3 py-2 text-sm border-l border-zinc-300 ${view==='calendar' ? 'bg-zinc-900 text-white' : 'bg-white'}`}>Calendar</button>
@@ -427,7 +492,9 @@ export default function TripPlannerApp() {
             <input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Filter days, places, notes" className="px-3 py-2 rounded-2xl border border-zinc-300 bg-white text-sm outline-none focus:ring-2 focus:ring-pink-400"/>
             {filter && (<button type="button" onClick={()=>setFilter("")} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-white">Clear</button>)}
             <button type="button" onClick={handleShare} className="px-3 py-2 rounded-2xl bg-blue-600 text-white text-sm hover:bg-blue-700">Share</button>
-            <button type="button" onClick={handleEditTrip} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-white">Edit</button>
+            {!isViewOnly && !sourceUrl && (
+              <button type="button" onClick={handleEditTrip} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-white">Edit</button>
+            )}
             <button type="button" onClick={()=>window.print()} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-white">Print</button>
           </div>
         </div>
@@ -461,28 +528,60 @@ export default function TripPlannerApp() {
             <p className="text-zinc-600 mb-4">
               Copy this link to share your trip planner with others. They can view it and even remix it to create their own version!
             </p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={generateShareURL(tripData)}
-                readOnly
-                className="flex-1 px-3 py-2 border border-zinc-300 rounded-lg bg-zinc-50 text-sm font-mono"
-              />
-              <button
-                onClick={copyShareLink}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
-              >
-                Copy
-              </button>
-            </div>
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-xs text-blue-800">
-                💡 <strong>Tip:</strong> Anyone with this link can click "Edit" to create their own customized version!
-              </p>
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={generateShareURL(tripData, { viewOnly: isViewOnly, source: sourceUrl })}
+                  readOnly
+                  className="flex-1 px-3 py-2 border border-zinc-300 rounded-lg bg-zinc-50 text-sm font-mono"
+                />
+                <button
+                  onClick={copyShareLink}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                >
+                  Copy
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-2 p-3 border border-zinc-200 rounded-xl bg-zinc-50">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isViewOnly}
+                    onChange={(e) => setIsViewOnly(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-zinc-900">View Only Mode</span>
+                </label>
+                <p className="text-xs text-zinc-500 ml-6">
+                  Prevents others from seeing "Edit" or "Reset" buttons.
+                </p>
+              </div>
+
+              {sourceUrl && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
+                  <p className="text-xs text-green-800 font-medium">
+                    ✨ Live Link Active: This trip is synced with the cloud and will stay updated!
+                  </p>
+                  <button
+                    onClick={() => { setSourceUrl(null); }}
+                    className="mt-2 text-xs text-green-700 underline hover:text-green-800"
+                  >
+                    Switch back to normal link (encoded in URL)
+                  </button>
+                </div>
+              )}
+
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                <p className="text-xs text-blue-800">
+                  💡 <strong>Tip:</strong> If you host your <code>.json</code> file in <code>public/itineraries/</code>, you can share it using a simple link like <code>#puglia</code>.
+                </p>
+              </div>
             </div>
             <button
               onClick={() => setShowShareModal(false)}
-              className="mt-4 w-full px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium"
+              className="mt-6 w-full px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium"
             >
               Close
             </button>
