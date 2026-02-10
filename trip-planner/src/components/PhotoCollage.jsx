@@ -1,5 +1,6 @@
 function Photo({ q, alt, className = "h-56 md:h-72" }) {
-    const src = `https://source.unsplash.com/1200x800/?${encodeURIComponent(q)}`;
+    const safeQuery = q || "travel destination";
+    const src = `https://source.unsplash.com/1200x800/?${encodeURIComponent(safeQuery)}`;
     return <img src={src} alt={alt} loading="lazy" className={`w-full object-cover rounded-3xl ${className}`}/>;
 }
 

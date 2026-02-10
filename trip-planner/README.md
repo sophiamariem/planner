@@ -69,6 +69,7 @@ This app now supports an optional cloud mode while keeping the existing JSON wor
 2. Fill:
    - `REACT_APP_SUPABASE_URL`
    - `REACT_APP_SUPABASE_ANON_KEY`
+   - Optional: `REACT_APP_UNSPLASH_ACCESS_KEY` (improves in-app "Find Photos")
 3. In Supabase SQL editor, run: `supabase/schema.sql`
 4. Deploy as usual on Netlify.
 
@@ -163,8 +164,7 @@ export const days = [
         dow: "Mon",                   // Day of week
         date: "15 Jun",               // Formatted date
         title: "Arrive in Paris",     // Day headline
-        photoQ: "Paris Eiffel Tower", // Unsplash search fallback
-        photos: [                     // Photo URLs (or leave empty to use photoQ)
+        photos: [                     // Add your own URLs, or use "Find Photos" in the builder
             "https://image-url-1.jpg",
             "https://image-url-2.jpg"
         ],
@@ -246,9 +246,8 @@ trip-planner/
 
 ### Finding Great Photos
 
-- Search [Unsplash](https://unsplash.com/) for high-quality travel photos
-- Right-click → "Copy image address" to get the URL
-- Or leave `photos: []` empty and the app will auto-fetch from Unsplash using `photoQ`
+- Use the **Find Photos** button in the Day editor to auto-fill images from Unsplash.
+- Or paste your own image URLs manually.
 
 ### Customizing Colors
 

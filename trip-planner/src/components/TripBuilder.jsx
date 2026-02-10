@@ -22,9 +22,18 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
     const [locationLoading, setLocationLoading] = useState(false);
     const [rangeStart, setRangeStart] = useState("");
     const [rangeEnd, setRangeEnd] = useState("");
+    const [photoLoadingByDay, setPhotoLoadingByDay] = useState({});
+    const [photoPicker, setPhotoPicker] = useState({
+        open: false,
+        dayIndex: null,
+        query: "",
+        results: [],
+        selected: [],
+    });
     const [toast, setToast] = useState(null);
     const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const UNSPLASH_ACCESS_KEY = process.env.REACT_APP_UNSPLASH_ACCESS_KEY;
 
     const pushToast = (message, tone = "info") => {
         setToast({ message, tone });
@@ -149,6 +158,12 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
         setDays(updated);
     };
 
+    const updateDayObject = (index, patch) => {
+        const updated = [...days];
+        updated[index] = { ...updated[index], ...patch };
+        setDays(updated);
+    };
+
     const applyDateToDay = (index, isoDate) => {
         const updated = [...days];
         const merged = {
@@ -175,6 +190,70 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
 
     const removeDay = (index) => {
         setDays(days.filter((_, i) => i !== index));
+    };
+
+    const findPhotosForDay = async (index) => {
+        const day = days[index];
+        const query = buildPhotoQuery(day);
+        if (!query) {
+            pushToast("Add a title or place first so we can find photos.", "error");
+            return;
+        }
+
+        setPhotoLoadingByDay((prev) => ({ ...prev, [index]: true }));
+        try {
+            const results = await fetchUnsplashResults(query, 18);
+            if (!results.length) {
+                pushToast("No photos found. Try editing the day title.", "error");
+                return;
+            }
+            setPhotoPicker({
+                open: true,
+                dayIndex: index,
+                query,
+                results,
+                selected: [],
+            });
+        } catch (_error) {
+            pushToast("Couldn't fetch photos right now.", "error");
+        } finally {
+            setPhotoLoadingByDay((prev) => ({ ...prev, [index]: false }));
+        }
+    };
+
+    const applyPickedPhotos = () => {
+        const { dayIndex, selected, query } = photoPicker;
+        if (dayIndex === null) return;
+        if (!selected.length) {
+            pushToast("Select at least one photo.", "error");
+            return;
+        }
+        updateDayObject(dayIndex, {
+            photos: selected,
+            photoQ: query,
+        });
+        setPhotoPicker({
+            open: false,
+            dayIndex: null,
+            query: "",
+            results: [],
+            selected: [],
+        });
+        pushToast("Photos updated.", "success");
+    };
+
+    const togglePickedPhoto = (url) => {
+        setPhotoPicker((prev) => {
+            const exists = prev.selected.includes(url);
+            if (exists) {
+                return { ...prev, selected: prev.selected.filter((u) => u !== url) };
+            }
+            if (prev.selected.length >= 4) {
+                pushToast("Choose up to 4 photos.", "error");
+                return prev;
+            }
+            return { ...prev, selected: [...prev.selected, url] };
+        });
     };
 
     const addDayPhoto = (dayIndex) => {
@@ -370,8 +449,107 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
         return mids[(index - 1) % mids.length];
     }
 
+    function buildPhotoQuery(day) {
+        if (day?.photoQ?.trim()) return day.photoQ.trim();
+
+        const parts = [];
+        const tripTitle = String(config?.title || "").replace(/\btrip\b/gi, "").trim();
+        if (tripTitle) parts.push(tripTitle);
+        if (day?.title?.trim()) parts.push(day.title.trim());
+        if (day?.pins?.length) parts.push(day.pins[0].name);
+
+        return parts.join(" ").trim();
+    }
+
+    async function fetchUnsplashResults(query, count = 18) {
+        if (UNSPLASH_ACCESS_KEY) {
+            const api = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=${count}&orientation=landscape&content_filter=high`;
+            const res = await fetch(api, {
+                headers: {
+                    Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}`,
+                    Accept: "application/json",
+                }
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                const results = Array.isArray(data?.results) ? data.results : [];
+                const normalized = results
+                    .map((r) => ({
+                        thumb: r?.urls?.small || r?.urls?.thumb,
+                        full: r?.urls?.regular || r?.urls?.small,
+                    }))
+                    .filter((r) => r.thumb && r.full)
+                    .slice(0, count);
+                if (normalized.length) return normalized;
+            }
+        }
+
+        return Array.from({ length: count }, (_, i) => {
+            const full = `https://source.unsplash.com/1200x800/?${encodeURIComponent(query)}&sig=${Date.now()}${i}`;
+            return { thumb: full, full };
+        });
+    }
+
     return (
         <div className="min-h-screen bg-zinc-50">
+            {photoPicker.open && (
+                <div className="fixed inset-0 z-[90]" onClick={() => setPhotoPicker((prev) => ({ ...prev, open: false }))}>
+                    <div className="absolute inset-0 bg-black/40" />
+                    <aside className="absolute right-0 top-0 h-full w-full sm:max-w-2xl bg-white shadow-2xl p-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between gap-3">
+                            <div>
+                                <h3 className="text-xl font-bold text-zinc-900">Choose Photos</h3>
+                                <p className="text-sm text-zinc-600 mt-1">{photoPicker.query}</p>
+                            </div>
+                            <button
+                                onClick={() => setPhotoPicker((prev) => ({ ...prev, open: false }))}
+                                className="px-3 py-2 rounded-lg border border-zinc-300 text-sm hover:bg-zinc-50"
+                            >
+                                Close
+                            </button>
+                        </div>
+
+                        <p className="text-xs text-zinc-500 mt-3">Select up to 4 photos.</p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
+                            {photoPicker.results.map((photo, i) => {
+                                const selected = photoPicker.selected.includes(photo.full);
+                                return (
+                                    <button
+                                        key={`${photo.full}-${i}`}
+                                        type="button"
+                                        onClick={() => togglePickedPhoto(photo.full)}
+                                        className={`relative rounded-xl overflow-hidden border-2 ${selected ? "border-blue-600" : "border-transparent"}`}
+                                    >
+                                        <img src={photo.thumb} alt="" className="w-full h-32 object-cover" loading="lazy" />
+                                        {selected && (
+                                            <span className="absolute top-2 right-2 text-xs bg-blue-600 text-white rounded-full px-2 py-1">
+                                                Selected
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <div className="flex gap-2 mt-6">
+                            <button
+                                onClick={() => setPhotoPicker((prev) => ({ ...prev, open: false }))}
+                                className="flex-1 px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={applyPickedPhotos}
+                                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                            >
+                                Use Selected ({photoPicker.selected.length})
+                            </button>
+                        </div>
+                    </aside>
+                </div>
+            )}
+
             {toast && (
                 <div className="fixed top-24 right-4 z-[80]">
                     <div className={`rounded-xl border px-4 py-3 text-sm shadow-lg ${
@@ -460,38 +638,6 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                             />
                         </div>
 
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-zinc-700 mb-2">Calendar Year</label>
-                                <input
-                                    type="number"
-                                    value={config.calendar.year}
-                                    onChange={e => setConfig({ ...config, calendar: { ...config.calendar, year: parseInt(e.target.value) } })}
-                                    className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-zinc-700 mb-2">Calendar Month</label>
-                                <select
-                                    value={config.calendar.month + 1}
-                                    onChange={e => setConfig({ ...config, calendar: { ...config.calendar, month: parseInt(e.target.value) - 1 } })}
-                                    className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                >
-                                    <option value="1">January</option>
-                                    <option value="2">February</option>
-                                    <option value="3">March</option>
-                                    <option value="4">April</option>
-                                    <option value="5">May</option>
-                                    <option value="6">June</option>
-                                    <option value="7">July</option>
-                                    <option value="8">August</option>
-                                    <option value="9">September</option>
-                                    <option value="10">October</option>
-                                    <option value="11">November</option>
-                                    <option value="12">December</option>
-                                </select>
-                            </div>
-                        </div>
 
                         <div>
                             <label className="block text-sm font-medium text-zinc-700 mb-2">Favicon URL (optional)</label>
@@ -706,27 +852,29 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                                     className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500 h-32"
                                 />
 
-                                <input
-                                    type="text"
-                                    value={day.photoQ}
-                                    onChange={e => updateDay(index, 'photoQ', e.target.value)}
-                                    placeholder="Photo search query (e.g. Paris Eiffel Tower)"
-                                    className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                />
-
                                 <div className="border border-zinc-200 rounded-lg p-4">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-sm font-medium text-zinc-700">Photo URLs (optional)</label>
-                                        <button
-                                            type="button"
-                                            onClick={() => addDayPhoto(index)}
-                                            className="px-3 py-1.5 rounded-lg bg-zinc-900 text-white text-xs font-medium hover:bg-zinc-800"
-                                        >
-                                            + Add Photo URL
-                                        </button>
+                                        <label className="text-sm font-medium text-zinc-700">Photos</label>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => findPhotosForDay(index)}
+                                                disabled={photoLoadingByDay[index]}
+                                                className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
+                                            >
+                                                {photoLoadingByDay[index] ? "Finding..." : "Find Photos"}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => addDayPhoto(index)}
+                                                className="px-3 py-1.5 rounded-lg bg-zinc-900 text-white text-xs font-medium hover:bg-zinc-800"
+                                            >
+                                                + Add URL
+                                            </button>
+                                        </div>
                                     </div>
                                     <p className="text-xs text-zinc-500 mt-1">
-                                        Add one or more web image URLs. If provided, these override the search query above.
+                                        Use "Find Photos" for automatic images, or paste your own image URLs.
                                     </p>
                                     <div className="mt-3 space-y-2">
                                         {(day.photos || []).length === 0 && (
