@@ -747,11 +747,11 @@ export default function TripPlannerApp() {
       </header>
 
       {toasts.length > 0 && (
-        <div className="fixed top-20 right-4 z-50 flex flex-col gap-2">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex flex-col gap-2 items-center">
           {toasts.map((toast) => (
             <div
               key={toast.id}
-              className={`rounded-xl border px-4 py-3 text-sm shadow-lg ${
+              className={`rounded-xl border px-4 py-3 text-sm shadow-lg max-w-[90vw] sm:max-w-md ${
                 toast.tone === "success"
                   ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                   : toast.tone === "error"

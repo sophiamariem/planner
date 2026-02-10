@@ -551,7 +551,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
             )}
 
             {toast && (
-                <div className="fixed top-24 right-4 z-[80]">
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90]">
                     <div className={`rounded-xl border px-4 py-3 text-sm shadow-lg ${
                         toast.tone === "success"
                             ? "bg-emerald-50 border-emerald-200 text-emerald-800"
