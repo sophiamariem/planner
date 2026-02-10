@@ -4,6 +4,10 @@ import { validateTripData } from '../utils/tripData';
 import DayMap from './DayMap';
 
 export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
+    const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const UNSPLASH_ACCESS_KEY = process.env.REACT_APP_UNSPLASH_ACCESS_KEY;
+
     const [config, setConfig] = useState(tripData?.tripConfig || {
         title: "My Trip",
         footer: "My Adventure",
@@ -32,9 +36,6 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
         selected: [],
     });
     const [toast, setToast] = useState(null);
-    const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const UNSPLASH_ACCESS_KEY = process.env.REACT_APP_UNSPLASH_ACCESS_KEY;
 
     const pushToast = (message, tone = "info") => {
         setToast({ message, tone });

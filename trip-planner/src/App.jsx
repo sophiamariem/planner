@@ -41,29 +41,29 @@ export default function TripPlannerApp() {
 
   const templateJSON = JSON.stringify({
     tripConfig: {
-      title: "My Amazing Trip",
-      footer: "Adventure awaits!",
+      title: "Portugal City Escape",
+      footer: "Spring city break",
       favicon: "https://example.com/favicon.png",
-      calendar: { year: 2025, month: 5 },
-      badgeLegend: [{ emoji: "✈️", label: "Flight" }, { emoji: "🏖️", label: "Beach" }]
+      calendar: { year: 2026, month: 3 },
+      badgeLegend: [{ emoji: "✈️", label: "Flight" }, { emoji: "🚆", label: "Train" }]
     },
     flights: [
-      { title: "Flight Out", num: "BA123", route: "LHR → LCA", date: "Mon, 15 Jun", times: "10:00 → 16:30", codes: "LHR → LCA" }
+      { title: "Flight Out", num: "TP210", route: "JFK → LIS", date: "Sun, 12 Apr 2026", times: "19:10 → 07:10", codes: "JFK → LIS" }
     ],
     days: [
       {
-        id: "1",
-        dow: "Mon",
-        date: "15 Jun",
-        title: "Arrival & Beach",
+        id: "12",
+        dow: "Sun",
+        date: "12 Apr",
+        title: "Arrival in Lisbon",
         photos: ["https://images.unsplash.com/photo-1544620347-c4fd4a3d5957"],
         hasMap: true,
-        pins: [{ name: "Larnaca Airport", q: "Larnaca Airport", ll: [34.8751, 33.6138] }],
-        notes: ["Pick up rental car", "Check-in at hotel"]
+        pins: [{ name: "Lisbon Airport", q: "Lisbon Airport", ll: [38.7742, -9.1342] }],
+        notes: ["Airport transfer", "Hotel check-in"]
       }
     ],
     ll: {
-      "Larnaca Airport": [34.8751, 33.6138]
+      "Lisbon Airport": [38.7742, -9.1342]
     },
     palette: {
       bg: "from-blue-100 via-cyan-50 to-teal-50",

@@ -321,7 +321,7 @@ MIT License - feel free to use this for your personal or commercial trip plannin
 ## 💡 Example Trips
 
 Check out these example trips using this template:
-- [Cyprus 2025](https://sophiamariem.github.io/planner/) - Mediterranean adventure
+- [Portugal City Escape](#) - 6-day sample with flights, maps, and notes
 - *Add your trip here with a PR!*
 
 ---
