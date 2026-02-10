@@ -511,6 +511,32 @@ export default function TripPlannerApp() {
     }
   };
 
+  const resetDrawer = showResetModal && (
+    <div className="fixed inset-0 z-50" onClick={() => setShowResetModal(false)}>
+      <div className="absolute inset-0 bg-black/40" />
+      <aside className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-2xl p-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-xl font-bold text-zinc-900 mb-2">Reset current trip?</h2>
+        <p className="text-sm text-zinc-600 mb-5">
+          This clears your local draft and returns to the start screen.
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowResetModal(false)}
+            className="flex-1 px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={confirmReset}
+            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
+          >
+            Reset Trip
+          </button>
+        </div>
+      </aside>
+    </div>
+  );
+
   // Onboarding screen
   if (mode === 'onboarding') {
     return (
@@ -687,12 +713,15 @@ export default function TripPlannerApp() {
   // Builder mode
   if (mode === 'builder') {
     return (
-      <TripBuilder
-        tripData={tripData}
-        onSave={handleSaveAndPreview}
-        onCancel={handleCancelEdit}
-        onReset={handleReset}
-      />
+      <>
+        <TripBuilder
+          tripData={tripData}
+          onSave={handleSaveAndPreview}
+          onCancel={handleCancelEdit}
+          onReset={handleReset}
+        />
+        {resetDrawer}
+      </>
     );
   }
 
@@ -797,31 +826,7 @@ export default function TripPlannerApp() {
         </div>
       )}
 
-      {showResetModal && (
-        <div className="fixed inset-0 z-50" onClick={() => setShowResetModal(false)}>
-          <div className="absolute inset-0 bg-black/40" />
-          <aside className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-2xl p-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-zinc-900 mb-2">Reset current trip?</h2>
-            <p className="text-sm text-zinc-600 mb-5">
-              This clears your local draft and returns to the start screen.
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowResetModal(false)}
-                className="flex-1 px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmReset}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
-              >
-                Reset Trip
-              </button>
-            </div>
-          </aside>
-        </div>
-      )}
+      {resetDrawer}
 
       {showShareModal && (
         <div className="fixed inset-0 z-50" onClick={() => setShowShareModal(false)}>
