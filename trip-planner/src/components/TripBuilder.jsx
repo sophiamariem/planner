@@ -13,7 +13,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
     });
 
     const [days, setDays] = useState(tripData?.days || []);
-    const [flights, setFlights] = useState(tripData?.flights || []);
+    const [flights, setFlights] = useState(() => (tripData?.flights || []).map(hydrateFlight));
     const [locations, setLocations] = useState(tripData?.ll || {});
     const [dayBadges, setDayBadges] = useState(tripData?.dayBadges || {});
     const [currentTab, setCurrentTab] = useState('basic');
@@ -288,20 +288,87 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
     };
 
     const addFlight = () => {
-        setFlights([...flights, {
-            title: "Flight",
+        setFlights([...flights, hydrateFlight({
+            flightFrom: "",
+            flightTo: "",
+            departureDate: "",
+            departureTime: "",
+            arrivalTime: "",
+            title: "",
             num: "",
             route: "",
             date: "",
             times: "",
             codes: ""
-        }]);
+        })]);
+    };
+
+    const addReturnFlight = () => {
+        const last = flights[flights.length - 1];
+        if (!last?.flightFrom || !last?.flightTo) {
+            pushToast("Add an outbound flight first.", "error");
+            return;
+        }
+
+        let returnDate = "";
+        if (last.departureDate) {
+            const d = new Date(last.departureDate);
+            if (!Number.isNaN(d.getTime())) {
+                d.setDate(d.getDate() + 7);
+                returnDate = toIsoDate(d);
+            }
+        }
+
+        const draft = hydrateFlight({
+            flightFrom: last.flightTo,
+            flightTo: last.flightFrom,
+            departureDate: returnDate,
+            departureTime: "",
+            arrivalTime: "",
+            num: "",
+            codes: "",
+            title: "",
+        });
+        setFlights([...flights, draft]);
     };
 
     const updateFlight = (index, field, value) => {
         const updated = [...flights];
-        updated[index] = { ...updated[index], [field]: value };
+        updated[index] = hydrateFlight({ ...updated[index], [field]: value });
         setFlights(updated);
+    };
+
+    const addTravelDayFromFlight = (index) => {
+        const flight = flights[index];
+        if (!flight?.departureDate) {
+            pushToast("Set a flight date first.", "error");
+            return;
+        }
+
+        if (days.some((d) => d.isoDate === flight.departureDate)) {
+            pushToast("A day already exists for this date.", "error");
+            return;
+        }
+
+        const newDay = {
+            id: String(new Date(flight.departureDate).getDate()),
+            ...dayFieldsFromIso(flight.departureDate),
+            isoDate: flight.departureDate,
+            title: `Travel: ${flight.flightFrom || "Departure"} → ${flight.flightTo || "Arrival"}`,
+            photoQ: "",
+            photos: [],
+            hasMap: false,
+            route: "",
+            pins: [],
+            notes: [flight.num ? `Flight ${flight.num}` : "Travel day"],
+        };
+
+        const merged = [...days, newDay].sort((a, b) => {
+            if (!a.isoDate || !b.isoDate) return 0;
+            return a.isoDate.localeCompare(b.isoDate);
+        });
+        setDays(merged);
+        pushToast("Travel day added.", "success");
     };
 
     const removeFlight = (index) => {
@@ -357,7 +424,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                     pins: day.pins || [],
                     notes: day.notes || []
                 })));
-                setFlights(parsed.flights || []);
+                setFlights((parsed.flights || []).map(hydrateFlight));
                 setLocations(extractedLl);
                 setDayBadges(extractedBadges);
                 setJsonError("");
@@ -450,6 +517,45 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
         if (index === totalDays - 1) return "Departure";
         const mids = ["Explore", "Highlights", "Local Favorites", "Adventure", "Leisure Day"];
         return mids[(index - 1) % mids.length];
+    }
+
+    function hydrateFlight(flight) {
+        const routeFromSplit = (flight.route || "").split(/→|->/).map((s) => s.trim()).filter(Boolean);
+        const timesFromSplit = (flight.times || "").split(/→|->/).map((s) => s.trim()).filter(Boolean);
+
+        const flightFrom = flight.flightFrom || routeFromSplit[0] || "";
+        const flightTo = flight.flightTo || routeFromSplit[1] || "";
+        const departureDate = flight.departureDate || parseDisplayDateToIso(flight.date) || "";
+        const departureTime = flight.departureTime || timesFromSplit[0] || "";
+        const arrivalTime = flight.arrivalTime || timesFromSplit[1] || "";
+
+        return {
+            ...flight,
+            flightFrom,
+            flightTo,
+            departureDate,
+            departureTime,
+            arrivalTime,
+            route: flightFrom && flightTo ? `${flightFrom} → ${flightTo}` : (flight.route || ""),
+            date: departureDate ? formatIsoAsDisplayDate(departureDate) : (flight.date || ""),
+            times: departureTime || arrivalTime
+                ? `${departureTime || "—"} → ${arrivalTime || "—"}`
+                : (flight.times || ""),
+            title: flight.title || (flightFrom && flightTo ? `Flight: ${flightFrom} → ${flightTo}` : "Flight"),
+        };
+    }
+
+    function parseDisplayDateToIso(display) {
+        if (!display) return "";
+        const parsed = new Date(display);
+        if (Number.isNaN(parsed.getTime())) return "";
+        return toIsoDate(parsed);
+    }
+
+    function formatIsoAsDisplayDate(isoDate) {
+        const dateObj = new Date(isoDate);
+        if (!isoDate || Number.isNaN(dateObj.getTime())) return "";
+        return `${DAY_SHORT[dateObj.getDay()]}, ${dateObj.getDate()} ${MONTH_SHORT[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
     }
 
     function buildPhotoQuery(day) {
@@ -657,14 +763,28 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
 
                 {currentTab === 'flights' && (
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-xl font-bold text-zinc-900">Flights</h2>
-                            <button
-                                onClick={addFlight}
-                                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium"
-                            >
-                                + Add Flight
-                            </button>
+                        <div className="bg-white rounded-lg p-5 shadow-sm border border-zinc-200 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-bold text-zinc-900">Flights</h2>
+                                <span className="text-xs text-zinc-500">{flights.length} flight{flights.length === 1 ? "" : "s"}</span>
+                            </div>
+                            <p className="text-sm text-zinc-600">
+                                Add where you’re flying from and to. Extra airline fields are optional.
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                <button
+                                    onClick={addFlight}
+                                    className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium"
+                                >
+                                    + Add Flight
+                                </button>
+                                <button
+                                    onClick={addReturnFlight}
+                                    className="px-4 py-2 rounded-lg border border-zinc-300 hover:bg-zinc-50 text-sm font-medium"
+                                >
+                                    + Add Return Flight
+                                </button>
+                            </div>
                         </div>
 
                         {flights.map((flight, index) => (
@@ -682,46 +802,86 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                                 <div className="grid md:grid-cols-2 gap-4">
                                     <input
                                         type="text"
-                                        value={flight.title}
-                                        onChange={e => updateFlight(index, 'title', e.target.value)}
-                                        placeholder="Flight out"
+                                        value={flight.flightFrom || ""}
+                                        onChange={e => updateFlight(index, 'flightFrom', e.target.value)}
+                                        placeholder="From (city or airport)"
                                         className="px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                     />
                                     <input
                                         type="text"
-                                        value={flight.num}
-                                        onChange={e => updateFlight(index, 'num', e.target.value)}
-                                        placeholder="Flight number (e.g. BA123)"
+                                        value={flight.flightTo || ""}
+                                        onChange={e => updateFlight(index, 'flightTo', e.target.value)}
+                                        placeholder="To (city or airport)"
                                         className="px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                     />
                                     <input
-                                        type="text"
-                                        value={flight.route}
-                                        onChange={e => updateFlight(index, 'route', e.target.value)}
-                                        placeholder="Route (e.g. London → Paris)"
+                                        type="date"
+                                        value={flight.departureDate || ""}
+                                        onChange={e => updateFlight(index, 'departureDate', e.target.value)}
                                         className="px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                     />
                                     <input
-                                        type="text"
-                                        value={flight.codes}
-                                        onChange={e => updateFlight(index, 'codes', e.target.value)}
-                                        placeholder="Airport codes (e.g. LHR → CDG)"
+                                        type="time"
+                                        value={flight.departureTime || ""}
+                                        onChange={e => updateFlight(index, 'departureTime', e.target.value)}
                                         className="px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                     />
                                     <input
-                                        type="text"
-                                        value={flight.date}
-                                        onChange={e => updateFlight(index, 'date', e.target.value)}
-                                        placeholder="Date (e.g. Mon, 15 Jun 2025)"
+                                        type="time"
+                                        value={flight.arrivalTime || ""}
+                                        onChange={e => updateFlight(index, 'arrivalTime', e.target.value)}
                                         className="px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                     />
-                                    <input
-                                        type="text"
-                                        value={flight.times}
-                                        onChange={e => updateFlight(index, 'times', e.target.value)}
-                                        placeholder="Times (e.g. 10:00 → 12:30)"
-                                        className="px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    />
+                                </div>
+
+                                {flight.departureDate && (
+                                    <div className="text-xs text-zinc-600 rounded-lg bg-zinc-50 border border-zinc-200 px-3 py-2 flex items-center justify-between gap-2">
+                                        {days.some((d) => d.isoDate === flight.departureDate) ? (
+                                            <span>Linked to itinerary day on {formatIsoAsDisplayDate(flight.departureDate)}.</span>
+                                        ) : (
+                                            <>
+                                                <span>No itinerary day exists for {formatIsoAsDisplayDate(flight.departureDate)}.</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => addTravelDayFromFlight(index)}
+                                                    className="px-2 py-1 rounded border border-zinc-300 hover:bg-white text-xs font-medium"
+                                                >
+                                                    Create travel day
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+
+                                <details className="rounded-lg border border-zinc-200 p-3 bg-zinc-50">
+                                    <summary className="cursor-pointer text-sm text-zinc-700 font-medium">More details (optional)</summary>
+                                    <div className="grid md:grid-cols-2 gap-4 mt-3">
+                                        <input
+                                            type="text"
+                                            value={flight.title || ""}
+                                            onChange={e => updateFlight(index, 'title', e.target.value)}
+                                            placeholder="Custom title"
+                                            className="px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={flight.num || ""}
+                                            onChange={e => updateFlight(index, 'num', e.target.value)}
+                                            placeholder="Flight number (e.g. BA123)"
+                                            className="px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={flight.codes || ""}
+                                            onChange={e => updateFlight(index, 'codes', e.target.value)}
+                                            placeholder="Airport codes (e.g. LHR → CDG)"
+                                            className="px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                </details>
+
+                                <div className="text-xs text-zinc-500">
+                                    Preview: {flight.route || "route pending"} {flight.date ? `• ${flight.date}` : ""} {flight.times ? `• ${flight.times}` : ""}
                                 </div>
                             </div>
                         ))}
