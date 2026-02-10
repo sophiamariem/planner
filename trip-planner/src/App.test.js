@@ -14,9 +14,6 @@ test('renders trip planner title', () => {
 });
 
 test('can reset from view mode', () => {
-  // Mock confirm
-  window.confirm = jest.fn(() => true);
-
   // Set some initial data in localStorage to trigger view mode
   localStorage.setItem('current-trip', JSON.stringify({
     tripConfig: { title: "Test Trip", calendar: { year: 2025, month: 5 } },
@@ -32,6 +29,10 @@ test('can reset from view mode', () => {
   // Find and click reset button
   const resetButton = screen.getByText("Reset");
   fireEvent.click(resetButton);
+
+  // Confirm reset in modal
+  const confirmResetButton = screen.getByText("Reset Trip");
+  fireEvent.click(confirmResetButton);
 
   // Should be back in onboarding mode
   expect(screen.getByText("Start with Example Template")).toBeInTheDocument();

@@ -22,16 +22,19 @@ export default function TripPlannerApp() {
   const [view, setView] = useState("cards");
   const [showShareModal, setShowShareModal] = useState(false);
   const [showMyTripsModal, setShowMyTripsModal] = useState(false);
-  const [showSaveNotification, setShowSaveNotification] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importJson, setImportJson] = useState("");
   const [importError, setImportError] = useState("");
+  const [toasts, setToasts] = useState([]);
+  const [signInEmail, setSignInEmail] = useState("");
+  const [signInLoading, setSignInLoading] = useState(false);
   const [cloudTripId, setCloudTripId] = useState(null);
   const [cloudSlug, setCloudSlug] = useState(null);
   const [shareToken, setShareToken] = useState(null);
   const [cloudVisibility, setCloudVisibility] = useState("private");
   const [cloudSaving, setCloudSaving] = useState(false);
-  const [cloudError, setCloudError] = useState("");
   const [myTrips, setMyTrips] = useState([]);
   const [myTripsLoading, setMyTripsLoading] = useState(false);
   const [user, setUser] = useState(null);
@@ -74,16 +77,23 @@ export default function TripPlannerApp() {
     setImportError("");
   };
 
+  const pushToast = (message, tone = "info") => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setToasts((prev) => [...prev, { id, message, tone }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 2800);
+  };
+
   const refreshMyTrips = async (activeUser = user) => {
     if (!isSupabaseConfigured || !activeUser) return;
     setMyTripsLoading(true);
     try {
       const rows = await listMyTrips();
       setMyTrips(rows);
-      setCloudError("");
     } catch (error) {
       console.error("Error loading trips:", error);
-      setCloudError(error.message || "Could not load your cloud trips.");
+      pushToast(error.message || "Could not load your cloud trips.", "error");
     } finally {
       setMyTripsLoading(false);
     }
@@ -145,7 +155,7 @@ export default function TripPlannerApp() {
           return;
         } catch (error) {
           console.error("Error loading cloud trip:", error);
-          setCloudError(error.message || "Could not load cloud trip.");
+          pushToast(error.message || "Could not load cloud trip.", "error");
           setMode('onboarding');
           return;
         }
@@ -229,34 +239,44 @@ export default function TripPlannerApp() {
   };
 
   const handleSignIn = async () => {
-    const email = window.prompt("Enter your email to receive a magic sign-in link:");
-    if (!email) return;
+    setShowSignInModal(true);
+  };
 
+  const submitSignIn = async () => {
+    if (!signInEmail.trim()) {
+      pushToast("Enter an email address.", "error");
+      return;
+    }
+
+    setSignInLoading(true);
     try {
-      await signInWithMagicLink(email);
-      alert("Check your email for the magic sign-in link.");
+      await signInWithMagicLink(signInEmail.trim());
+      setShowSignInModal(false);
+      setSignInEmail("");
+      pushToast("Magic link sent. Check your email.", "success");
     } catch (error) {
       console.error("Sign in error:", error);
-      alert(error.message || "Could not send sign-in link.");
+      pushToast(error.message || "Could not send sign-in link.", "error");
+    } finally {
+      setSignInLoading(false);
     }
   };
 
   const handleSaveToCloud = async () => {
     if (!isSupabaseConfigured) {
-      alert("Supabase is not configured. Add REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY.");
+      pushToast("Cloud is not configured yet.", "error");
       return;
     }
     if (!user) {
-      alert("Sign in first to save trips to cloud.");
+      pushToast("Sign in first to save to cloud.", "error");
       return;
     }
     if (!tripData) {
-      alert("No trip loaded.");
+      pushToast("No trip loaded.", "error");
       return;
     }
 
     setCloudSaving(true);
-    setCloudError("");
     try {
       const row = cloudTripId
         ? await updateCloudTrip(cloudTripId, tripData, cloudVisibility, cloudSlug)
@@ -267,11 +287,10 @@ export default function TripPlannerApp() {
       const cloudHash = row.slug ? `#t=${encodeURIComponent(row.slug)}` : `#cloud=${encodeURIComponent(row.id)}`;
       window.history.pushState(null, '', cloudHash);
       await refreshMyTrips();
-      setShowSaveNotification(true);
-      setTimeout(() => setShowSaveNotification(false), 5000);
+      pushToast("Trip saved to cloud.", "success");
     } catch (error) {
       console.error("Cloud save failed:", error);
-      setCloudError(error.message || "Cloud save failed.");
+      pushToast(error.message || "Cloud save failed.", "error");
     } finally {
       setCloudSaving(false);
     }
@@ -302,24 +321,24 @@ export default function TripPlannerApp() {
       setShowMyTripsModal(false);
       setIsViewOnly(false);
       setSourceUrl(null);
-      setCloudError("");
     } catch (error) {
       console.error("Error opening trip:", error);
-      setCloudError(error.message || "Could not open trip.");
+      pushToast(error.message || "Could not open trip.", "error");
     }
   };
 
   const handleGenerateShareToken = async () => {
     if (!cloudTripId) {
-      alert("Save to cloud first before creating a share token.");
+      pushToast("Save to cloud first before creating a share link.", "error");
       return;
     }
     try {
       const token = await generateShareToken(cloudTripId);
       setShareToken(token);
+      pushToast("Public share token created.", "success");
     } catch (error) {
       console.error("Share token error:", error);
-      setCloudError(error.message || "Could not create share token.");
+      pushToast(error.message || "Could not create share token.", "error");
     }
   };
 
@@ -330,9 +349,7 @@ export default function TripPlannerApp() {
   const handleSaveAndPreview = (newTripData) => {
     handleSaveTrip(newTripData);
     setMode('view');
-    // Show notification that link has been updated
-    setShowSaveNotification(true);
-    setTimeout(() => setShowSaveNotification(false), 5000); // Hide after 5 seconds
+    pushToast("Trip saved.", "success");
   };
 
   const handleCancelEdit = () => {
@@ -340,16 +357,19 @@ export default function TripPlannerApp() {
   };
 
   const handleReset = () => {
-    if (window.confirm("Are you sure you want to reset? This will clear your current trip data and return you to the home screen.")) {
-      clearLocalStorageTrip();
-      window.location.hash = "";
-      setTripData(null);
-      setCloudTripId(null);
-      setCloudSlug(null);
-      setShareToken(null);
-      setSourceUrl(null);
-      setMode('onboarding');
-    }
+    setShowResetModal(true);
+  };
+
+  const confirmReset = () => {
+    clearLocalStorageTrip();
+    window.location.hash = "";
+    setTripData(null);
+    setCloudTripId(null);
+    setCloudSlug(null);
+    setShareToken(null);
+    setSourceUrl(null);
+    setShowResetModal(false);
+    setMode('onboarding');
   };
 
   const handleStartFromTemplate = () => {
@@ -481,8 +501,13 @@ export default function TripPlannerApp() {
   const copyShareLink = () => {
     const shareURL = generateShareURL(tripData, { viewOnly: isViewOnly, source: sourceUrl, cloudId: cloudTripId, cloudSlug, shareToken });
     if (shareURL) {
-      navigator.clipboard.writeText(shareURL);
-      alert('Link copied to clipboard!');
+      navigator.clipboard.writeText(shareURL)
+        .then(() => {
+          pushToast("Link copied.", "success");
+        })
+        .catch(() => {
+          pushToast("Could not copy link.", "error");
+        });
     }
   };
 
@@ -581,8 +606,9 @@ export default function TripPlannerApp() {
           </div>
 
           {showImportModal && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowImportModal(false)}>
-              <div className="bg-white rounded-2xl p-6 max-w-2xl w-full" onClick={e => e.stopPropagation()}>
+            <div className="fixed inset-0 z-50" onClick={() => setShowImportModal(false)}>
+              <div className="absolute inset-0 bg-black/40" />
+              <aside className="absolute right-0 top-0 h-full w-full sm:max-w-2xl bg-white shadow-2xl p-6 overflow-y-auto" onClick={e => e.stopPropagation()}>
                 <h2 className="text-2xl font-bold text-zinc-900 mb-4">Import Trip JSON</h2>
                 <p className="text-zinc-600 mb-4 text-sm">
                   Paste your trip data JSON below. We've provided a complete template for you — just edit the values to match your trip!
@@ -590,7 +616,7 @@ export default function TripPlannerApp() {
                 <textarea
                   value={importJson}
                   onChange={(e) => setImportJson(e.target.value)}
-                  className="w-full h-64 p-3 border border-zinc-300 rounded-lg font-mono text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full h-[58vh] p-3 border border-zinc-300 rounded-lg font-mono text-xs focus:ring-2 focus:ring-blue-500 outline-none"
                   placeholder='{ "tripConfig": { ... }, "days": [], "flights": [] }'
                 />
                 {importError && (
@@ -601,7 +627,7 @@ export default function TripPlannerApp() {
                     onClick={() => setShowImportModal(false)}
                     className="flex-1 px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium"
                   >
-                    Cancel
+                    Close
                   </button>
                   <button
                     onClick={handleImportJson}
@@ -610,7 +636,7 @@ export default function TripPlannerApp() {
                     Import Data
                   </button>
                 </div>
-              </div>
+              </aside>
             </div>
           )}
 
@@ -688,7 +714,7 @@ export default function TripPlannerApp() {
                 ) : (
                   <>
                     <button type="button" onClick={handleOpenMyTrips} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50">
-                      My Trips
+                      My Saved Trips
                     </button>
                     <button type="button" onClick={handleSaveToCloud} disabled={cloudSaving} className="px-3 py-2 rounded-2xl bg-emerald-600 text-white text-sm hover:bg-emerald-700 disabled:opacity-50">
                       {cloudSaving ? "Saving..." : cloudTripId ? "Update Cloud" : "Save to Cloud"}
@@ -720,32 +746,87 @@ export default function TripPlannerApp() {
         </div>
       </header>
 
-      {/* Save Notification */}
-      {showSaveNotification && (
-        <div className="fixed top-20 right-4 z-50 animate-slide-in">
-          <div className="bg-green-600 text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <div>
-              <p className="font-semibold">Trip Saved!</p>
-              <p className="text-sm text-green-100">
-                {cloudTripId ? "Cloud trip synced. Click Share to copy the latest link." : "Your shareable link has been updated. Click Share to copy it."}
-              </p>
+      {toasts.length > 0 && (
+        <div className="fixed top-20 right-4 z-50 flex flex-col gap-2">
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              className={`rounded-xl border px-4 py-3 text-sm shadow-lg ${
+                toast.tone === "success"
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                  : toast.tone === "error"
+                    ? "bg-red-50 border-red-200 text-red-700"
+                    : "bg-white border-zinc-200 text-zinc-800"
+              }`}
+            >
+              {toast.message}
             </div>
-            <button onClick={() => setShowSaveNotification(false)} className="ml-4 text-white hover:text-green-200">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+          ))}
         </div>
       )}
 
-      {/* Share Modal */}
+      {showSignInModal && (
+        <div className="fixed inset-0 z-50" onClick={() => setShowSignInModal(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <aside className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-2xl p-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-2xl font-bold text-zinc-900 mb-2">Sign In</h2>
+            <p className="text-sm text-zinc-600 mb-4">Enter your email and we’ll send a magic sign-in link.</p>
+            <input
+              type="email"
+              value={signInEmail}
+              onChange={(e) => setSignInEmail(e.target.value)}
+              placeholder="you@example.com"
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={() => setShowSignInModal(false)}
+                className="flex-1 px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium"
+              >
+                Close
+              </button>
+              <button
+                onClick={submitSignIn}
+                disabled={signInLoading}
+                className="flex-1 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-black text-sm font-medium disabled:opacity-50"
+              >
+                {signInLoading ? "Sending..." : "Send Link"}
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {showResetModal && (
+        <div className="fixed inset-0 z-50" onClick={() => setShowResetModal(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <aside className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-2xl p-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-zinc-900 mb-2">Reset current trip?</h2>
+            <p className="text-sm text-zinc-600 mb-5">
+              This clears your local draft and returns to the start screen.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowResetModal(false)}
+                className="flex-1 px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmReset}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
+              >
+                Reset Trip
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
       {showShareModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowShareModal(false)}>
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50" onClick={() => setShowShareModal(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <aside className="absolute right-0 top-0 h-full w-full sm:max-w-lg bg-white shadow-2xl p-6 overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h2 className="text-2xl font-bold text-zinc-900 mb-4">Share Your Trip</h2>
             <p className="text-zinc-600 mb-4">
               Copy this link to share your trip planner with others. Cloud trips use short slug links when available.
@@ -824,7 +905,7 @@ export default function TripPlannerApp() {
 
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl">
                 <p className="text-xs text-blue-800">
-                  💡 <strong>Tip:</strong> If you host your <code>.json</code> file in <code>public/itineraries/</code>, you can share it using a simple link like <code>#puglia</code>.
+                  Share this link with friends so they can open your itinerary instantly. Turn on "View Only Mode" if you only want them to browse.
                 </p>
               </div>
             </div>
@@ -834,14 +915,14 @@ export default function TripPlannerApp() {
             >
               Close
             </button>
-          </div>
+          </aside>
         </div>
       )}
 
-      {/* My Trips Modal */}
       {showMyTripsModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowMyTripsModal(false)}>
-          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50" onClick={() => setShowMyTripsModal(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <aside className="absolute right-0 top-0 h-full w-full sm:max-w-2xl bg-white shadow-2xl p-6 overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h2 className="text-2xl font-bold text-zinc-900 mb-2">My Cloud Trips</h2>
             <p className="text-zinc-600 mb-4 text-sm">Open one of your saved trips.</p>
 
@@ -886,19 +967,26 @@ export default function TripPlannerApp() {
             >
               Close
             </button>
-          </div>
-        </div>
-      )}
-
-      {cloudError && (
-        <div className="max-w-5xl mx-auto px-4 pt-4">
-          <div className="p-3 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm">
-            {cloudError}
-          </div>
+          </aside>
         </div>
       )}
 
       <main className="max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-8">
+        <div className="rounded-2xl border border-zinc-200 bg-white/80 px-4 py-3 text-sm text-zinc-700 flex flex-wrap items-center gap-2">
+          <span className="font-medium text-zinc-900">Status:</span>
+          {cloudTripId ? (
+            <>
+              <span className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-800">Cloud synced</span>
+              {cloudSlug && <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-800">slug: {cloudSlug}</span>}
+            </>
+          ) : (
+            <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-800">Local draft</span>
+          )}
+          {!user && isSupabaseConfigured && (
+            <span className="text-zinc-500">Sign in to sync and reopen on any device.</span>
+          )}
+        </div>
+
         {flights.length > 0 && (
           <div className="grid md:grid-cols-2 gap-4" id="flights">
             {flights.map((f, i) => (<FlightCard key={i} f={f}/>))}

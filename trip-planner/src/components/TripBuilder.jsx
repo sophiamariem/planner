@@ -18,6 +18,26 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
     const [currentTab, setCurrentTab] = useState('basic');
     const [jsonInput, setJsonInput] = useState(JSON.stringify(tripData || {}, null, 2));
     const [jsonError, setJsonError] = useState("");
+    const [newLocationName, setNewLocationName] = useState("");
+    const [locationLoading, setLocationLoading] = useState(false);
+    const [rangeStart, setRangeStart] = useState("");
+    const [rangeEnd, setRangeEnd] = useState("");
+    const [toast, setToast] = useState(null);
+    const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    const pushToast = (message, tone = "info") => {
+        setToast({ message, tone });
+        setTimeout(() => setToast(null), 2500);
+    };
+
+    useEffect(() => {
+        const isoDates = (days || []).map(d => d.isoDate).filter(Boolean).sort();
+        if (isoDates.length > 0) {
+            setRangeStart(isoDates[0]);
+            setRangeEnd(isoDates[isoDates.length - 1]);
+        }
+    }, [days.length]);
 
     // Auto-save to localStorage (but don't trigger preview)
     useEffect(() => {
@@ -31,11 +51,22 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
     }, [config, days, flights, locations, dayBadges]);
 
     const addDay = () => {
+        const previous = days[days.length - 1];
+        let nextIso = "";
+        if (previous?.isoDate) {
+            const prevDate = new Date(previous.isoDate);
+            if (!Number.isNaN(prevDate.getTime())) {
+                prevDate.setDate(prevDate.getDate() + 1);
+                nextIso = toIsoDate(prevDate);
+            }
+        }
+
         const newDay = {
             id: String(days.length + 1),
             dow: "Mon",
             date: "",
-            title: "New Day",
+            isoDate: nextIso,
+            title: defaultTitleForIndex(days.length, days.length + 1),
             photoQ: "",
             photos: [],
             hasMap: false,
@@ -43,13 +74,103 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
             pins: [],
             notes: [],
         };
+        if (nextIso) {
+            Object.assign(newDay, dayFieldsFromIso(nextIso));
+        }
         setDays([...days, newDay]);
+    };
+
+    const generateDaysFromRange = () => {
+        if (!rangeStart || !rangeEnd) {
+            pushToast("Choose both start and end date.", "error");
+            return;
+        }
+
+        const start = new Date(rangeStart);
+        const end = new Date(rangeEnd);
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+            pushToast("Invalid date range.", "error");
+            return;
+        }
+        if (end < start) {
+            pushToast("End date must be after start date.", "error");
+            return;
+        }
+
+        const existingByIso = new Map(
+            (days || [])
+                .filter((d) => d.isoDate)
+                .map((d) => [d.isoDate, d])
+        );
+
+        const generated = [];
+        const cursor = new Date(start);
+        while (cursor <= end) {
+            const iso = toIsoDate(cursor);
+            const existing = existingByIso.get(iso);
+            const baseDay = {
+                id: String(cursor.getDate()),
+                dow: "",
+                date: "",
+                isoDate: iso,
+                title: defaultTitleForIndex(generated.length, Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1),
+                photoQ: "",
+                photos: [],
+                hasMap: false,
+                route: "",
+                pins: [],
+                notes: [],
+            };
+
+            generated.push({
+                ...baseDay,
+                ...dayFieldsFromIso(iso),
+                ...(existing || {}),
+                isoDate: iso,
+            });
+
+            cursor.setDate(cursor.getDate() + 1);
+        }
+
+        setDays(generated);
+        setConfig({
+            ...config,
+            calendar: {
+                year: start.getFullYear(),
+                month: start.getMonth()
+            }
+        });
+        pushToast(`Generated ${generated.length} day${generated.length > 1 ? "s" : ""}.`, "success");
     };
 
     const updateDay = (index, field, value) => {
         const updated = [...days];
         updated[index] = { ...updated[index], [field]: value };
         setDays(updated);
+    };
+
+    const applyDateToDay = (index, isoDate) => {
+        const updated = [...days];
+        const merged = {
+            ...updated[index],
+            isoDate,
+            ...dayFieldsFromIso(isoDate)
+        };
+        updated[index] = merged;
+        setDays(updated);
+
+        if (isoDate && index === 0) {
+            const selected = new Date(isoDate);
+            if (!Number.isNaN(selected.getTime())) {
+                setConfig({
+                    ...config,
+                    calendar: {
+                        year: selected.getFullYear(),
+                        month: selected.getMonth()
+                    }
+                });
+            }
+        }
     };
 
     const removeDay = (index) => {
@@ -160,7 +281,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                 setLocations(extractedLl);
                 setDayBadges(extractedBadges);
                 setJsonError("");
-                alert("JSON imported successfully!");
+                pushToast("JSON imported successfully.", "success");
             } else {
                 setJsonError(`Invalid trip data: ${validation.error}`);
             }
@@ -174,8 +295,96 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
         setJsonInput(JSON.stringify(currentTripData, null, 2));
     };
 
+    const addLocationByName = async () => {
+        const name = newLocationName.trim();
+        if (!name) {
+            pushToast("Enter a place name first.", "error");
+            return;
+        }
+        if (locations[name]) {
+            pushToast("That place is already added.", "error");
+            return;
+        }
+
+        setLocationLoading(true);
+        try {
+            const result = await geocodePlace(name);
+            if (!result) {
+                pushToast("Couldn't find that place. Try a more specific name.", "error");
+                return;
+            }
+
+            setLocations({
+                ...locations,
+                [name]: [result.lat, result.lon]
+            });
+            setNewLocationName("");
+            pushToast("Place added.", "success");
+        } catch (error) {
+            pushToast("Couldn't look up that place right now.", "error");
+        } finally {
+            setLocationLoading(false);
+        }
+    };
+
+    async function geocodePlace(query) {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+        const res = await fetch(url, {
+            headers: {
+                Accept: "application/json",
+            }
+        });
+        if (!res.ok) return null;
+        const rows = await res.json();
+        if (!Array.isArray(rows) || rows.length === 0) return null;
+        const top = rows[0];
+        const lat = parseFloat(top.lat);
+        const lon = parseFloat(top.lon);
+        if (Number.isNaN(lat) || Number.isNaN(lon)) return null;
+        return { lat, lon };
+    }
+
+    function dayFieldsFromIso(isoDate) {
+        const dateObj = new Date(isoDate);
+        if (!isoDate || Number.isNaN(dateObj.getTime())) {
+            return { dow: "", date: "", id: "" };
+        }
+        return {
+            dow: DAY_SHORT[dateObj.getDay()],
+            date: `${dateObj.getDate()} ${MONTH_SHORT[dateObj.getMonth()]}`,
+            id: String(dateObj.getDate()),
+        };
+    }
+
+    function toIsoDate(dateObj) {
+        const yyyy = dateObj.getFullYear();
+        const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+        const dd = String(dateObj.getDate()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function defaultTitleForIndex(index, totalDays) {
+        if (index === 0) return "Arrival";
+        if (index === totalDays - 1) return "Departure";
+        const mids = ["Explore", "Highlights", "Local Favorites", "Adventure", "Leisure Day"];
+        return mids[(index - 1) % mids.length];
+    }
+
     return (
         <div className="min-h-screen bg-zinc-50">
+            {toast && (
+                <div className="fixed top-24 right-4 z-[80]">
+                    <div className={`rounded-xl border px-4 py-3 text-sm shadow-lg ${
+                        toast.tone === "success"
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                            : toast.tone === "error"
+                                ? "bg-red-50 border-red-200 text-red-700"
+                                : "bg-white border-zinc-200 text-zinc-800"
+                    }`}>
+                        {toast.message}
+                    </div>
+                </div>
+            )}
             <header className="sticky top-0 z-50 bg-white border-b border-zinc-200 shadow-sm">
                 <div className="max-w-5xl mx-auto px-4 py-4">
                     <div className="flex items-center justify-between">
@@ -378,20 +587,51 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
 
                 {currentTab === 'days' && (
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-xl font-bold text-zinc-900">Daily Itinerary</h2>
-                            <button
-                                onClick={addDay}
-                                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium"
-                            >
-                                + Add Day
-                            </button>
+                        <div className="bg-white rounded-lg p-5 shadow-sm border border-zinc-200 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-bold text-zinc-900">Daily Itinerary</h2>
+                                <span className="text-xs text-zinc-500">{days.length} day{days.length === 1 ? "" : "s"}</span>
+                            </div>
+                            <p className="text-sm text-zinc-600">
+                                Start with dates first. We will generate each day and auto-fill weekday labels.
+                            </p>
+                            <div className="grid md:grid-cols-3 gap-3">
+                                <input
+                                    type="date"
+                                    value={rangeStart}
+                                    onChange={e => setRangeStart(e.target.value)}
+                                    className="px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                />
+                                <input
+                                    type="date"
+                                    value={rangeEnd}
+                                    onChange={e => setRangeEnd(e.target.value)}
+                                    className="px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                />
+                                <button
+                                    onClick={generateDaysFromRange}
+                                    className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium"
+                                >
+                                    Generate Days
+                                </button>
+                            </div>
+                            <div>
+                                <button
+                                    onClick={addDay}
+                                    className="px-4 py-2 rounded-lg border border-zinc-300 hover:bg-zinc-50 text-sm font-medium"
+                                >
+                                    + Add Single Day
+                                </button>
+                            </div>
                         </div>
 
                         {days.map((day, index) => (
                             <div key={index} className="bg-white rounded-lg p-6 shadow-sm space-y-4">
                                 <div className="flex items-center justify-between">
-                                    <h3 className="font-semibold text-zinc-900">Day {index + 1}</h3>
+                                    <h3 className="font-semibold text-zinc-900">
+                                        Day {index + 1}
+                                        {day.date ? <span className="ml-2 text-zinc-500 font-normal">({day.dow}, {day.date})</span> : null}
+                                    </h3>
                                     <button
                                         onClick={() => removeDay(index)}
                                         className="text-red-600 hover:text-red-700 text-sm font-medium"
@@ -400,37 +640,64 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                                     </button>
                                 </div>
 
-                                <div className="grid md:grid-cols-3 gap-4">
-                                    <input
-                                        type="text"
-                                        value={day.dow}
-                                        onChange={e => updateDay(index, 'dow', e.target.value)}
-                                        placeholder="Day of week (e.g. Mon)"
-                                        className="px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    />
-                                    <input
-                                        type="text"
-                                        value={day.date}
-                                        onChange={e => updateDay(index, 'date', e.target.value)}
-                                        placeholder="Date (e.g. 15 Jun)"
-                                        className="px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    />
-                                    <input
-                                        type="text"
-                                        value={day.id}
-                                        onChange={e => updateDay(index, 'id', e.target.value)}
-                                        placeholder="Day # (for calendar)"
-                                        className="px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    />
+                                <div className="rounded-lg border border-zinc-200 p-4 bg-zinc-50">
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-zinc-700 mb-2">Date</label>
+                                            <input
+                                                type="date"
+                                                value={day.isoDate || ''}
+                                                onChange={e => applyDateToDay(index, e.target.value)}
+                                                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        </div>
+                                        <div className="text-sm text-zinc-700 flex items-end">
+                                            {day.isoDate ? (
+                                                <p><strong>{day.dow}, {day.date}</strong></p>
+                                            ) : (
+                                                <p className="text-zinc-500">Set a date to organize this day.</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <details className="mt-3">
+                                        <summary className="cursor-pointer text-sm text-zinc-700 font-medium">Advanced: manually edit date fields</summary>
+                                        <div className="grid md:grid-cols-3 gap-4 mt-3">
+                                            <input
+                                                type="text"
+                                                value={day.dow}
+                                                onChange={e => updateDay(index, 'dow', e.target.value)}
+                                                placeholder="Day of week (e.g. Mon)"
+                                                className="px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={day.date}
+                                                onChange={e => updateDay(index, 'date', e.target.value)}
+                                                placeholder="Date label (e.g. 15 Jun)"
+                                                className="px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={day.id}
+                                                onChange={e => updateDay(index, 'id', e.target.value)}
+                                                placeholder="Calendar day #"
+                                                className="px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        </div>
+                                    </details>
                                 </div>
 
-                                <input
-                                    type="text"
-                                    value={day.title}
-                                    onChange={e => updateDay(index, 'title', e.target.value)}
-                                    placeholder="Day title (e.g. Arrive in Paris)"
-                                    className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                />
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-700 mb-2">Title</label>
+                                    <input
+                                        type="text"
+                                        value={day.title}
+                                        onChange={e => updateDay(index, 'title', e.target.value)}
+                                        placeholder="What is this day about?"
+                                        className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
 
                                 <textarea
                                     value={day.notes.join('\n')}
@@ -558,22 +825,27 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                 {currentTab === 'locations' && (
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-xl font-bold text-zinc-900">Location Coordinates</h2>
-                            <button
-                                onClick={() => {
-                                    const newName = prompt("Location name:");
-                                    if (newName) {
-                                        setLocations({...locations, [newName]: [0, 0]});
-                                    }
-                                }}
-                                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium"
-                            >
-                                + Add Location
-                            </button>
+                            <h2 className="text-xl font-bold text-zinc-900">Places</h2>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={newLocationName}
+                                    onChange={(e) => setNewLocationName(e.target.value)}
+                                    placeholder="Add place (e.g. Rome Termini)"
+                                    className="px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                />
+                                <button
+                                    onClick={addLocationByName}
+                                    disabled={locationLoading}
+                                    className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium disabled:opacity-50"
+                                >
+                                    {locationLoading ? "Adding..." : "+ Add Place"}
+                                </button>
+                            </div>
                         </div>
 
                         <p className="text-sm text-zinc-600">
-                            Find coordinates at <a href="https://www.latlong.net/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">latlong.net</a>
+                            Type a place name, hotel, airport, or attraction. We auto-fill map coordinates for you.
                         </p>
 
                         {Object.entries(locations).map(([name, coords]) => (
@@ -591,38 +863,44 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                                         Remove
                                     </button>
                                 </div>
-                                <div className="grid md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-zinc-700 mb-2">Latitude</label>
-                                        <input
-                                            type="number"
-                                            step="0.0001"
-                                            value={coords[0]}
-                                            onChange={e => {
-                                                const newLocs = {...locations};
-                                                newLocs[name] = [parseFloat(e.target.value), coords[1]];
-                                                setLocations(newLocs);
-                                            }}
-                                            className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                            placeholder="e.g. 48.8566"
-                                        />
+                                <p className="text-xs text-zinc-500 mb-3">
+                                    Coordinates: {Number(coords[0]).toFixed(4)}, {Number(coords[1]).toFixed(4)}
+                                </p>
+                                <details>
+                                    <summary className="cursor-pointer text-sm text-zinc-700 font-medium">Advanced: edit coordinates</summary>
+                                    <div className="grid md:grid-cols-2 gap-4 mt-3">
+                                        <div>
+                                            <label className="block text-sm font-medium text-zinc-700 mb-2">Latitude</label>
+                                            <input
+                                                type="number"
+                                                step="0.0001"
+                                                value={coords[0]}
+                                                onChange={e => {
+                                                    const newLocs = {...locations};
+                                                    newLocs[name] = [parseFloat(e.target.value), coords[1]];
+                                                    setLocations(newLocs);
+                                                }}
+                                                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                placeholder="e.g. 48.8566"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-zinc-700 mb-2">Longitude</label>
+                                            <input
+                                                type="number"
+                                                step="0.0001"
+                                                value={coords[1]}
+                                                onChange={e => {
+                                                    const newLocs = {...locations};
+                                                    newLocs[name] = [coords[0], parseFloat(e.target.value)];
+                                                    setLocations(newLocs);
+                                                }}
+                                                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                placeholder="e.g. 2.3522"
+                                            />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-zinc-700 mb-2">Longitude</label>
-                                        <input
-                                            type="number"
-                                            step="0.0001"
-                                            value={coords[1]}
-                                            onChange={e => {
-                                                const newLocs = {...locations};
-                                                newLocs[name] = [coords[0], parseFloat(e.target.value)];
-                                                setLocations(newLocs);
-                                            }}
-                                            className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                            placeholder="e.g. 2.3522"
-                                        />
-                                    </div>
-                                </div>
+                                </details>
                             </div>
                         ))}
 
