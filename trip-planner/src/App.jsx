@@ -4,7 +4,7 @@ import useFavicon from "./hooks/useFavicon";
 import { ensureTailwindCDN } from "./utils/tailwind";
 import { getTripFromURL, updateURLWithTrip, saveTripToLocalStorage, loadTripFromLocalStorage, generateShareURL, clearLocalStorageTrip, validateTripData, getSourceFromURL, getCloudFromURL, isViewOnlyFromURL } from "./utils/tripData";
 import { isSupabaseConfigured, setSessionFromUrl } from "./lib/supabaseClient";
-import { getCurrentUser, signInWithMagicLink, signOut, saveTripToCloud, updateCloudTrip, listMyTrips, loadCloudTripById, loadCloudTripByShareToken, loadCloudTripBySlug, generateShareToken } from "./lib/cloudTrips";
+import { getCurrentUser, signInWithMagicLink, signInWithGoogle, signOut, saveTripToCloud, updateCloudTrip, listMyTrips, loadCloudTripById, loadCloudTripByShareToken, loadCloudTripBySlug, generateShareToken } from "./lib/cloudTrips";
 
 import FlightCard from "./components/FlightCard";
 import DayCard from "./components/DayCard";
@@ -243,6 +243,10 @@ export default function TripPlannerApp() {
   };
 
   const submitSignIn = async () => {
+    if (!isSupabaseConfigured) {
+      pushToast("Auth is not configured yet. Add Supabase env vars first.", "error");
+      return;
+    }
     if (!signInEmail.trim()) {
       pushToast("Enter an email address.", "error");
       return;
@@ -259,6 +263,19 @@ export default function TripPlannerApp() {
       pushToast(error.message || "Could not send sign-in link.", "error");
     } finally {
       setSignInLoading(false);
+    }
+  };
+
+  const submitGoogleSignIn = async () => {
+    if (!isSupabaseConfigured) {
+      pushToast("Auth is not configured yet. Add Supabase env vars first.", "error");
+      return;
+    }
+    try {
+      signInWithGoogle();
+    } catch (error) {
+      console.error("Google sign in error:", error);
+      pushToast(error.message || "Could not start Google sign-in.", "error");
     }
   };
 
@@ -552,31 +569,36 @@ export default function TripPlannerApp() {
           </div>
 
           <div className="space-y-4">
-            {isSupabaseConfigured && (
-              <div className="p-4 border border-zinc-200 rounded-xl bg-zinc-50 flex items-center justify-between gap-4">
-                <div>
-                  <p className="font-medium text-zinc-900 text-sm">Cloud account</p>
-                  <p className="text-xs text-zinc-600">
-                    {user ? `Signed in as ${user.email}` : "Sign in to save trips, reopen them later, and share cloud links."}
+            <div className="p-4 border border-zinc-200 rounded-xl bg-zinc-50 flex items-center justify-between gap-4">
+              <div>
+                <p className="font-medium text-zinc-900 text-sm">Account</p>
+                <p className="text-xs text-zinc-600">
+                  {user
+                    ? `Signed in as ${user.email}`
+                    : "Sign in to save trips, edit them later, and manage upcoming trips across devices."}
+                </p>
+                {!isSupabaseConfigured && (
+                  <p className="text-xs text-amber-700 mt-1">
+                    Auth is not configured in this environment yet.
                   </p>
-                </div>
-                {user ? (
-                  <button
-                    onClick={handleSignOut}
-                    className="px-3 py-2 rounded-lg border border-zinc-300 hover:bg-white text-sm"
-                  >
-                    Sign Out
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleSignIn}
-                    className="px-3 py-2 rounded-lg bg-zinc-900 text-white hover:bg-black text-sm"
-                  >
-                    Sign In
-                  </button>
                 )}
               </div>
-            )}
+              {user ? (
+                <button
+                  onClick={handleSignOut}
+                  className="px-3 py-2 rounded-lg border border-zinc-300 hover:bg-white text-sm"
+                >
+                  Sign Out
+                </button>
+              ) : (
+                <button
+                  onClick={handleSignIn}
+                  className="px-3 py-2 rounded-lg bg-zinc-900 text-white hover:bg-black text-sm"
+                >
+                  Create Account / Sign In
+                </button>
+              )}
+            </div>
 
             <button
               onClick={handleStartFromTemplate}
@@ -586,10 +608,10 @@ export default function TripPlannerApp() {
                 <div className="text-3xl">🗺️</div>
                 <div>
                   <h3 className="font-bold text-xl text-zinc-900 mb-2 group-hover:text-blue-700">
-                    Start with Example Template
+                    Start with Example Template {isSupabaseConfigured && !user ? "(Guest)" : ""}
                   </h3>
                   <p className="text-zinc-600">
-                    See a fully populated example trip that you can customize and make your own
+                    See a fully populated example trip you can customize. {isSupabaseConfigured && !user ? "Guest trips stay on this browser unless you sign in." : ""}
                   </p>
                 </div>
               </div>
@@ -603,10 +625,10 @@ export default function TripPlannerApp() {
                 <div className="text-3xl">✨</div>
                 <div>
                   <h3 className="font-bold text-xl text-zinc-900 mb-2 group-hover:text-zinc-700">
-                    Start from Scratch
+                    Start from Scratch {isSupabaseConfigured && !user ? "(Guest)" : ""}
                   </h3>
                   <p className="text-zinc-600">
-                    Begin with a blank canvas and build your trip from the ground up
+                    Build your trip from the ground up. {isSupabaseConfigured && !user ? "Guest trips stay local to this device." : ""}
                   </p>
                 </div>
               </div>
@@ -671,7 +693,7 @@ export default function TripPlannerApp() {
             <ul className="space-y-2 text-sm text-zinc-600">
               <li className="flex items-center gap-2">
                 <span className="text-green-600">✓</span>
-                No sign-up required - completely free
+                Free account for saved trips, edits, and cross-device access
               </li>
               <li className="flex items-center gap-2">
                 <span className="text-green-600">✓</span>
@@ -734,13 +756,13 @@ export default function TripPlannerApp() {
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-zinc-900">{tripConfig.title}</h1>
           </div>
           <div className="flex gap-2 items-center flex-wrap">
-            {isSupabaseConfigured && (
+            {!user ? (
+              <button type="button" onClick={handleSignIn} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50">
+                Sign In
+              </button>
+            ) : (
               <>
-                {!user ? (
-                  <button type="button" onClick={handleSignIn} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50">
-                    Sign In
-                  </button>
-                ) : (
+                {isSupabaseConfigured && (
                   <>
                     <button type="button" onClick={handleOpenMyTrips} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50">
                       My Saved Trips
@@ -748,11 +770,11 @@ export default function TripPlannerApp() {
                     <button type="button" onClick={handleSaveToCloud} disabled={cloudSaving} className="px-3 py-2 rounded-2xl bg-emerald-600 text-white text-sm hover:bg-emerald-700 disabled:opacity-50">
                       {cloudSaving ? "Saving..." : cloudTripId ? "Update Cloud" : "Save to Cloud"}
                     </button>
-                    <button type="button" onClick={handleSignOut} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50">
-                      Sign Out
-                    </button>
                   </>
                 )}
+                <button type="button" onClick={handleSignOut} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50">
+                  Sign Out
+                </button>
               </>
             )}
             {!isViewOnly && !sourceUrl && (
@@ -799,7 +821,24 @@ export default function TripPlannerApp() {
           <div className="absolute inset-0 bg-black/40" />
           <aside className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-2xl p-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-2xl font-bold text-zinc-900 mb-2">Sign In</h2>
-            <p className="text-sm text-zinc-600 mb-4">Enter your email and we’ll send a magic sign-in link.</p>
+            <p className="text-sm text-zinc-600 mb-4">Continue with Google or use an email magic link.</p>
+            {!isSupabaseConfigured && (
+              <p className="text-sm text-amber-700 mb-4">
+                Auth is not configured in this environment. Add `REACT_APP_SUPABASE_URL` and `REACT_APP_SUPABASE_ANON_KEY`.
+              </p>
+            )}
+            <button
+              onClick={submitGoogleSignIn}
+              disabled={!isSupabaseConfigured}
+              className="w-full px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Continue with Google
+            </button>
+            <div className="flex items-center gap-2 my-4">
+              <div className="h-px bg-zinc-200 flex-1" />
+              <span className="text-xs text-zinc-500 uppercase tracking-wide">or</span>
+              <div className="h-px bg-zinc-200 flex-1" />
+            </div>
             <input
               type="email"
               value={signInEmail}
@@ -816,7 +855,7 @@ export default function TripPlannerApp() {
               </button>
               <button
                 onClick={submitSignIn}
-                disabled={signInLoading}
+                disabled={signInLoading || !isSupabaseConfigured}
                 className="flex-1 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-black text-sm font-medium disabled:opacity-50"
               >
                 {signInLoading ? "Sending..." : "Send Link"}

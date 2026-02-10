@@ -53,6 +53,15 @@ export async function signInWithMagicLink(email) {
   await parseJson(response, 'Could not send sign-in email.');
 }
 
+export function signInWithGoogle() {
+  if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+
+  const { url } = getSupabaseConfig();
+  const redirectTo = window.location.origin + window.location.pathname;
+  const authUrl = `${url}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}`;
+  window.location.assign(authUrl);
+}
+
 export async function signOut() {
   if (!isSupabaseConfigured) return;
   try {
