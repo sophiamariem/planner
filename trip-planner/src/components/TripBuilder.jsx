@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { palette } from '../data/trip';
 import { validateTripData } from '../utils/tripData';
+import DayMap from './DayMap';
 
 export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
     const [config, setConfig] = useState(tripData?.tripConfig || {
@@ -18,8 +19,8 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
     const [currentTab, setCurrentTab] = useState('basic');
     const [jsonInput, setJsonInput] = useState(JSON.stringify(tripData || {}, null, 2));
     const [jsonError, setJsonError] = useState("");
-    const [newLocationName, setNewLocationName] = useState("");
-    const [locationLoading, setLocationLoading] = useState(false);
+    const [newPinByDay, setNewPinByDay] = useState({});
+    const [pinLoadingByDay, setPinLoadingByDay] = useState({});
     const [rangeStart, setRangeStart] = useState("");
     const [rangeEnd, setRangeEnd] = useState("");
     const [photoLoadingByDay, setPhotoLoadingByDay] = useState({});
@@ -374,18 +375,21 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
         setJsonInput(JSON.stringify(currentTripData, null, 2));
     };
 
-    const addLocationByName = async () => {
-        const name = newLocationName.trim();
+    const addPinToDayByName = async (dayIndex) => {
+        const name = (newPinByDay[dayIndex] || "").trim();
         if (!name) {
-            pushToast("Enter a place name first.", "error");
-            return;
-        }
-        if (locations[name]) {
-            pushToast("That place is already added.", "error");
+            pushToast("Enter a stop name first.", "error");
             return;
         }
 
-        setLocationLoading(true);
+        const day = days[dayIndex];
+        const currentPins = day.pins || [];
+        if (currentPins.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
+            pushToast("This stop is already on this day.", "error");
+            return;
+        }
+
+        setPinLoadingByDay((prev) => ({ ...prev, [dayIndex]: true }));
         try {
             const result = await geocodePlace(name);
             if (!result) {
@@ -393,16 +397,15 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                 return;
             }
 
-            setLocations({
-                ...locations,
-                [name]: [result.lat, result.lon]
-            });
-            setNewLocationName("");
-            pushToast("Place added.", "success");
-        } catch (error) {
-            pushToast("Couldn't look up that place right now.", "error");
+            const canonicalName = name;
+            const ll = [result.lat, result.lon];
+            const newPin = { name: canonicalName, q: canonicalName, ll };
+            updateDay(dayIndex, 'pins', [...currentPins, newPin]);
+            setLocations({ ...locations, [canonicalName]: ll });
+            setNewPinByDay((prev) => ({ ...prev, [dayIndex]: "" }));
+            pushToast("Stop added to this day.", "success");
         } finally {
-            setLocationLoading(false);
+            setPinLoadingByDay((prev) => ({ ...prev, [dayIndex]: false }));
         }
     };
 
@@ -591,7 +594,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
 
                     {/* Tab Navigation */}
                     <div className="flex gap-2 mt-4 overflow-x-auto">
-                        {['basic', 'flights', 'days', 'locations', 'JSON (Advanced)'].map(tab => (
+                        {['basic', 'flights', 'days', 'JSON (Advanced)'].map(tab => (
                             <button
                                 key={tab}
                                 onClick={() => {
@@ -904,7 +907,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
 
                                 <div className="border-t border-zinc-200 pt-4 mt-4">
                                     <div className="flex items-center justify-between mb-3">
-                                        <label className="text-sm font-medium text-zinc-700">Locations to Show on Map</label>
+                                        <label className="text-sm font-medium text-zinc-700">Map Stops</label>
                                         <label className="flex items-center gap-2 text-sm">
                                             <input
                                                 type="checkbox"
@@ -916,47 +919,86 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                                         </label>
                                     </div>
 
-                                    {Object.keys(locations).length === 0 ? (
-                                        <p className="text-sm text-zinc-500 italic">No locations added yet. Go to the "Locations" tab to add some.</p>
-                                    ) : (
-                                        <div className="flex flex-wrap gap-2">
-                                            {Object.keys(locations).map(locName => {
-                                                const isSelected = day.pins?.some(p => p.name === locName) || false;
-                                                return (
-                                                    <button
-                                                        key={locName}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            const currentPins = day.pins || [];
-                                                            if (isSelected) {
-                                                                // Remove pin
-                                                                updateDay(index, 'pins', currentPins.filter(p => p.name !== locName));
-                                                            } else {
-                                                                // Add pin
-                                                                const newPin = {
-                                                                    name: locName,
-                                                                    q: locName,
-                                                                    ll: locations[locName]
-                                                                };
-                                                                updateDay(index, 'pins', [...currentPins, newPin]);
-                                                            }
-                                                        }}
-                                                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                                                            isSelected
-                                                                ? 'bg-blue-600 text-white'
-                                                                : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
-                                                        }`}
-                                                    >
-                                                        {isSelected ? '✓ ' : ''}{locName}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <input
+                                            type="text"
+                                            value={newPinByDay[index] || ""}
+                                            onChange={(e) => setNewPinByDay((prev) => ({ ...prev, [index]: e.target.value }))}
+                                            placeholder="Add stop (e.g. Colosseum, Rome)"
+                                            className="flex-1 px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => addPinToDayByName(index)}
+                                            disabled={pinLoadingByDay[index]}
+                                            className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                                        >
+                                            {pinLoadingByDay[index] ? "Adding..." : "Add Stop"}
+                                        </button>
+                                    </div>
+
+                                    {Object.keys(locations).length > 0 && (
+                                        <details className="mb-3">
+                                            <summary className="cursor-pointer text-xs text-zinc-600 font-medium">Add from saved places</summary>
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                {Object.keys(locations).map(locName => {
+                                                    const isSelected = day.pins?.some(p => p.name === locName) || false;
+                                                    return (
+                                                        <button
+                                                            key={locName}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const currentPins = day.pins || [];
+                                                                if (isSelected) {
+                                                                    updateDay(index, 'pins', currentPins.filter(p => p.name !== locName));
+                                                                } else {
+                                                                    const newPin = {
+                                                                        name: locName,
+                                                                        q: locName,
+                                                                        ll: locations[locName]
+                                                                    };
+                                                                    updateDay(index, 'pins', [...currentPins, newPin]);
+                                                                }
+                                                            }}
+                                                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                                                                isSelected
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                                                            }`}
+                                                        >
+                                                            {isSelected ? '✓ ' : ''}{locName}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </details>
                                     )}
-                                    {day.pins && day.pins.length > 0 && (
-                                        <p className="text-xs text-zinc-500 mt-2">
-                                            Selected: {day.pins.map(p => p.name).join(', ')}
-                                        </p>
+
+                                    {(day.pins && day.pins.length > 0) ? (
+                                        <div className="flex flex-wrap gap-2">
+                                            {(day.pins || []).map((pin, pinIdx) => (
+                                                <span key={`${pin.name}-${pinIdx}`} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-100 text-zinc-700 text-sm">
+                                                    {pin.name}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updateDay(index, 'pins', (day.pins || []).filter((_, i) => i !== pinIdx))}
+                                                        className="text-zinc-500 hover:text-red-600"
+                                                        aria-label={`Remove ${pin.name}`}
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-zinc-500 italic">No stops yet. Add one to show it on the map.</p>
+                                    )}
+
+                                    {day.hasMap && (day.pins || []).length > 0 && (
+                                        <div className="mt-3">
+                                            <p className="text-xs text-zinc-500 mb-2">Map preview</p>
+                                            <DayMap pins={day.pins} className="h-52" />
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -965,96 +1007,6 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                         {days.length === 0 && (
                             <div className="bg-white rounded-lg p-12 shadow-sm text-center text-zinc-500">
                                 No days added yet. Click "Add Day" to start building your itinerary.
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {currentTab === 'locations' && (
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-xl font-bold text-zinc-900">Places</h2>
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="text"
-                                    value={newLocationName}
-                                    onChange={(e) => setNewLocationName(e.target.value)}
-                                    placeholder="Add place (e.g. Rome Termini)"
-                                    className="px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                />
-                                <button
-                                    onClick={addLocationByName}
-                                    disabled={locationLoading}
-                                    className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium disabled:opacity-50"
-                                >
-                                    {locationLoading ? "Adding..." : "+ Add Place"}
-                                </button>
-                            </div>
-                        </div>
-
-                        <p className="text-sm text-zinc-600">
-                            Type a place name, hotel, airport, or attraction. We auto-fill map coordinates for you.
-                        </p>
-
-                        {Object.entries(locations).map(([name, coords]) => (
-                            <div key={name} className="bg-white rounded-lg p-6 shadow-sm">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="font-semibold text-zinc-900">{name}</h3>
-                                    <button
-                                        onClick={() => {
-                                            const newLocs = {...locations};
-                                            delete newLocs[name];
-                                            setLocations(newLocs);
-                                        }}
-                                        className="text-red-600 hover:text-red-700 text-sm font-medium"
-                                    >
-                                        Remove
-                                    </button>
-                                </div>
-                                <p className="text-xs text-zinc-500 mb-3">
-                                    Coordinates: {Number(coords[0]).toFixed(4)}, {Number(coords[1]).toFixed(4)}
-                                </p>
-                                <details>
-                                    <summary className="cursor-pointer text-sm text-zinc-700 font-medium">Advanced: edit coordinates</summary>
-                                    <div className="grid md:grid-cols-2 gap-4 mt-3">
-                                        <div>
-                                            <label className="block text-sm font-medium text-zinc-700 mb-2">Latitude</label>
-                                            <input
-                                                type="number"
-                                                step="0.0001"
-                                                value={coords[0]}
-                                                onChange={e => {
-                                                    const newLocs = {...locations};
-                                                    newLocs[name] = [parseFloat(e.target.value), coords[1]];
-                                                    setLocations(newLocs);
-                                                }}
-                                                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                placeholder="e.g. 48.8566"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-zinc-700 mb-2">Longitude</label>
-                                            <input
-                                                type="number"
-                                                step="0.0001"
-                                                value={coords[1]}
-                                                onChange={e => {
-                                                    const newLocs = {...locations};
-                                                    newLocs[name] = [coords[0], parseFloat(e.target.value)];
-                                                    setLocations(newLocs);
-                                                }}
-                                                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                placeholder="e.g. 2.3522"
-                                            />
-                                        </div>
-                                    </div>
-                                </details>
-                            </div>
-                        ))}
-
-                        {Object.keys(locations).length === 0 && (
-                            <div className="bg-white rounded-lg p-12 shadow-sm text-center text-zinc-500">
-                                No locations added yet. Click "Add Location" to get started.
                             </div>
                         )}
                     </div>
