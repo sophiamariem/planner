@@ -75,6 +75,37 @@ export function getSourceFromURL() {
 }
 
 /**
+ * Gets cloud trip identifier from hash.
+ * Supports #t=slug, #slug=slug, #cloud=trip-id, or #share=token.
+ */
+export function getCloudFromURL() {
+    const hash = window.location.hash;
+    if (!hash) return null;
+
+    if (hash.includes('t=')) {
+        const match = hash.match(/t=([^&]+)/);
+        if (match) return { type: 'slug', value: decodeURIComponent(match[1]) };
+    }
+
+    if (hash.includes('slug=')) {
+        const match = hash.match(/slug=([^&]+)/);
+        if (match) return { type: 'slug', value: decodeURIComponent(match[1]) };
+    }
+
+    if (hash.includes('cloud=')) {
+        const match = hash.match(/cloud=([^&]+)/);
+        if (match) return { type: 'id', value: decodeURIComponent(match[1]) };
+    }
+
+    if (hash.includes('share=')) {
+        const match = hash.match(/share=([^&]+)/);
+        if (match) return { type: 'share', value: decodeURIComponent(match[1]) };
+    }
+
+    return null;
+}
+
+/**
  * Checks if view-only mode is enabled in URL
  */
 export function isViewOnlyFromURL() {
@@ -136,7 +167,13 @@ export function generateShareURL(tripData, options = {}) {
     const baseURL = window.location.origin + window.location.pathname;
     let url = baseURL;
 
-    if (options.source) {
+    if (options.cloudSlug) {
+        url += `#t=${encodeURIComponent(options.cloudSlug)}`;
+    } else if (options.shareToken) {
+        url += `#share=${encodeURIComponent(options.shareToken)}`;
+    } else if (options.cloudId) {
+        url += `#cloud=${encodeURIComponent(options.cloudId)}`;
+    } else if (options.source) {
         // If the source is in itineraries/, we use the simplified format (without .json)
         if (options.source.startsWith('itineraries/') && options.source.endsWith('.json') && !options.source.substring(12).includes('/')) {
             url += `#${options.source.substring(12, options.source.length - 5)}`;

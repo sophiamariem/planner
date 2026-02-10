@@ -43,6 +43,45 @@ A beautiful, interactive trip planning app built with React. Perfect for creatin
    npm run build
    ```
 
+## ☁️ Cloud Migration (Phase 1)
+
+This app now supports an optional cloud mode while keeping the existing JSON workflow.
+
+### What stays the same
+
+- You can still start from template/scratch.
+- You can still import JSON directly.
+- URL-encoded and `public/itineraries/*.json` sharing still works.
+
+### What is new
+
+- Optional email magic-link sign in.
+- Save/open trips from cloud (Supabase).
+- Share links use short descriptive slugs: `#t=<slug>` (legacy `#cloud` / `#share` still supported).
+- Slugs are generated from the trip title with a short unique suffix (example: `#t=tokyo-food-3k9a`).
+
+### Setup
+
+1. Copy env template:
+   ```bash
+   cp .env.example .env
+   ```
+2. Fill:
+   - `REACT_APP_SUPABASE_URL`
+   - `REACT_APP_SUPABASE_ANON_KEY`
+3. In Supabase SQL editor, run: `supabase/schema.sql`
+4. Deploy as usual on Netlify.
+
+Without env vars, the app runs in local-only mode (same behavior as before).
+
+### Optional one-time import of existing static JSON itineraries
+
+Use a service role key locally to seed your existing files from `public/itineraries`:
+
+```bash
+SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npm run import:itineraries
+```
+
 ## 📝 Customization Guide
 
 All trip data lives in one file: `src/data/trip.js`
@@ -220,7 +259,7 @@ Browse [Tailwind CSS Colors](https://tailwindcss.com/docs/customizing-colors) an
 Want to track multiple trips? Just duplicate this project folder and customize each one:
 
 ```bash
-cp -r cyprus iceland-trip
+cp -r trip-planner iceland-trip
 cd iceland-trip
 # Edit src/data/trip.js with Iceland data
 npm start

@@ -34,7 +34,7 @@ test('can reset from view mode', () => {
   fireEvent.click(resetButton);
 
   // Should be back in onboarding mode
-  expect(screen.getByText("Start with Cyprus Template")).toBeInTheDocument();
+  expect(screen.getByText("Start with Example Template")).toBeInTheDocument();
   expect(localStorage.getItem('current-trip')).toBeNull();
 });
 
