@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, Text, TextInput, View } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
 
+const UNSPLASH_ACCESS_KEY = process.env.EXPO_PUBLIC_UNSPLASH_ACCESS_KEY;
+
 const TEMPLATE_OPTIONS = [
   {
     id: 'city',
@@ -91,10 +93,6 @@ function formatChipLabel(date) {
   return `${shortDow(date)} ${date.getDate()} ${shortMonth(date)}`;
 }
 
-function isHttpUrl(value) {
-  return /^https?:\/\//i.test((value || '').trim());
-}
-
 function buildDefaultDay(date, index, total) {
   return {
     id: `${date.getDate()}-${index + 1}`,
@@ -147,6 +145,28 @@ function PhotoTile({ uri, onRemove }) {
   );
 }
 
+async function searchUnsplashPhotos(query, count = 12) {
+  if (!UNSPLASH_ACCESS_KEY) throw new Error('Missing Unsplash key.');
+  const q = String(query || '').trim();
+  if (!q) return [];
+
+  const response = await fetch(
+    `https://api.unsplash.com/search/photos?query=${encodeURIComponent(q)}&per_page=${count}&orientation=landscape&content_filter=high`,
+    {
+      headers: {
+        Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}`,
+      },
+    }
+  );
+
+  if (!response.ok) throw new Error('Could not load Unsplash photos.');
+
+  const data = await response.json();
+  return (data?.results || [])
+    .map((item) => item?.urls?.regular || item?.urls?.small || '')
+    .filter(Boolean);
+}
+
 export default function NewTripScreen({
   onCancel,
   onSubmit,
@@ -158,11 +178,14 @@ export default function NewTripScreen({
   const [title, setTitle] = useState(initialState.title);
   const [startDate, setStartDate] = useState(initialState.startDate);
   const [daysCount, setDaysCount] = useState(initialState.daysCount);
-  const [coverInput, setCoverInput] = useState('');
   const [coverPhoto, setCoverPhoto] = useState(initialState.coverPhoto);
-  const [dayPhotoInput, setDayPhotoInput] = useState('');
   const [dayPhotos, setDayPhotos] = useState(initialState.dayPhotos);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [unsplashQuery, setUnsplashQuery] = useState(initialState.title || '');
+  const [unsplashResults, setUnsplashResults] = useState([]);
+  const [unsplashLoading, setUnsplashLoading] = useState(false);
+  const [unsplashError, setUnsplashError] = useState('');
+  const [unsplashTarget, setUnsplashTarget] = useState('day');
 
   useEffect(() => {
     setTitle(initialState.title);
@@ -170,8 +193,11 @@ export default function NewTripScreen({
     setDaysCount(initialState.daysCount);
     setCoverPhoto(initialState.coverPhoto);
     setDayPhotos(initialState.dayPhotos);
-    setCoverInput('');
-    setDayPhotoInput('');
+    setUnsplashQuery(initialState.title || '');
+    setUnsplashResults([]);
+    setUnsplashError('');
+    setUnsplashLoading(false);
+    setUnsplashTarget('day');
     setSelectedTemplateId('');
   }, [initialState]);
 
@@ -290,18 +316,41 @@ export default function NewTripScreen({
     };
   };
 
-  const addCoverPhoto = () => {
-    const value = coverInput.trim();
-    if (!isHttpUrl(value)) return;
-    setCoverPhoto(value);
-    setCoverInput('');
+  const runUnsplashSearch = async () => {
+    const query = unsplashQuery.trim() || title.trim();
+    if (!query) {
+      setUnsplashError('Add a photo search first.');
+      return;
+    }
+    if (!UNSPLASH_ACCESS_KEY) {
+      setUnsplashError('Set EXPO_PUBLIC_UNSPLASH_ACCESS_KEY in apps/mobile/.env');
+      return;
+    }
+
+    setUnsplashLoading(true);
+    setUnsplashError('');
+    try {
+      const results = await searchUnsplashPhotos(query, 12);
+      if (!results.length) {
+        setUnsplashResults([]);
+        setUnsplashError('No photos found for this search.');
+      } else {
+        setUnsplashResults(results);
+      }
+    } catch (error) {
+      setUnsplashResults([]);
+      setUnsplashError(error.message || 'Could not load photos.');
+    } finally {
+      setUnsplashLoading(false);
+    }
   };
 
-  const addDayPhoto = () => {
-    const value = dayPhotoInput.trim();
-    if (!isHttpUrl(value)) return;
-    setDayPhotos((prev) => (prev.includes(value) || prev.length >= 6 ? prev : [...prev, value]));
-    setDayPhotoInput('');
+  const applyUnsplashPhoto = (url) => {
+    if (unsplashTarget === 'cover') {
+      setCoverPhoto(url);
+      return;
+    }
+    setDayPhotos((prev) => (prev.includes(url) || prev.length >= 6 ? prev : [...prev, url]));
   };
 
   const isEditing = mode === 'edit';
@@ -313,6 +362,7 @@ export default function NewTripScreen({
     if (!template || !details) return;
     setSelectedTemplateId(templateId);
     setTitle(template.title);
+    setUnsplashQuery(template.title);
     setDaysCount(String(details.days.length));
     setCoverPhoto(template.cover);
     setDayPhotos([template.cover]);
@@ -442,19 +492,67 @@ export default function NewTripScreen({
       </View>
 
       <View style={{ gap: 8 }}>
+        <Text style={{ color: '#27272a', fontWeight: '600' }}>Unsplash photos</Text>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Pressable
+            onPress={() => setUnsplashTarget('day')}
+            style={{
+              borderWidth: 1,
+              borderColor: unsplashTarget === 'day' ? '#18181b' : '#d4d4d8',
+              backgroundColor: unsplashTarget === 'day' ? '#18181b' : '#ffffff',
+              borderRadius: 999,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+            }}
+          >
+            <Text style={{ color: unsplashTarget === 'day' ? '#ffffff' : '#18181b', fontWeight: '600', fontSize: 12 }}>Add to Day 1</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setUnsplashTarget('cover')}
+            style={{
+              borderWidth: 1,
+              borderColor: unsplashTarget === 'cover' ? '#18181b' : '#d4d4d8',
+              backgroundColor: unsplashTarget === 'cover' ? '#18181b' : '#ffffff',
+              borderRadius: 999,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+            }}
+          >
+            <Text style={{ color: unsplashTarget === 'cover' ? '#ffffff' : '#18181b', fontWeight: '600', fontSize: 12 }}>Set Cover</Text>
+          </Pressable>
+        </View>
+        <TextInput
+          value={unsplashQuery}
+          onChangeText={setUnsplashQuery}
+          placeholder="Search photos (e.g. lisbon rooftops)"
+          autoCapitalize="none"
+          style={{ borderWidth: 1, borderColor: '#d4d4d8', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 15, backgroundColor: '#fff' }}
+        />
+        <PrimaryButton
+          title={unsplashLoading ? 'Finding photos...' : 'Find Photos'}
+          onPress={runUnsplashSearch}
+          disabled={unsplashLoading}
+          variant="outline"
+        />
+        {unsplashError ? <Text style={{ color: '#dc2626', fontSize: 12 }}>{unsplashError}</Text> : null}
+        {unsplashResults.length > 0 ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {unsplashResults.map((uri, index) => (
+              <Pressable
+                key={`${uri}-${index}`}
+                onPress={() => applyUnsplashPhoto(uri)}
+                style={{ width: '31%', aspectRatio: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8' }}
+              >
+                <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+      </View>
+
+      <View style={{ gap: 8 }}>
         <Text style={{ color: '#27272a', fontWeight: '600' }}>Cover photo</Text>
-        {!coverPhoto ? (
-          <>
-            <TextInput
-              value={coverInput}
-              onChangeText={setCoverInput}
-              placeholder="Paste image URL"
-              autoCapitalize="none"
-              style={{ borderWidth: 1, borderColor: '#d4d4d8', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 15, backgroundColor: '#fff' }}
-            />
-            <PrimaryButton title="Add Cover Photo" onPress={addCoverPhoto} variant="outline" />
-          </>
-        ) : (
+        {coverPhoto ? (
           <View style={{ width: '100%', aspectRatio: 1.8, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#f4f4f5' }}>
             <Image source={{ uri: coverPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
             <Pressable
@@ -474,19 +572,15 @@ export default function NewTripScreen({
               <Text style={{ color: '#fff', fontWeight: '700' }}>X</Text>
             </Pressable>
           </View>
+        ) : (
+          <View style={{ borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 12, padding: 10, backgroundColor: '#fafafa' }}>
+            <Text style={{ color: '#71717a', fontSize: 12 }}>No cover photo yet. Use Find Photos and choose Set Cover.</Text>
+          </View>
         )}
       </View>
 
       <View style={{ gap: 8 }}>
         <Text style={{ color: '#27272a', fontWeight: '600' }}>Day 1 photo preview</Text>
-        <TextInput
-          value={dayPhotoInput}
-          onChangeText={setDayPhotoInput}
-          placeholder="Paste image URL"
-          autoCapitalize="none"
-          style={{ borderWidth: 1, borderColor: '#d4d4d8', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 15, backgroundColor: '#fff' }}
-        />
-        <PrimaryButton title="Add Photo" onPress={addDayPhoto} variant="outline" />
         {dayPhotos.length > 0 ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {dayPhotos.map((uri, index) => (

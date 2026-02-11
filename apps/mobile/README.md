@@ -17,6 +17,7 @@ cp .env.example .env
 3. Fill env values:
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- `EXPO_PUBLIC_UNSPLASH_ACCESS_KEY` (for visual photo search in trip editor)
 
 4. Start Expo:
 ```bash
