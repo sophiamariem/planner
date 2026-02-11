@@ -931,7 +931,6 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
             />
           </View>
         </View>
-        </View>
     </View>
   );
 }
