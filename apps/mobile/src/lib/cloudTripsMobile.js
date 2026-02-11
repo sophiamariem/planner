@@ -29,6 +29,10 @@ export async function getCurrentUser() {
   if (!(await getAccessToken())) return null;
 
   const response = await authedFetch('/auth/v1/user', { method: 'GET' });
+  if (response.status === 401 || response.status === 403) {
+    await clearSession();
+    return null;
+  }
   return parseJson(response, 'Could not load user.');
 }
 
