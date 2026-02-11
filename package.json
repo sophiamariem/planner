@@ -24,6 +24,7 @@
     "mobile:ios": "npm --prefix apps/mobile run ios",
     "mobile:android": "npm --prefix apps/mobile run android",
     "mobile:web": "npm --prefix apps/mobile run web",
+    "db:apply-schema": "node ./scripts/apply-schema.mjs",
     "import:itineraries": "node ./scripts/import-itineraries.mjs",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build"

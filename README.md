@@ -70,7 +70,9 @@ This app now supports an optional cloud mode while keeping the existing JSON wor
    - `REACT_APP_SUPABASE_URL`
    - `REACT_APP_SUPABASE_ANON_KEY`
    - Optional: `REACT_APP_UNSPLASH_ACCESS_KEY` (improves in-app "Find Photos")
-3. In Supabase SQL editor, run: `supabase/schema.sql`
+3. Apply schema:
+   - Option A (automated): set `SUPABASE_DB_URL` and run `npm run db:apply-schema`
+   - Option B (manual): run `supabase/schema.sql` in Supabase SQL editor
 4. Deploy as usual on Netlify.
 
 Without env vars, the app runs in local-only mode (same behavior as before).
