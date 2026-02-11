@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import React, { useCallback, useEffect, useState } from 'react';
-import { SafeAreaView, Text, View } from 'react-native';
+import { SafeAreaView, StatusBar, Text, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AuthScreen from './src/screens/AuthScreen';
@@ -118,6 +118,7 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
       <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 260, backgroundColor: '#dbeafe' }} />
         <View style={{ position: 'absolute', top: 180, left: -80, width: 240, height: 240, borderRadius: 999, backgroundColor: '#e0e7ff' }} />

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Image, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import PrimaryButton from '../components/PrimaryButton';
 
 const IMAGE_ACCESS_KEY = process.env.EXPO_PUBLIC_UNSPLASH_ACCESS_KEY;
@@ -74,6 +75,47 @@ function formatChipLabel(date) {
   return `${shortDow(date)} ${date.getDate()} ${shortMonth(date)}`;
 }
 
+function parseIsoDate(value) {
+  const str = String(value || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return null;
+  const date = new Date(`${str}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatIsoAsDisplayDate(value) {
+  const date = parseIsoDate(value);
+  if (!date) return '';
+  return `${shortDow(date)}, ${date.getDate()} ${shortMonth(date)} ${date.getFullYear()}`;
+}
+
+function formatTimeValue(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+function parseTimeValue(value) {
+  const match = String(value || '').trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+  const hh = Number(match[1]);
+  const mm = Number(match[2]);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm) || hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
+  const base = new Date();
+  base.setHours(hh, mm, 0, 0);
+  return base;
+}
+
+function parseFlightTimes(times) {
+  const raw = String(times || '').trim();
+  if (!raw) return { departTime: '', arriveTime: '' };
+  const splitByArrow = raw.split('→').map((v) => v.trim()).filter(Boolean);
+  if (splitByArrow.length === 2) {
+    return { departTime: splitByArrow[0], arriveTime: splitByArrow[1] };
+  }
+  return { departTime: raw, arriveTime: '' };
+}
+
 function splitNotes(value) {
   return String(value || '').split('\n').map((v) => v.trim()).filter(Boolean);
 }
@@ -135,12 +177,15 @@ function hydrateDayDraft(day = {}, dayBadges = {}, index = 0, total = 3) {
 }
 
 function hydrateFlight(f = {}) {
+  const parsedTimes = parseFlightTimes(f.times);
   return {
     _key: createDraftKey('flight'),
     from: f.flightFrom || (f.route?.split('→')[0] || '').trim(),
     to: f.flightTo || (f.route?.split('→')[1] || '').trim(),
     date: f.date || '',
     flightNo: f.num || '',
+    departTime: parsedTimes.departTime,
+    arriveTime: parsedTimes.arriveTime,
   };
 }
 
@@ -188,22 +233,61 @@ async function searchPhotos(query, count = 12) {
 async function searchLocation(query) {
   const q = String(query || '').trim();
   if (!q) return null;
-  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(q)}`;
-  const res = await fetch(url, {
-    headers: {
-      Accept: 'application/json',
-      'Accept-Language': 'en',
+  const providers = [
+    async () => {
+      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(q)}`;
+      const res = await fetch(url, {
+        headers: {
+          Accept: 'application/json',
+          'Accept-Language': 'en',
+          'User-Agent': 'plnr.guide-mobile',
+        },
+      });
+      if (!res.ok) throw new Error('nominatim_failed');
+      const rows = await res.json();
+      const row = Array.isArray(rows) ? rows[0] : null;
+      if (!row?.lat || !row?.lon) return null;
+      return {
+        name: String(row.display_name || '').split(',')[0]?.trim() || q,
+        q,
+        ll: [Number(row.lat), Number(row.lon)],
+      };
     },
-  });
-  if (!res.ok) throw new Error('location_failed');
-  const rows = await res.json();
-  const row = Array.isArray(rows) ? rows[0] : null;
-  if (!row?.lat || !row?.lon) return null;
-  const lat = Number(row.lat);
-  const lon = Number(row.lon);
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-  const display = String(row.display_name || '').split(',')[0]?.trim() || q;
-  return { name: display, q: q, ll: [lat, lon] };
+    async () => {
+      const url = `https://photon.komoot.io/api/?limit=1&q=${encodeURIComponent(q)}`;
+      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (!res.ok) throw new Error('photon_failed');
+      const data = await res.json();
+      const feature = Array.isArray(data?.features) ? data.features[0] : null;
+      const lon = Number(feature?.geometry?.coordinates?.[0]);
+      const lat = Number(feature?.geometry?.coordinates?.[1]);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      const name = String(feature?.properties?.name || feature?.properties?.city || feature?.properties?.country || '').trim() || q;
+      return { name, q, ll: [lat, lon] };
+    },
+    async () => {
+      const url = `https://geocode.maps.co/search?q=${encodeURIComponent(q)}`;
+      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (!res.ok) throw new Error('mapsco_failed');
+      const rows = await res.json();
+      const row = Array.isArray(rows) ? rows[0] : null;
+      const lat = Number(row?.lat);
+      const lon = Number(row?.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      const name = String(row?.display_name || '').split(',')[0]?.trim() || q;
+      return { name, q, ll: [lat, lon] };
+    },
+  ];
+
+  for (const provider of providers) {
+    try {
+      const pin = await provider();
+      if (pin && Number.isFinite(pin.ll[0]) && Number.isFinite(pin.ll[1])) return pin;
+    } catch {
+      // try next provider
+    }
+  }
+  return null;
 }
 
 function PhotoTile({ uri, onRemove }) {
@@ -233,12 +317,36 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
   const [dayDrafts, setDayDrafts] = useState(initialState.dayDrafts);
   const [flights, setFlights] = useState(initialState.flights);
   const [step, setStep] = useState(0);
+  const [planTab, setPlanTab] = useState('days');
 
   const isEditing = mode === 'edit';
   const isCreating = mode === 'create';
   const dayCount = Math.max(1, Math.min(14, Number(daysCount) || 1));
   const stepLabels = ['Basics', 'Plan', 'Review'];
   const canContinueBasics = Boolean(title.trim() && !Number.isNaN(new Date(startDate).getTime()));
+
+  const openNativeDatePicker = (value, onPick) => {
+    if (Platform.OS !== 'android') return;
+    DateTimePickerAndroid.open({
+      mode: 'date',
+      value: value instanceof Date && !Number.isNaN(value.getTime()) ? value : new Date(),
+      onChange: (event, selectedDate) => {
+        if (event.type === 'set' && selectedDate) onPick(selectedDate);
+      },
+    });
+  };
+
+  const openNativeTimePicker = (value, onPick) => {
+    if (Platform.OS !== 'android') return;
+    DateTimePickerAndroid.open({
+      mode: 'time',
+      is24Hour: true,
+      value: value instanceof Date && !Number.isNaN(value.getTime()) ? value : new Date(),
+      onChange: (event, selectedDate) => {
+        if (event.type === 'set' && selectedDate) onPick(selectedDate);
+      },
+    });
+  };
 
   useEffect(() => {
     setTitle(initialState.title);
@@ -255,6 +363,7 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
     setDayDrafts(initialState.dayDrafts);
     setFlights(initialState.flights);
     setStep(0);
+    setPlanTab('days');
   }, [initialState]);
 
   useEffect(() => {
@@ -296,6 +405,27 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
 
   const updateFlight = (index, patch) => {
     setFlights((prev) => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)));
+  };
+
+  const openStartDatePicker = () => {
+    const initial = parseIsoDate(startDate) || new Date();
+    openNativeDatePicker(initial, (selectedDate) => {
+      setStartDate(toIso(selectedDate));
+    });
+  };
+
+  const openFlightDatePicker = (index) => {
+    const initial = parseIsoDate(flights[index]?.date) || parseIsoDate(startDate) || new Date();
+    openNativeDatePicker(initial, (selectedDate) => {
+      updateFlight(index, { date: toIso(selectedDate) });
+    });
+  };
+
+  const openFlightTimePicker = (index, key) => {
+    const initial = parseTimeValue(flights[index]?.[key]) || new Date();
+    openNativeTimePicker(initial, (selectedDate) => {
+      updateFlight(index, { [key]: formatTimeValue(selectedDate) });
+    });
   };
 
   const moveDay = (from, to) => {
@@ -464,12 +594,15 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
       .map((f) => {
         const from = String(f.from || '').trim();
         const to = String(f.to || '').trim();
+        const departTime = String(f.departTime || '').trim();
+        const arriveTime = String(f.arriveTime || '').trim();
+        const times = departTime && arriveTime ? `${departTime} → ${arriveTime}` : (departTime || arriveTime || '');
         return {
           title: from && to ? `${from} to ${to}` : 'Flight',
           num: String(f.flightNo || '').trim(),
           route: from && to ? `${from} → ${to}` : '',
           date: String(f.date || '').trim(),
-          times: '',
+          times,
           codes: '',
           flightFrom: from,
           flightTo: to,
@@ -497,8 +630,7 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
   };
 
   return (
-    <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-      <View style={{ gap: 12, paddingBottom: 8 }}>
+    <View style={{ gap: 12, paddingBottom: 8 }}>
         <Text style={{ fontSize: 24, fontWeight: '800', color: '#111827' }}>{isEditing ? 'Edit Trip' : 'New Trip'}</Text>
         <Text style={{ color: '#6b7280' }}>
           {isEditing ? 'Update details and itinerary.' : 'Create quickly here and keep everything cloud-synced.'}
@@ -554,7 +686,14 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
                   );
                 })}
               </View>
-              <TextInput value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" autoCapitalize="none" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }} />
+              {Platform.OS === 'android' ? (
+                <Pressable onPress={openStartDatePicker} style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: '#fff' }}>
+                  <Text style={{ color: '#111827', fontSize: 16 }}>{formatIsoAsDisplayDate(startDate) || 'Select start date'}</Text>
+                  <Text style={{ color: '#6b7280', fontSize: 11, marginTop: 2 }}>{startDate || 'YYYY-MM-DD'}</Text>
+                </Pressable>
+              ) : (
+                <TextInput value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" autoCapitalize="none" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }} />
+              )}
             </View>
 
             <View style={{ gap: 8 }}>
@@ -587,6 +726,17 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
 
         {step === 1 ? (
           <View style={{ gap: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, padding: 12, backgroundColor: '#ffffff' }}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Pressable onPress={() => setPlanTab('days')} style={{ flex: 1, borderWidth: 1, borderColor: planTab === 'days' ? '#111827' : '#d1d5db', backgroundColor: planTab === 'days' ? '#111827' : '#ffffff', borderRadius: 999, paddingVertical: 8, alignItems: 'center' }}>
+                <Text style={{ color: planTab === 'days' ? '#ffffff' : '#374151', fontSize: 12, fontWeight: '700' }}>Days</Text>
+              </Pressable>
+              <Pressable onPress={() => setPlanTab('flights')} style={{ flex: 1, borderWidth: 1, borderColor: planTab === 'flights' ? '#111827' : '#d1d5db', backgroundColor: planTab === 'flights' ? '#111827' : '#ffffff', borderRadius: 999, paddingVertical: 8, alignItems: 'center' }}>
+                <Text style={{ color: planTab === 'flights' ? '#ffffff' : '#374151', fontSize: 12, fontWeight: '700' }}>Flights</Text>
+              </Pressable>
+            </View>
+
+            {planTab === 'days' ? (
+              <>
             <Text style={{ color: '#111827', fontWeight: '700' }}>Day order</Text>
             <Text style={{ color: '#6b7280', fontSize: 12 }}>Use arrows to reorder.</Text>
             {dayDrafts.map((item, index) => (
@@ -673,7 +823,11 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
                 </View>
               </View>
             ))}
+              </>
+            ) : null}
 
+            {planTab === 'flights' ? (
+              <>
             <Text style={{ color: '#111827', fontWeight: '700' }}>Flights</Text>
             <Text style={{ color: '#6b7280', fontSize: 12 }}>Use arrows to reorder flights.</Text>
             {flights.length === 0 ? <Text style={{ color: '#71717a', fontSize: 12 }}>No flights yet.</Text> : null}
@@ -695,15 +849,41 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
                   <TextInput value={item.to} onChangeText={(value) => updateFlight(index, { to: value })} placeholder="To" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TextInput value={item.date} onChangeText={(value) => updateFlight(index, { date: value })} placeholder="Date" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                  {Platform.OS === 'android' ? (
+                    <Pressable onPress={() => openFlightDatePicker(index)} style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff', justifyContent: 'center' }}>
+                      <Text style={{ color: '#111827', fontSize: 14 }}>{formatIsoAsDisplayDate(item.date) || 'Flight date'}</Text>
+                      <Text style={{ color: '#6b7280', fontSize: 11, marginTop: 2 }}>{item.date || 'YYYY-MM-DD'}</Text>
+                    </Pressable>
+                  ) : (
+                    <TextInput value={item.date} onChangeText={(value) => updateFlight(index, { date: value })} placeholder="Date (YYYY-MM-DD)" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                  )}
                   <TextInput value={item.flightNo} onChangeText={(value) => updateFlight(index, { flightNo: value })} placeholder="Flight No" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                </View>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {Platform.OS === 'android' ? (
+                    <>
+                      <Pressable onPress={() => openFlightTimePicker(index, 'departTime')} style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff', justifyContent: 'center' }}>
+                        <Text style={{ color: '#111827', fontSize: 14 }}>{item.departTime || 'Departure time'}</Text>
+                      </Pressable>
+                      <Pressable onPress={() => openFlightTimePicker(index, 'arriveTime')} style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff', justifyContent: 'center' }}>
+                        <Text style={{ color: '#111827', fontSize: 14 }}>{item.arriveTime || 'Arrival time'}</Text>
+                      </Pressable>
+                    </>
+                  ) : (
+                    <>
+                      <TextInput value={item.departTime} onChangeText={(value) => updateFlight(index, { departTime: value })} placeholder="Depart (HH:mm)" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                      <TextInput value={item.arriveTime} onChangeText={(value) => updateFlight(index, { arriveTime: value })} placeholder="Arrive (HH:mm)" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                    </>
+                  )}
                 </View>
                 <Pressable onPress={() => setFlights((prev) => prev.filter((_, i) => i !== index))}>
                   <Text style={{ color: '#b91c1c', fontWeight: '700', fontSize: 12 }}>Remove flight</Text>
                 </Pressable>
               </View>
             ))}
-            <PrimaryButton title="Add Flight" onPress={() => setFlights((prev) => [...prev, { _key: createDraftKey('flight'), from: '', to: '', date: '', flightNo: '' }])} variant="outline" />
+            <PrimaryButton title="Add Flight" onPress={() => setFlights((prev) => [...prev, { _key: createDraftKey('flight'), from: '', to: '', date: '', flightNo: '', departTime: '', arriveTime: '' }])} variant="outline" />
+              </>
+            ) : null}
 
             
           </View>
@@ -751,7 +931,7 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
             />
           </View>
         </View>
-      </View>
-    </ScrollView>
+        </View>
+    </View>
   );
 }

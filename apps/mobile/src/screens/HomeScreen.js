@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
 
 const TEMPLATE_LABELS = {
@@ -24,7 +24,15 @@ export default function HomeScreen({ user, trips, loading, onRefresh, onSelectTr
   return (
     <View style={{ flex: 1, gap: 14 }}>
       <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, padding: 14, backgroundColor: '#ffffff', gap: 6, shadowColor: '#0f172a', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 3 }, elevation: 2 }}>
-        <Text style={{ fontSize: 26, fontWeight: '800', color: '#111827' }}>Saved Trips</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{ width: 44, height: 44, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#dbeafe', backgroundColor: '#f8fafc' }}>
+            <Image source={require('../../assets/icon.png')} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#1d4ed8', fontWeight: '800', fontSize: 18, letterSpacing: 0.3 }}>plnr.guide</Text>
+            <Text style={{ fontSize: 24, fontWeight: '800', color: '#111827' }}>Saved Trips</Text>
+          </View>
+        </View>
         <Text style={{ color: '#6b7280' }}>{user?.email}</Text>
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
           <View style={{ borderWidth: 1, borderColor: '#dbeafe', backgroundColor: '#eff6ff', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
