@@ -3,7 +3,7 @@ import { palette } from '../data/trip';
 import { validateTripData } from '../utils/tripData';
 import DayMap from './DayMap';
 
-export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
+export default function TripBuilder({ tripData, onSave, onCancel, onReset, initialTab = "basic" }) {
     const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const UNSPLASH_ACCESS_KEY = process.env.REACT_APP_UNSPLASH_ACCESS_KEY;
@@ -16,21 +16,27 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
         badgeLegend: []
     });
 
-    const [days, setDays] = useState(tripData?.days || []);
+    const [days, setDays] = useState(() => hydrateDays(tripData?.days || [], tripData?.tripConfig));
     const [flights, setFlights] = useState(() => (tripData?.flights || []).map(hydrateFlight));
     const [locations, setLocations] = useState(tripData?.ll || {});
     const [dayBadges, setDayBadges] = useState(tripData?.dayBadges || {});
-    const [currentTab, setCurrentTab] = useState('basic');
+    const [currentTab, setCurrentTab] = useState(initialTab);
     const [jsonInput, setJsonInput] = useState(JSON.stringify(tripData || {}, null, 2));
     const [jsonError, setJsonError] = useState("");
     const [newPinByDay, setNewPinByDay] = useState({});
     const [badgeInputByDay, setBadgeInputByDay] = useState({});
     const [pinLoadingByDay, setPinLoadingByDay] = useState({});
+    const [pinSuggestionsByDay, setPinSuggestionsByDay] = useState({});
+    const [pinSuggestLoadingByDay, setPinSuggestLoadingByDay] = useState({});
     const [rangeStart, setRangeStart] = useState("");
     const [rangeEnd, setRangeEnd] = useState("");
     const [photoLoadingByDay, setPhotoLoadingByDay] = useState({});
     const [showPhotoUrlInputByDay, setShowPhotoUrlInputByDay] = useState({});
     const [photoUrlDraftByDay, setPhotoUrlDraftByDay] = useState({});
+    const [expandedDaysByIndex, setExpandedDaysByIndex] = useState({});
+    const [showValidationPanel, setShowValidationPanel] = useState(false);
+    const [autosaveState, setAutosaveState] = useState("saved");
+    const [lastSavedAt, setLastSavedAt] = useState(null);
     const [photoPicker, setPhotoPicker] = useState({
         open: false,
         dayIndex: null,
@@ -46,6 +52,15 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
     };
 
     const COMMON_BADGES = ["✈️", "🚆", "🚗", "🏛️", "🏖️", "🍷", "🎉", "🌅", "🍽️", "🛍️"];
+    const checklist = [
+        { key: "basic", label: "Trip basics", done: Boolean(config.title?.trim()) },
+        { key: "dates", label: "Dates", done: days.length > 0 && days.every((d) => hasUsableDayDate(d)) },
+        { key: "days", label: "Day plans", done: days.length > 0 && days.every((d) => Boolean(String(d.title || "").trim())) },
+        { key: "photos", label: "Photos", done: days.some((d) => (d.photos || []).length > 0) },
+        { key: "share", label: "Ready to share", done: days.length > 0 && days.every((d) => hasUsableDayDate(d)) && Boolean(config.title?.trim()) },
+    ];
+
+    const validationIssues = buildValidationIssues();
 
     const addBadgeToDay = (day, emoji) => {
         const clean = String(emoji || "").trim();
@@ -86,6 +101,37 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
         });
     };
 
+    function buildValidationIssues() {
+        const issues = [];
+        if (!String(config?.title || "").trim()) {
+            issues.push({ key: "title", label: "Add a trip title", tab: "basic" });
+        }
+        if (!days.length) {
+            issues.push({ key: "days", label: "Add at least one day", tab: "days" });
+        }
+        if ((days || []).some((d) => !hasUsableDayDate(d))) {
+            issues.push({ key: "missing-day-dates", label: "Set date for each day", tab: "days" });
+        }
+        if ((flights || []).some((f) => !String(f.flightFrom || "").trim() || !String(f.flightTo || "").trim())) {
+            issues.push({ key: "flight-route", label: "Complete all flight from/to fields", tab: "flights" });
+        }
+        return issues;
+    }
+
+    function hasUsableDayDate(day) {
+        if (day?.isoDate) return true;
+        return Boolean(String(day?.dow || "").trim() && String(day?.date || "").trim() && String(day?.id || "").trim());
+    }
+
+    const handleSaveClick = () => {
+        if (validationIssues.length > 0) {
+            setShowValidationPanel(true);
+            pushToast("Fix required items before preview.", "error");
+            return;
+        }
+        onSave({ tripConfig: config, days, flights, ll: locations, palette, dayBadges });
+    };
+
     useEffect(() => {
         const isoDates = (days || []).map(d => d.isoDate).filter(Boolean).sort();
         if (isoDates.length > 0) {
@@ -96,10 +142,13 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
 
     // Auto-save to localStorage (but don't trigger preview)
     useEffect(() => {
+        setAutosaveState("saving");
         const autoSaveTimer = setTimeout(() => {
             const tripData = { tripConfig: config, days, flights, ll: locations, palette, dayBadges };
             // Just save to localStorage, don't call onSave which would exit builder mode
             localStorage.setItem('current-trip', JSON.stringify(tripData));
+            setAutosaveState("saved");
+            setLastSavedAt(new Date());
         }, 1000);
         return () => clearTimeout(autoSaveTimer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -456,11 +505,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                 }
 
                 setConfig(parsed.tripConfig);
-                setDays((parsed.days || []).map(day => ({
-                    ...day,
-                    pins: day.pins || [],
-                    notes: day.notes || []
-                })));
+                setDays(hydrateDays(parsed.days || [], parsed.tripConfig));
                 setFlights((parsed.flights || []).map(hydrateFlight));
                 setLocations(extractedLl);
                 setDayBadges(extractedBadges);
@@ -507,27 +552,72 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
             updateDay(dayIndex, 'pins', [...currentPins, newPin]);
             setLocations({ ...locations, [canonicalName]: ll });
             setNewPinByDay((prev) => ({ ...prev, [dayIndex]: "" }));
+            setPinSuggestionsByDay((prev) => ({ ...prev, [dayIndex]: [] }));
             pushToast("Stop added to this day.", "success");
         } finally {
             setPinLoadingByDay((prev) => ({ ...prev, [dayIndex]: false }));
         }
     };
 
+    const fetchPinSuggestions = async (dayIndex, query) => {
+        const clean = String(query || "").trim();
+        setNewPinByDay((prev) => ({ ...prev, [dayIndex]: query }));
+        if (clean.length < 3) {
+            setPinSuggestionsByDay((prev) => ({ ...prev, [dayIndex]: [] }));
+            return;
+        }
+        setPinSuggestLoadingByDay((prev) => ({ ...prev, [dayIndex]: true }));
+        try {
+            const rows = await geocodePlaceSearch(clean, 3);
+            setPinSuggestionsByDay((prev) => ({ ...prev, [dayIndex]: rows }));
+        } finally {
+            setPinSuggestLoadingByDay((prev) => ({ ...prev, [dayIndex]: false }));
+        }
+    };
+
+    const addPinFromSuggestion = (dayIndex, row) => {
+        const day = days[dayIndex];
+        const currentPins = day.pins || [];
+        if (currentPins.some((p) => p.name.toLowerCase() === row.name.toLowerCase())) {
+            pushToast("This stop is already on this day.", "error");
+            return;
+        }
+        const ll = [row.lat, row.lon];
+        const newPin = { name: row.name, q: row.query || row.name, ll };
+        updateDay(dayIndex, "pins", [...currentPins, newPin]);
+        setLocations({ ...locations, [row.name]: ll });
+        setNewPinByDay((prev) => ({ ...prev, [dayIndex]: row.name }));
+        setPinSuggestionsByDay((prev) => ({ ...prev, [dayIndex]: [] }));
+        pushToast("Stop added to this day.", "success");
+    };
+
     async function geocodePlace(query) {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+        const rows = await geocodePlaceSearch(query, 1);
+        if (!rows.length) return null;
+        return rows[0];
+    }
+
+    async function geocodePlaceSearch(query, limit = 3) {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=${limit}&q=${encodeURIComponent(query)}`;
         const res = await fetch(url, {
             headers: {
                 Accept: "application/json",
             }
         });
-        if (!res.ok) return null;
+        if (!res.ok) return [];
         const rows = await res.json();
-        if (!Array.isArray(rows) || rows.length === 0) return null;
-        const top = rows[0];
-        const lat = parseFloat(top.lat);
-        const lon = parseFloat(top.lon);
-        if (Number.isNaN(lat) || Number.isNaN(lon)) return null;
-        return { lat, lon };
+        if (!Array.isArray(rows) || rows.length === 0) return [];
+        return rows
+            .slice(0, limit)
+            .map((row) => {
+                const lat = parseFloat(row.lat);
+                const lon = parseFloat(row.lon);
+                const display = String(row.display_name || "").trim();
+                const short = display.split(",").slice(0, 2).join(",").trim() || query;
+                if (Number.isNaN(lat) || Number.isNaN(lon)) return null;
+                return { name: short, query: display || short, lat, lon };
+            })
+            .filter(Boolean);
     }
 
     function dayFieldsFromIso(isoDate) {
@@ -540,6 +630,55 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
             date: `${dateObj.getDate()} ${MONTH_SHORT[dateObj.getMonth()]}`,
             id: String(dateObj.getDate()),
         };
+    }
+
+    function hydrateDays(inputDays, tripConfigValue) {
+        const calendarYear = Number(tripConfigValue?.calendar?.year) || new Date().getFullYear();
+        const calendarMonth = Number(tripConfigValue?.calendar?.month);
+        return (inputDays || []).map((day) => {
+            const base = {
+                ...day,
+                pins: day.pins || [],
+                notes: day.notes || [],
+                photos: day.photos || [],
+            };
+
+            if (base.isoDate) {
+                const hydratedFromIso = dayFieldsFromIso(base.isoDate);
+                return { ...base, ...hydratedFromIso };
+            }
+
+            const inferred = inferIsoDateFromLegacyFields(base, calendarYear, calendarMonth);
+            if (!inferred) return base;
+            return {
+                ...base,
+                isoDate: inferred,
+                ...dayFieldsFromIso(inferred),
+            };
+        });
+    }
+
+    function inferIsoDateFromLegacyFields(day, year, fallbackMonth) {
+        const dateText = String(day?.date || "").trim();
+        if (dateText) {
+            const match = dateText.match(/^(\d{1,2})\s+([A-Za-z]{3,})$/);
+            if (match) {
+                const dd = Number(match[1]);
+                const monToken = match[2].slice(0, 3).toLowerCase();
+                const mon = MONTH_SHORT.findIndex((m) => m.toLowerCase() === monToken);
+                if (!Number.isNaN(dd) && mon >= 0) {
+                    const dt = new Date(year, mon, dd);
+                    if (!Number.isNaN(dt.getTime())) return toIsoDate(dt);
+                }
+            }
+        }
+
+        const idNum = Number(day?.id);
+        if (!Number.isNaN(idNum) && idNum > 0 && fallbackMonth >= 0 && fallbackMonth <= 11) {
+            const dt = new Date(year, fallbackMonth, idNum);
+            if (!Number.isNaN(dt.getTime())) return toIsoDate(dt);
+        }
+        return "";
     }
 
     function toIsoDate(dateObj) {
@@ -712,7 +851,12 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
             <header className="sticky top-0 z-50 bg-white border-b border-zinc-200 shadow-sm">
                 <div className="max-w-5xl mx-auto px-4 py-4">
                     <div className="flex items-center justify-between">
-                        <h1 className="text-2xl font-bold text-zinc-900">Trip Builder</h1>
+                        <div>
+                            <h1 className="text-2xl font-bold text-zinc-900">Trip Builder</h1>
+                            <p className="text-xs text-zinc-500 mt-1">
+                                {autosaveState === "saving" ? "Saving draft..." : `Saved${lastSavedAt ? ` ${lastSavedAt.toLocaleTimeString()}` : ""}`}
+                            </p>
+                        </div>
                         <div className="flex gap-2">
                             <button
                                 onClick={onReset}
@@ -727,7 +871,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                                 Cancel
                             </button>
                             <button
-                                onClick={() => onSave({ tripConfig: config, days, flights, ll: locations, palette, dayBadges })}
+                                onClick={handleSaveClick}
                                 className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium"
                             >
                                 Save & Preview
@@ -754,6 +898,37 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                             </button>
                         ))}
                     </div>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                        {checklist.map((item) => (
+                            <span
+                                key={item.key}
+                                className={`px-3 py-1 rounded-full text-xs font-medium border ${
+                                    item.done ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-zinc-50 border-zinc-200 text-zinc-600"
+                                }`}
+                            >
+                                {item.done ? "✓" : "•"} {item.label}
+                            </span>
+                        ))}
+                    </div>
+                    {showValidationPanel && validationIssues.length > 0 && (
+                        <div className="mt-4 p-3 rounded-lg border border-amber-200 bg-amber-50">
+                            <p className="text-xs font-semibold text-amber-900 mb-2">Fix these before preview:</p>
+                            <div className="space-y-2">
+                                {validationIssues.map((issue) => (
+                                    <div key={issue.key} className="flex items-center justify-between gap-3">
+                                        <span className="text-xs text-amber-900">{issue.label}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setCurrentTab(issue.tab)}
+                                            className="px-2 py-1 rounded border border-amber-300 text-amber-900 text-xs hover:bg-amber-100"
+                                        >
+                                            Go to {issue.tab}
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </header>
 
@@ -793,6 +968,17 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                                 onChange={e => setConfig({ ...config, favicon: e.target.value || null })}
                                 className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="https://example.com/icon.jpg"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-zinc-700 mb-2">Cover Image URL (optional)</label>
+                            <input
+                                type="url"
+                                value={config.cover || ''}
+                                onChange={e => setConfig({ ...config, cover: e.target.value || null })}
+                                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="https://example.com/cover.jpg"
                             />
                         </div>
                     </div>
@@ -978,14 +1164,25 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                                         Day {index + 1}
                                         {day.date ? <span className="ml-2 text-zinc-500 font-normal">({day.dow}, {day.date})</span> : null}
                                     </h3>
-                                    <button
-                                        onClick={() => removeDay(index)}
-                                        className="text-red-600 hover:text-red-700 text-sm font-medium"
-                                    >
-                                        Remove
-                                    </button>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setExpandedDaysByIndex((prev) => ({ ...prev, [index]: prev[index] === false }))}
+                                            className="text-zinc-600 hover:text-zinc-900 text-sm font-medium"
+                                        >
+                                            {expandedDaysByIndex[index] === false ? "Expand" : "Collapse"}
+                                        </button>
+                                        <button
+                                            onClick={() => removeDay(index)}
+                                            className="text-red-600 hover:text-red-700 text-sm font-medium"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
                                 </div>
 
+                                {expandedDaysByIndex[index] !== false && (
+                                    <>
                                 <div className="rounded-lg border border-zinc-200 p-4 bg-zinc-50">
                                     <div className="grid md:grid-cols-2 gap-4">
                                         <div>
@@ -1153,7 +1350,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                                         <input
                                             type="text"
                                             value={newPinByDay[index] || ""}
-                                            onChange={(e) => setNewPinByDay((prev) => ({ ...prev, [index]: e.target.value }))}
+                                            onChange={(e) => fetchPinSuggestions(index, e.target.value)}
                                             placeholder="Add stop (e.g. Colosseum, Rome)"
                                             className="flex-1 px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                         />
@@ -1166,6 +1363,24 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                                             {pinLoadingByDay[index] ? "Adding..." : "Add Stop"}
                                         </button>
                                     </div>
+                                    {pinSuggestLoadingByDay[index] && (
+                                        <p className="text-xs text-zinc-500 mb-2">Searching places...</p>
+                                    )}
+                                    {(pinSuggestionsByDay[index] || []).length > 0 && (
+                                        <div className="mb-3 rounded-lg border border-zinc-200 bg-white overflow-hidden">
+                                            {(pinSuggestionsByDay[index] || []).map((row, rowIndex) => (
+                                                <button
+                                                    key={`${row.name}-${rowIndex}`}
+                                                    type="button"
+                                                    onClick={() => addPinFromSuggestion(index, row)}
+                                                    className="w-full text-left px-3 py-2 hover:bg-zinc-50 border-b border-zinc-100 last:border-b-0"
+                                                >
+                                                    <p className="text-sm font-medium text-zinc-800">{row.name}</p>
+                                                    <p className="text-xs text-zinc-500 truncate">{row.query}</p>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
 
                                     {Object.keys(locations).length > 0 && (
                                         <details className="mb-3">
@@ -1295,6 +1510,8 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                                         </div>
                                     </div>
                                 </div>
+                                    </>
+                                )}
                             </div>
                         ))}
 

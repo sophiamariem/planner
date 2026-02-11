@@ -11,7 +11,138 @@ import DayCard from "./components/DayCard";
 import CalendarView from "./components/CalendarView";
 import TripBuilder from "./components/TripBuilder";
 
+const QUICK_TEMPLATES = [
+  {
+    id: "city",
+    emoji: "🏙️",
+    title: "City Break",
+    description: "Museums, cafes, neighborhoods",
+    cover: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1400&q=80",
+  },
+  {
+    id: "beach",
+    emoji: "🏖️",
+    title: "Beach Week",
+    description: "Relaxed days by the coast",
+    cover: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1400&q=80",
+  },
+  {
+    id: "road",
+    emoji: "🚗",
+    title: "Road Trip",
+    description: "Multi-stop adventure",
+    cover: "https://images.unsplash.com/photo-1472396961693-142e6e269027?auto=format&fit=crop&w=1400&q=80",
+  },
+  {
+    id: "family",
+    emoji: "👨‍👩‍👧‍👦",
+    title: "Family Trip",
+    description: "Kid-friendly pace and plans",
+    cover: "https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=1400&q=80",
+  },
+];
+
+function extractStartIsoFromTrip(tripLike) {
+  const days = tripLike?.days || tripLike?.trip_data?.days || [];
+  const isoDates = (days || []).map((d) => d.isoDate).filter(Boolean).sort();
+  if (isoDates.length) return isoDates[0];
+  return null;
+}
+
+function extractCoverImage(tripLike) {
+  return (
+    tripLike?.tripConfig?.cover ||
+    tripLike?.trip_data?.tripConfig?.cover ||
+    tripLike?.days?.find((d) => (d.photos || []).length > 0)?.photos?.[0] ||
+    tripLike?.trip_data?.days?.find((d) => (d.photos || []).length > 0)?.photos?.[0] ||
+    null
+  );
+}
+
+function buildTemplateTrip(templateId, paletteValue) {
+  const map = {
+    city: {
+      tripConfig: {
+        title: "City Break",
+        footer: "48 hours in the city",
+        favicon: null,
+        cover: QUICK_TEMPLATES[0].cover,
+        calendar: { year: 2026, month: 4 },
+        badgeLegend: [{ emoji: "🏛️", label: "Culture" }, { emoji: "🍽️", label: "Food" }],
+      },
+      flights: [],
+      days: [
+        { id: "10", isoDate: "2026-05-10", dow: "Sun", date: "10 May", title: "Arrival + old town walk", photos: [], hasMap: false, route: "", pins: [], notes: ["Hotel check-in", "Sunset viewpoint"] },
+        { id: "11", isoDate: "2026-05-11", dow: "Mon", date: "11 May", title: "Museums + food market", photos: [], hasMap: false, route: "", pins: [], notes: ["Museum in the morning", "Market lunch"] },
+        { id: "12", isoDate: "2026-05-12", dow: "Tue", date: "12 May", title: "Departure", photos: [], hasMap: false, route: "", pins: [], notes: ["Brunch", "Airport transfer"] },
+      ],
+      dayBadges: { 10: ["🏛️"], 11: ["🍽️"] },
+      ll: {},
+      palette: paletteValue,
+    },
+    beach: {
+      tripConfig: {
+        title: "Beach Week",
+        footer: "Sun, swim, repeat",
+        favicon: null,
+        cover: QUICK_TEMPLATES[1].cover,
+        calendar: { year: 2026, month: 6 },
+        badgeLegend: [{ emoji: "🏖️", label: "Beach" }, { emoji: "🌅", label: "Sunset" }],
+      },
+      flights: [],
+      days: [
+        { id: "6", isoDate: "2026-07-06", dow: "Mon", date: "6 Jul", title: "Arrival + beach sunset", photos: [], hasMap: false, route: "", pins: [], notes: ["Check-in", "Golden hour swim"] },
+        { id: "7", isoDate: "2026-07-07", dow: "Tue", date: "7 Jul", title: "Boat day", photos: [], hasMap: false, route: "", pins: [], notes: ["Snorkel stop", "Beach dinner"] },
+        { id: "8", isoDate: "2026-07-08", dow: "Wed", date: "8 Jul", title: "Departure", photos: [], hasMap: false, route: "", pins: [], notes: ["Slow morning", "Checkout"] },
+      ],
+      dayBadges: { 6: ["🏖️"], 7: ["🌅"] },
+      ll: {},
+      palette: paletteValue,
+    },
+    road: {
+      tripConfig: {
+        title: "Road Trip",
+        footer: "Drive, stop, explore",
+        favicon: null,
+        cover: QUICK_TEMPLATES[2].cover,
+        calendar: { year: 2026, month: 8 },
+        badgeLegend: [{ emoji: "🚗", label: "Drive" }, { emoji: "⛰️", label: "Scenic" }],
+      },
+      flights: [],
+      days: [
+        { id: "2", isoDate: "2026-09-02", dow: "Wed", date: "2 Sep", title: "Pickup + first leg", photos: [], hasMap: true, route: "", pins: [], notes: ["Collect car", "Scenic stop"] },
+        { id: "3", isoDate: "2026-09-03", dow: "Thu", date: "3 Sep", title: "Mountain loop", photos: [], hasMap: true, route: "", pins: [], notes: ["Coffee stop", "Hike"] },
+        { id: "4", isoDate: "2026-09-04", dow: "Fri", date: "4 Sep", title: "Final city + return", photos: [], hasMap: true, route: "", pins: [], notes: ["City lunch", "Return car"] },
+      ],
+      dayBadges: { 2: ["🚗"], 3: ["⛰️"] },
+      ll: {},
+      palette: paletteValue,
+    },
+    family: {
+      tripConfig: {
+        title: "Family Trip",
+        footer: "Fun at a comfortable pace",
+        favicon: null,
+        cover: QUICK_TEMPLATES[3].cover,
+        calendar: { year: 2026, month: 3 },
+        badgeLegend: [{ emoji: "🎡", label: "Activities" }, { emoji: "🍽️", label: "Family meal" }],
+      },
+      flights: [],
+      days: [
+        { id: "18", isoDate: "2026-04-18", dow: "Sat", date: "18 Apr", title: "Arrival + easy afternoon", photos: [], hasMap: false, route: "", pins: [], notes: ["Hotel pool", "Early dinner"] },
+        { id: "19", isoDate: "2026-04-19", dow: "Sun", date: "19 Apr", title: "Main activity day", photos: [], hasMap: false, route: "", pins: [], notes: ["Theme park morning", "Nap break"] },
+        { id: "20", isoDate: "2026-04-20", dow: "Mon", date: "20 Apr", title: "Departure", photos: [], hasMap: false, route: "", pins: [], notes: ["Pack slowly", "Airport"] },
+      ],
+      dayBadges: { 19: ["🎡"] },
+      ll: {},
+      palette: paletteValue,
+    },
+  };
+  return map[templateId] || null;
+}
+
 export default function TripPlannerApp() {
+  const isAuthRoute = typeof window !== "undefined" && window.location.pathname === "/auth";
   const [mode, setMode] = useState('loading'); // 'loading', 'onboarding', 'builder', 'view'
   const [tripData, setTripData] = useState(null);
   const [isViewOnly, setIsViewOnly] = useState(false);
@@ -25,6 +156,7 @@ export default function TripPlannerApp() {
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [builderStartTab, setBuilderStartTab] = useState("basic");
   const [importJson, setImportJson] = useState("");
   const [importError, setImportError] = useState("");
   const [toasts, setToasts] = useState([]);
@@ -44,6 +176,7 @@ export default function TripPlannerApp() {
       title: "Portugal City Escape",
       footer: "Spring city break",
       favicon: "https://example.com/favicon.png",
+      cover: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1400&q=80",
       calendar: { year: 2026, month: 3 },
       badgeLegend: [{ emoji: "✈️", label: "Flight" }, { emoji: "🚆", label: "Train" }]
     },
@@ -360,11 +493,13 @@ export default function TripPlannerApp() {
   };
 
   const handleEditTrip = () => {
+    setBuilderStartTab("basic");
     setMode('builder');
   };
 
   const handleSaveAndPreview = (newTripData) => {
     handleSaveTrip(newTripData);
+    setBuilderStartTab("basic");
     setMode('view');
     pushToast("Trip saved.", "success");
   };
@@ -389,6 +524,16 @@ export default function TripPlannerApp() {
     setMode('onboarding');
   };
 
+  const openBuilderWithTrip = (nextTripData) => {
+    setTripData(nextTripData);
+    setBuilderStartTab("basic");
+    setCloudTripId(null);
+    setCloudSlug(null);
+    setShareToken(null);
+    setSourceUrl(null);
+    setMode('builder');
+  };
+
   const handleStartFromTemplate = () => {
     const templateData = {
       tripConfig: defaultTripConfig,
@@ -398,12 +543,13 @@ export default function TripPlannerApp() {
       ll: defaultLocations,
       palette
     };
-    setTripData(templateData);
-    setCloudTripId(null);
-    setCloudSlug(null);
-    setShareToken(null);
-    setSourceUrl(null);
-    setMode('builder');
+    openBuilderWithTrip(templateData);
+  };
+
+  const handleStartFromQuickTemplate = (templateId) => {
+    const templateData = buildTemplateTrip(templateId, palette);
+    if (!templateData) return;
+    openBuilderWithTrip(templateData);
   };
 
   const handleStartFromScratch = () => {
@@ -412,6 +558,7 @@ export default function TripPlannerApp() {
         title: "My Trip",
         footer: "My Adventure",
         favicon: null,
+        cover: null,
         calendar: { year: new Date().getFullYear(), month: new Date().getMonth() },
         badgeLegend: []
       },
@@ -421,12 +568,7 @@ export default function TripPlannerApp() {
       ll: {},
       palette
     };
-    setTripData(emptyData);
-    setCloudTripId(null);
-    setCloudSlug(null);
-    setShareToken(null);
-    setSourceUrl(null);
-    setMode('builder');
+    openBuilderWithTrip(emptyData);
   };
 
   const handleImportJson = () => {
@@ -516,6 +658,10 @@ export default function TripPlannerApp() {
   };
 
   const copyShareLink = () => {
+    if (!canCopyShareLink) {
+      pushToast("Save to cloud first for a shareable link.", "error");
+      return;
+    }
     const shareURL = generateShareURL(tripData, { viewOnly: isViewOnly, source: sourceUrl, cloudId: cloudTripId, cloudSlug, shareToken });
     if (shareURL) {
       navigator.clipboard.writeText(shareURL)
@@ -530,6 +676,52 @@ export default function TripPlannerApp() {
 
   const currentShareURL = generateShareURL(tripData, { viewOnly: isViewOnly, source: sourceUrl, cloudId: cloudTripId, cloudSlug, shareToken });
   const isLocalDraftShare = !cloudTripId && !sourceUrl;
+  const canCopyShareLink = Boolean(cloudTripId || sourceUrl);
+
+  const publishIssues = useMemo(() => {
+    const issues = [];
+    if (!tripData?.tripConfig?.title?.trim()) {
+      issues.push({ key: "title", label: "Add a trip title", action: "edit-basic" });
+    }
+    if (!tripData?.days?.length) {
+      issues.push({ key: "days", label: "Add at least one itinerary day", action: "edit-days" });
+    }
+    if ((tripData?.days || []).some((d) => !d.isoDate)) {
+      issues.push({ key: "dates", label: "Set a date for each day", action: "edit-days" });
+    }
+    if ((tripData?.flights || []).some((f) => !String(f.flightFrom || "").trim() || !String(f.flightTo || "").trim())) {
+      issues.push({ key: "flights", label: "Complete each flight from/to", action: "edit-flights" });
+    }
+    return issues;
+  }, [tripData]);
+
+  const upcomingTrips = useMemo(() => {
+    if (!Array.isArray(myTrips)) return [];
+    const todayIso = new Date().toISOString().slice(0, 10);
+    return myTrips
+      .map((trip) => {
+        const startIso = extractStartIsoFromTrip(trip);
+        return {
+          ...trip,
+          startIso,
+          coverImage: extractCoverImage(trip),
+        };
+      })
+      .filter((trip) => trip.startIso && trip.startIso >= todayIso)
+      .sort((a, b) => a.startIso.localeCompare(b.startIso))
+      .slice(0, 6);
+  }, [myTrips]);
+
+  const handleFixIssue = (issueAction) => {
+    setShowShareModal(false);
+    const map = {
+      "edit-basic": "basic",
+      "edit-days": "days",
+      "edit-flights": "flights",
+    };
+    setBuilderStartTab(map[issueAction] || "basic");
+    setMode("builder");
+  };
 
   const resetDrawer = showResetModal && (
     <div className="fixed inset-0 z-50" onClick={() => setShowResetModal(false)}>
@@ -556,6 +748,75 @@ export default function TripPlannerApp() {
       </aside>
     </div>
   );
+
+  if (isAuthRoute) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-zinc-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white rounded-2xl border border-zinc-200 shadow-xl p-6">
+          <h1 className="text-2xl font-bold text-zinc-900">Account</h1>
+          <p className="text-sm text-zinc-600 mt-1 mb-4">
+            Sign in to save, sync, and reopen trips on any device.
+          </p>
+          {!isSupabaseConfigured && (
+            <p className="text-sm text-amber-700 mb-4">
+              Auth is not configured in this environment.
+            </p>
+          )}
+          {user ? (
+            <div className="space-y-3">
+              <p className="text-sm text-zinc-700">Signed in as {user.email}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  window.history.replaceState(null, "", "/");
+                  setMode("onboarding");
+                }}
+                className="w-full px-4 py-2 rounded-lg bg-zinc-900 text-white text-sm font-medium hover:bg-black"
+              >
+                Continue to App
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={submitGoogleSignIn}
+                disabled={!isSupabaseConfigured}
+                className="w-full px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium disabled:opacity-50"
+              >
+                Continue with Google
+              </button>
+              <input
+                type="email"
+                value={signInEmail}
+                onChange={(e) => setSignInEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-400"
+              />
+              <button
+                type="button"
+                onClick={submitSignIn}
+                disabled={signInLoading || !isSupabaseConfigured}
+                className="w-full px-4 py-2 rounded-lg bg-zinc-900 text-white text-sm font-medium hover:bg-black disabled:opacity-50"
+              >
+                {signInLoading ? "Sending..." : "Send Magic Link"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  window.history.replaceState(null, "", "/");
+                  setMode("onboarding");
+                }}
+                className="w-full px-4 py-2 rounded-lg border border-zinc-300 text-sm font-medium hover:bg-zinc-50"
+              >
+                Continue as Guest
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // Onboarding screen
   if (mode === 'onboarding') {
@@ -603,6 +864,41 @@ export default function TripPlannerApp() {
               )}
             </div>
 
+            {user && upcomingTrips.length > 0 && (
+              <div className="rounded-xl border border-zinc-200 bg-white p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-zinc-900">Upcoming Trips</h3>
+                  <button
+                    type="button"
+                    onClick={handleOpenMyTrips}
+                    className="text-xs text-blue-700 hover:underline"
+                  >
+                    View all
+                  </button>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {upcomingTrips.slice(0, 4).map((trip) => (
+                    <button
+                      key={trip.id}
+                      type="button"
+                      onClick={() => handleOpenCloudTrip(trip.id)}
+                      className="text-left rounded-xl overflow-hidden border border-zinc-200 hover:border-zinc-300"
+                    >
+                      <div className="h-24 bg-zinc-100">
+                        {trip.coverImage ? (
+                          <img src={trip.coverImage} alt="" className="w-full h-full object-cover" loading="lazy" />
+                        ) : null}
+                      </div>
+                      <div className="p-3">
+                        <p className="text-sm font-semibold text-zinc-900">{trip.title}</p>
+                        <p className="text-xs text-zinc-500 mt-1">Starts {new Date(`${trip.startIso}T00:00:00`).toLocaleDateString()}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <button
               onClick={handleStartFromTemplate}
               className="w-full p-6 rounded-xl border-2 border-blue-500 bg-blue-50 hover:bg-blue-100 transition-colors text-left group"
@@ -619,6 +915,26 @@ export default function TripPlannerApp() {
                 </div>
               </div>
             </button>
+
+            <div className="rounded-xl border border-zinc-200 bg-white p-4">
+              <p className="text-sm font-semibold text-zinc-900 mb-3">Start from a Template</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {QUICK_TEMPLATES.map((tpl) => (
+                  <button
+                    key={tpl.id}
+                    type="button"
+                    onClick={() => handleStartFromQuickTemplate(tpl.id)}
+                    className="rounded-xl border border-zinc-200 hover:border-zinc-300 p-3 text-left bg-zinc-50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">{tpl.emoji}</span>
+                      <p className="font-semibold text-sm text-zinc-900">{tpl.title}</p>
+                    </div>
+                    <p className="text-xs text-zinc-600 mt-1">{tpl.description}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <button
               onClick={handleStartFromScratch}
@@ -744,6 +1060,7 @@ export default function TripPlannerApp() {
           onSave={handleSaveAndPreview}
           onCancel={handleCancelEdit}
           onReset={handleReset}
+          initialTab={builderStartTab}
         />
         {resetDrawer}
       </>
@@ -825,6 +1142,16 @@ export default function TripPlannerApp() {
           <aside className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-2xl p-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-2xl font-bold text-zinc-900 mb-2">Sign In</h2>
             <p className="text-sm text-zinc-600 mb-4">Continue with Google or use an email magic link.</p>
+            <button
+              type="button"
+              onClick={() => {
+                window.history.pushState(null, "", "/auth");
+                setShowSignInModal(false);
+              }}
+              className="text-xs text-blue-700 hover:underline mb-3"
+            >
+              Open full sign-in page
+            </button>
             {!isSupabaseConfigured && (
               <p className="text-sm text-amber-700 mb-4">
                 Auth is not configured in this environment. Add `REACT_APP_SUPABASE_URL` and `REACT_APP_SUPABASE_ANON_KEY`.
@@ -896,6 +1223,25 @@ export default function TripPlannerApp() {
               </div>
             )}
             <div className="flex flex-col gap-4">
+              {publishIssues.length > 0 && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <p className="text-xs font-medium text-amber-900 mb-2">Before sharing, fix these:</p>
+                  <div className="space-y-2">
+                    {publishIssues.map((issue) => (
+                      <div key={issue.key} className="flex items-center justify-between gap-2">
+                        <p className="text-xs text-amber-900">{issue.label}</p>
+                        <button
+                          type="button"
+                          onClick={() => handleFixIssue(issue.action)}
+                          className="px-2 py-1 rounded border border-amber-300 text-amber-900 text-xs hover:bg-amber-100"
+                        >
+                          Fix
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -905,11 +1251,17 @@ export default function TripPlannerApp() {
                 />
                 <button
                   onClick={copyShareLink}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                  disabled={!canCopyShareLink}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Copy
                 </button>
               </div>
+              {!canCopyShareLink && (
+                <p className="text-xs text-zinc-500">
+                  Save to cloud first to copy a clean share link.
+                </p>
+              )}
 
               <div className="flex flex-col gap-2 p-3 border border-zinc-200 rounded-xl bg-zinc-50">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -995,18 +1347,28 @@ export default function TripPlannerApp() {
             ) : myTrips.length === 0 ? (
               <p className="text-sm text-zinc-600">No cloud trips yet. Save your current trip first.</p>
             ) : (
-              <div className="max-h-80 overflow-auto border border-zinc-200 rounded-xl divide-y divide-zinc-100">
+              <div className="max-h-[70vh] overflow-auto grid sm:grid-cols-2 gap-3">
                 {myTrips.map((trip) => (
                   <button
                     key={trip.id}
                     type="button"
                     onClick={() => handleOpenCloudTrip(trip.id)}
-                    className="w-full text-left p-3 hover:bg-zinc-50"
+                    className="w-full text-left rounded-xl border border-zinc-200 overflow-hidden hover:border-zinc-300 bg-white"
                   >
-                    <p className="font-medium text-zinc-900">{trip.title}</p>
-                    <p className="text-xs text-zinc-500">
-                      {trip.slug || "no-slug"} • {trip.visibility} • Updated {new Date(trip.updated_at || trip.created_at).toLocaleString()}
-                    </p>
+                    <div className="h-28 bg-zinc-100">
+                      {extractCoverImage(trip) && (
+                        <img src={extractCoverImage(trip)} alt="" className="w-full h-full object-cover" loading="lazy" />
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <p className="font-medium text-zinc-900">{trip.title}</p>
+                      <p className="text-xs text-zinc-500 mt-1">
+                        {trip.slug || "no-slug"} • {trip.visibility}
+                      </p>
+                      <p className="text-xs text-zinc-400 mt-1">
+                        Updated {new Date(trip.updated_at || trip.created_at).toLocaleString()}
+                      </p>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -1036,6 +1398,11 @@ export default function TripPlannerApp() {
       )}
 
       <main className="max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-8">
+        {tripConfig.cover && (
+          <div className="rounded-3xl overflow-hidden border border-zinc-200 shadow-sm bg-white">
+            <img src={tripConfig.cover} alt="" className="w-full h-48 md:h-72 object-cover" loading="lazy" />
+          </div>
+        )}
         <div className="rounded-2xl border border-zinc-200 bg-white/80 px-4 py-3 text-sm text-zinc-700 flex flex-wrap items-center gap-2">
           <span className="font-medium text-zinc-900">Status:</span>
           {cloudTripId ? (

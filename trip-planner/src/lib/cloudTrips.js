@@ -133,7 +133,7 @@ export async function updateCloudTrip(id, tripData, visibility = 'private', curr
 export async function listMyTrips() {
   if (!isSupabaseConfigured) return [];
 
-  const response = await authedFetch('/rest/v1/trips?select=id,slug,title,visibility,created_at,updated_at&order=updated_at.desc&limit=100', {
+  const response = await authedFetch('/rest/v1/trips?select=id,slug,title,visibility,trip_data,created_at,updated_at&order=updated_at.desc&limit=100', {
     method: 'GET',
   });
 
