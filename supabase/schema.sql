@@ -74,25 +74,30 @@ alter table public.trips enable row level security;
 alter table public.trip_collaborators enable row level security;
 
 -- Trips: owner full access
-create policy if not exists "Owners can view their trips"
+drop policy if exists "Owners can view their trips" on public.trips;
+create policy "Owners can view their trips"
 on public.trips for select
 using (owner_id = auth.uid());
 
-create policy if not exists "Owners can insert their trips"
+drop policy if exists "Owners can insert their trips" on public.trips;
+create policy "Owners can insert their trips"
 on public.trips for insert
 with check (owner_id = auth.uid());
 
-create policy if not exists "Owners can update their trips"
+drop policy if exists "Owners can update their trips" on public.trips;
+create policy "Owners can update their trips"
 on public.trips for update
 using (owner_id = auth.uid())
 with check (owner_id = auth.uid());
 
-create policy if not exists "Owners can delete their trips"
+drop policy if exists "Owners can delete their trips" on public.trips;
+create policy "Owners can delete their trips"
 on public.trips for delete
 using (owner_id = auth.uid());
 
 -- Trips: collaborators read, editors write
-create policy if not exists "Collaborators can view shared trips"
+drop policy if exists "Collaborators can view shared trips" on public.trips;
+create policy "Collaborators can view shared trips"
 on public.trips for select
 using (
   exists (
@@ -103,7 +108,8 @@ using (
   )
 );
 
-create policy if not exists "Editors can update shared trips"
+drop policy if exists "Editors can update shared trips" on public.trips;
+create policy "Editors can update shared trips"
 on public.trips for update
 using (
   exists (
@@ -125,12 +131,14 @@ with check (
 );
 
 -- Trips: anonymous read for unlisted/public (for share links)
-create policy if not exists "Public or unlisted trips are readable"
+drop policy if exists "Public or unlisted trips are readable" on public.trips;
+create policy "Public or unlisted trips are readable"
 on public.trips for select
 using (visibility in ('unlisted', 'public'));
 
 -- Collaborator table access
-create policy if not exists "Owners can manage collaborators"
+drop policy if exists "Owners can manage collaborators" on public.trip_collaborators;
+create policy "Owners can manage collaborators"
 on public.trip_collaborators for all
 using (
   exists (
@@ -145,6 +153,7 @@ with check (
   )
 );
 
-create policy if not exists "Users can see their collaborator rows"
+drop policy if exists "Users can see their collaborator rows" on public.trip_collaborators;
+create policy "Users can see their collaborator rows"
 on public.trip_collaborators for select
 using (user_id = auth.uid());
