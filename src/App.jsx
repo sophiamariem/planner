@@ -49,6 +49,13 @@ function extractStartIsoFromTrip(tripLike) {
   return null;
 }
 
+function extractEndIsoFromTrip(tripLike) {
+  const days = tripLike?.days || tripLike?.trip_data?.days || [];
+  const isoDates = (days || []).map((d) => d.isoDate).filter(Boolean).sort();
+  if (isoDates.length) return isoDates[isoDates.length - 1];
+  return null;
+}
+
 function extractCoverImage(tripLike) {
   return (
     tripLike?.tripConfig?.cover ||
@@ -360,6 +367,35 @@ export default function TripPlannerApp() {
     if (!filter) return days;
     return days.filter(d => `${d.dow} ${d.date} ${d.title} ${d.notes?.join(" ")}`.toLowerCase().includes(filter.toLowerCase()));
   }, [filter, days]);
+
+  const { savedUpcomingTrips, savedPastTrips } = useMemo(() => {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const upcoming = [];
+    const past = [];
+
+    for (const trip of myTrips) {
+      const endIso = extractEndIsoFromTrip(trip);
+      if (endIso && endIso < todayIso) {
+        past.push(trip);
+      } else {
+        upcoming.push(trip);
+      }
+    }
+
+    upcoming.sort((a, b) => {
+      const aStart = extractStartIsoFromTrip(a) || "9999-12-31";
+      const bStart = extractStartIsoFromTrip(b) || "9999-12-31";
+      return aStart.localeCompare(bStart);
+    });
+
+    past.sort((a, b) => {
+      const aEnd = extractEndIsoFromTrip(a) || "0000-01-01";
+      const bEnd = extractEndIsoFromTrip(b) || "0000-01-01";
+      return bEnd.localeCompare(aEnd);
+    });
+
+    return { savedUpcomingTrips: upcoming, savedPastTrips: past };
+  }, [myTrips]);
 
   useFavicon(tripConfig.favicon);
 
@@ -1365,30 +1401,78 @@ export default function TripPlannerApp() {
             ) : myTrips.length === 0 ? (
               <p className="text-sm text-zinc-600">No saved trips yet. Save your current trip first.</p>
             ) : (
-              <div className="max-h-[70vh] overflow-auto grid sm:grid-cols-2 gap-3">
-                {myTrips.map((trip) => (
-                  <button
-                    key={trip.id}
-                    type="button"
-                    onClick={() => handleOpenCloudTrip(trip.id)}
-                    className="w-full text-left rounded-xl border border-zinc-200 overflow-hidden hover:border-zinc-300 bg-white"
-                  >
-                    <div className="h-28 bg-zinc-100">
-                      {extractCoverImage(trip) && (
-                        <img src={extractCoverImage(trip)} alt="" className="w-full h-full object-cover" loading="lazy" />
-                      )}
+              <div className="max-h-[70vh] overflow-auto space-y-5">
+                <section>
+                  <h3 className="text-sm font-semibold text-zinc-900 mb-2">Upcoming ({savedUpcomingTrips.length})</h3>
+                  {savedUpcomingTrips.length === 0 ? (
+                    <p className="text-xs text-zinc-500">No upcoming trips.</p>
+                  ) : (
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      {savedUpcomingTrips.map((trip) => {
+                        const cover = extractCoverImage(trip);
+                        return (
+                          <button
+                            key={trip.id}
+                            type="button"
+                            onClick={() => handleOpenCloudTrip(trip.id)}
+                            className="w-full text-left rounded-xl border border-zinc-200 overflow-hidden hover:border-zinc-300 bg-white"
+                          >
+                            <div className="h-28 bg-zinc-100">
+                              {cover && (
+                                <img src={cover} alt="" className="w-full h-full object-cover" loading="lazy" />
+                              )}
+                            </div>
+                            <div className="p-3">
+                              <p className="font-medium text-zinc-900">{trip.title}</p>
+                              <p className="text-xs text-zinc-500 mt-1">
+                                {trip.slug || "no-slug"} • {trip.visibility}
+                              </p>
+                              <p className="text-xs text-zinc-400 mt-1">
+                                Updated {new Date(trip.updated_at || trip.created_at).toLocaleString()}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
-                    <div className="p-3">
-                      <p className="font-medium text-zinc-900">{trip.title}</p>
-                      <p className="text-xs text-zinc-500 mt-1">
-                        {trip.slug || "no-slug"} • {trip.visibility}
-                      </p>
-                      <p className="text-xs text-zinc-400 mt-1">
-                        Updated {new Date(trip.updated_at || trip.created_at).toLocaleString()}
-                      </p>
+                  )}
+                </section>
+
+                <section>
+                  <h3 className="text-sm font-semibold text-zinc-700 mb-2">Past ({savedPastTrips.length})</h3>
+                  {savedPastTrips.length === 0 ? (
+                    <p className="text-xs text-zinc-500">No past trips.</p>
+                  ) : (
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      {savedPastTrips.map((trip) => {
+                        const cover = extractCoverImage(trip);
+                        return (
+                          <button
+                            key={trip.id}
+                            type="button"
+                            onClick={() => handleOpenCloudTrip(trip.id)}
+                            className="w-full text-left rounded-xl border border-zinc-200 overflow-hidden hover:border-zinc-300 bg-white"
+                          >
+                            <div className="h-28 bg-zinc-100">
+                              {cover && (
+                                <img src={cover} alt="" className="w-full h-full object-cover" loading="lazy" />
+                              )}
+                            </div>
+                            <div className="p-3">
+                              <p className="font-medium text-zinc-900">{trip.title}</p>
+                              <p className="text-xs text-zinc-500 mt-1">
+                                {trip.slug || "no-slug"} • {trip.visibility}
+                              </p>
+                              <p className="text-xs text-zinc-400 mt-1">
+                                Updated {new Date(trip.updated_at || trip.created_at).toLocaleString()}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
-                  </button>
-                ))}
+                  )}
+                </section>
               </div>
             )}
 
