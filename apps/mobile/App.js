@@ -164,6 +164,34 @@ export default function App() {
     );
   };
 
+  const handleDeleteTripFromList = (trip) => {
+    const tripId = trip?.id;
+    if (!tripId) return;
+    Alert.alert(
+      'Delete Trip',
+      'This will permanently delete this trip from your saved trips.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteCloudTripById(tripId);
+              if (selectedTrip?.id === tripId) {
+                setSelectedTrip(null);
+              }
+              await refreshSessionAndData();
+              pushToast('Trip deleted.');
+            } catch (error) {
+              pushToast(error.message || 'Could not delete trip.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
@@ -191,6 +219,7 @@ export default function App() {
                 onSelectTrip={handleOpenTrip}
                 onSignOut={handleSignOut}
                 onCreateNew={() => setCreatingTrip(true)}
+                onDeleteTrip={handleDeleteTripFromList}
               />
             )
           ) : (

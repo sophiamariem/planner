@@ -156,7 +156,7 @@ function compareIsoDesc(a, b) {
   return bb.localeCompare(aa);
 }
 
-function TripCard({ trip, onSelectTrip }) {
+function TripCard({ trip, onSelectTrip, onDeleteTrip }) {
   const start = getStartDate(trip);
   const templateLabel = getTemplateLabel(trip);
   const cover = getCoverPhoto(trip);
@@ -166,6 +166,7 @@ function TripCard({ trip, onSelectTrip }) {
       key={trip.id}
       onPress={() => onSelectTrip(trip.id)}
       style={{
+        position: 'relative',
         borderWidth: 1.2,
         borderColor: '#e5e7eb',
         borderRadius: 16,
@@ -179,6 +180,31 @@ function TripCard({ trip, onSelectTrip }) {
         elevation: 1,
       }}
     >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Delete ${trip.title || 'trip'}`}
+        onPress={(event) => {
+          event?.stopPropagation?.();
+          onDeleteTrip?.(trip);
+        }}
+        style={{
+          position: 'absolute',
+          right: 10,
+          top: 10,
+          width: 30,
+          height: 30,
+          borderRadius: 999,
+          borderWidth: 1,
+          borderColor: '#fecaca',
+          backgroundColor: 'rgba(255,255,255,0.95)',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2,
+        }}
+      >
+        <Text style={{ color: '#b91c1c', fontSize: 15, fontWeight: '800' }}>🗑</Text>
+      </Pressable>
+
       {cover ? (
         <View style={{ width: '100%', height: 130, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 4 }}>
           <RemoteImage uri={cover} fallbackUri={fallbackPhotoUri(trip?.title || trip?.slug)} style={{ width: '100%', height: '100%' }} />
@@ -199,7 +225,7 @@ function TripCard({ trip, onSelectTrip }) {
   );
 }
 
-export default function HomeScreen({ user, trips, loading, onRefresh, onSelectTrip, onSignOut, onCreateNew }) {
+export default function HomeScreen({ user, trips, loading, onRefresh, onSelectTrip, onSignOut, onCreateNew, onDeleteTrip }) {
   const [showPast, setShowPast] = React.useState(false);
   const todayIso = new Date().toISOString().slice(0, 10);
   const upcomingTrips = trips
@@ -251,7 +277,7 @@ export default function HomeScreen({ user, trips, loading, onRefresh, onSelectTr
             <View style={{ gap: 8 }}>
               <Text style={{ color: '#111827', fontSize: 15, fontWeight: '800' }}>Upcoming ({upcomingTrips.length})</Text>
               {upcomingTrips.length ? (
-                upcomingTrips.map((trip) => <TripCard key={trip.id} trip={trip} onSelectTrip={onSelectTrip} />)
+                upcomingTrips.map((trip) => <TripCard key={trip.id} trip={trip} onSelectTrip={onSelectTrip} onDeleteTrip={onDeleteTrip} />)
               ) : (
                 <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 10, backgroundColor: '#fff' }}>
                   <Text style={{ color: '#6b7280', fontSize: 12 }}>No upcoming trips.</Text>
@@ -266,7 +292,7 @@ export default function HomeScreen({ user, trips, loading, onRefresh, onSelectTr
               </Pressable>
               {showPast ? (
                 pastTrips.length ? (
-                  pastTrips.map((trip) => <TripCard key={trip.id} trip={trip} onSelectTrip={onSelectTrip} />)
+                  pastTrips.map((trip) => <TripCard key={trip.id} trip={trip} onSelectTrip={onSelectTrip} onDeleteTrip={onDeleteTrip} />)
                 ) : (
                   <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 10, backgroundColor: '#fff' }}>
                     <Text style={{ color: '#6b7280', fontSize: 12 }}>No past trips yet.</Text>

@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image, Linking, Pressable, ScrollView, Share, Text, View } from 'react-native';
-import PrimaryButton from '../components/PrimaryButton';
 
 function defaultDayTitle(index, total) {
   if (index === 0) return 'Arrival';
@@ -194,6 +193,80 @@ function buildShareUrl(tripRow) {
   return `${base}/${slug}`;
 }
 
+function IconActionButton({ icon, onPress, tone = 'default', accessibilityLabel }) {
+  const palette = tone === 'danger'
+    ? { bg: '#fef2f2', border: '#fecaca', fg: '#b91c1c' }
+    : tone === 'primary'
+      ? { bg: '#eff6ff', border: '#bfdbfe', fg: '#1d4ed8' }
+      : { bg: '#ffffff', border: '#d1d5db', fg: '#111827' };
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      style={{
+        width: 42,
+        height: 42,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: palette.border,
+        backgroundColor: palette.bg,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Text style={{ color: palette.fg, fontSize: 18, fontWeight: '800' }}>{icon}</Text>
+    </Pressable>
+  );
+}
+
+function DayPhotoLayout({ photos = [], query = '' }) {
+  const list = (Array.isArray(photos) ? photos : []).slice(0, 5);
+  if (!list.length) return null;
+
+  if (list.length === 1) {
+    return (
+      <View style={{ width: '100%', height: 240, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
+        <RemoteImage uri={list[0]} fallbackUri={fallbackPhotoUri(query, 0)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+      </View>
+    );
+  }
+
+  if (list.length === 2) {
+    return (
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {list.map((uri, i) => (
+          <View key={`${uri}-${i}`} style={{ flex: 1, height: 190, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
+            <RemoteImage uri={uri} fallbackUri={fallbackPhotoUri(query, i)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  const extra = list.length - 3;
+  return (
+    <View style={{ flexDirection: 'row', gap: 8 }}>
+      <View style={{ flex: 1.7, height: 240, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
+        <RemoteImage uri={list[0]} fallbackUri={fallbackPhotoUri(query, 0)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+      </View>
+      <View style={{ flex: 1, gap: 8 }}>
+        <View style={{ flex: 1, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
+          <RemoteImage uri={list[1]} fallbackUri={fallbackPhotoUri(query, 1)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        </View>
+        <View style={{ flex: 1, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
+          <RemoteImage uri={list[2]} fallbackUri={fallbackPhotoUri(query, 2)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          {extra > 0 ? (
+            <View style={{ position: 'absolute', right: 8, bottom: 8, borderRadius: 999, backgroundColor: 'rgba(17,24,39,0.82)', paddingHorizontal: 8, paddingVertical: 3 }}>
+              <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>+{extra}</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onToast }) {
   const scrollRef = useRef(null);
   const dayOffsetsRef = useRef({});
@@ -289,19 +362,11 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
 
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
-        <View style={{ flex: 1 }}>
-          <PrimaryButton title="Back to Saved" onPress={onBack} variant="outline" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <PrimaryButton title="Share Trip" onPress={handleShareTrip} variant="outline" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <PrimaryButton title="Edit Trip" onPress={onEdit} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <PrimaryButton title="Delete Trip" onPress={onDelete} variant="outline" />
-        </View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10, paddingHorizontal: 2 }}>
+        <IconActionButton icon="‹" onPress={onBack} accessibilityLabel="Back to saved trips" />
+        <IconActionButton icon="↗" onPress={handleShareTrip} accessibilityLabel="Share trip" />
+        <IconActionButton icon="✎" onPress={onEdit} tone="primary" accessibilityLabel="Edit trip" />
+        <IconActionButton icon="🗑" onPress={onDelete} tone="danger" accessibilityLabel="Delete trip" />
       </View>
 
       <ScrollView
@@ -336,6 +401,23 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
                 <Text style={{ color: '#1d4ed8', fontSize: 12, fontWeight: '700' }}>Coming up: {upcoming.title || `${upcoming.dow || ''} ${upcoming.date || ''}`}</Text>
               </View>
             ) : null}
+            <View style={{ marginTop: 4, alignSelf: 'flex-start' }}>
+              <Pressable
+                onPress={handleToggleOffline}
+                style={{
+                  borderWidth: 1,
+                  borderColor: hasOfflineCopy ? '#bbf7d0' : '#d1d5db',
+                  backgroundColor: hasOfflineCopy ? '#f0fdf4' : '#ffffff',
+                  borderRadius: 999,
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                }}
+              >
+                <Text style={{ color: hasOfflineCopy ? '#166534' : '#374151', fontSize: 11, fontWeight: '700' }}>
+                  {hasOfflineCopy ? 'Offline saved' : 'Save offline'}
+                </Text>
+              </Pressable>
+            </View>
             {tripFooter ? (
               <Text style={{ color: '#6b7280', fontSize: 12, marginTop: 2 }}>{tripFooter}</Text>
             ) : null}
@@ -347,21 +429,6 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
             <Text style={{ color: '#111827', fontWeight: '800', fontSize: 14 }}>
               {upcoming ? `Today / Next: ${upcoming.title || `${upcoming.dow || ''} ${upcoming.date || ''}`}` : 'Today / Next'}
             </Text>
-            <Pressable
-              onPress={handleToggleOffline}
-              style={{
-                borderWidth: 1,
-                borderColor: hasOfflineCopy ? '#bbf7d0' : '#d1d5db',
-                backgroundColor: hasOfflineCopy ? '#f0fdf4' : '#ffffff',
-                borderRadius: 999,
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-              }}
-            >
-              <Text style={{ color: hasOfflineCopy ? '#166534' : '#374151', fontSize: 11, fontWeight: '700' }}>
-                {hasOfflineCopy ? 'Offline saved' : 'Save offline'}
-              </Text>
-            </Pressable>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {days.map((day, index) => (
@@ -430,15 +497,7 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
                 ) : null}
               </View>
 
-              {(day.photos || []).length > 0 ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                  {(day.photos || []).slice(0, 6).map((uri, i) => (
-                    <View key={`${uri}-${i}`} style={{ width: 220, height: 150, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
-                      <RemoteImage uri={uri} fallbackUri={fallbackPhotoUri(day.photoQ || day.title, i)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                    </View>
-                  ))}
-                </ScrollView>
-              ) : null}
+              <DayPhotoLayout photos={day.photos || []} query={day.photoQ || day.title} />
 
               {day.route ? (
                 <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, backgroundColor: '#fafafa', paddingHorizontal: 10, paddingVertical: 7 }}>
@@ -467,7 +526,7 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
                         uri={getMapPreviewUrls(day.pins)[0]}
                         fallbackUris={getMapPreviewUrls(day.pins).slice(1)}
                         fallbackUri=""
-                        style={{ width: '100%', height: 170, backgroundColor: '#f1f5f9' }}
+                        style={{ width: '100%', height: 132, backgroundColor: '#f1f5f9' }}
                         resizeMode="cover"
                       />
                       <View style={{ position: 'absolute', right: 8, bottom: 8, borderWidth: 1, borderColor: '#dbeafe', backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
