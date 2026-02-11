@@ -1,6 +1,6 @@
 import React from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
-import PrimaryButton from '../components/PrimaryButton';
+import { Ionicons } from '@expo/vector-icons';
 
 const TEMPLATE_LABELS = {
   city: 'City Break',
@@ -202,7 +202,7 @@ function TripCard({ trip, onSelectTrip, onDeleteTrip }) {
           zIndex: 2,
         }}
       >
-        <Text style={{ color: '#b91c1c', fontSize: 15, fontWeight: '800' }}>🗑</Text>
+        <Ionicons name="trash-outline" size={15} color="#b91c1c" />
       </Pressable>
 
       {cover ? (
@@ -221,6 +221,33 @@ function TripCard({ trip, onSelectTrip, onDeleteTrip }) {
       ) : null}
       {start ? <Text style={{ color: '#4b5563', fontSize: 12 }}>Starts {start}</Text> : null}
       <Text style={{ color: '#111827', fontSize: 12, fontWeight: '700', marginTop: 4 }}>Tap to open</Text>
+    </Pressable>
+  );
+}
+
+function HeaderIconButton({ iconName, onPress, tone = 'default', accessibilityLabel, disabled = false }) {
+  const palette = tone === 'danger'
+    ? { bg: '#fef2f2', border: '#fecaca', fg: '#b91c1c' }
+    : { bg: '#ffffff', border: '#d1d5db', fg: '#1f2937' };
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      disabled={disabled}
+      onPress={onPress}
+      style={{
+        width: 34,
+        height: 34,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: palette.border,
+        backgroundColor: disabled ? '#f3f4f6' : palette.bg,
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: disabled ? 0.6 : 1,
+      }}
+    >
+      <Ionicons name={iconName} size={16} color={palette.fg} />
     </Pressable>
   );
 }
@@ -246,6 +273,20 @@ export default function HomeScreen({ user, trips, loading, onRefresh, onSelectTr
             <Text style={{ color: '#1d4ed8', fontWeight: '800', fontSize: 18, letterSpacing: 0.3 }}>plnr.guide</Text>
             <Text style={{ fontSize: 24, fontWeight: '800', color: '#111827' }}>Saved Trips</Text>
           </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <HeaderIconButton
+              iconName="refresh-outline"
+              onPress={onRefresh}
+              disabled={loading}
+              accessibilityLabel={loading ? 'Refreshing trips' : 'Refresh trips'}
+            />
+            <HeaderIconButton
+              iconName="log-out-outline"
+              onPress={onSignOut}
+              tone="danger"
+              accessibilityLabel="Sign out"
+            />
+          </View>
         </View>
         <Text style={{ color: '#6b7280' }}>{user?.email}</Text>
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
@@ -255,15 +296,6 @@ export default function HomeScreen({ user, trips, loading, onRefresh, onSelectTr
           <View style={{ borderWidth: 1, borderColor: '#dcfce7', backgroundColor: '#f0fdf4', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
             <Text style={{ color: '#166534', fontSize: 12, fontWeight: '700' }}>Cloud synced</Text>
           </View>
-        </View>
-      </View>
-
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <View style={{ flex: 1 }}>
-          <PrimaryButton title={loading ? 'Refreshing...' : 'Refresh'} onPress={onRefresh} disabled={loading} variant="outline" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <PrimaryButton title="Sign Out" onPress={onSignOut} variant="outline" />
         </View>
       </View>
 

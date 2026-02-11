@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image, Linking, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 function defaultDayTitle(index, total) {
   if (index === 0) return 'Arrival';
@@ -193,7 +194,7 @@ function buildShareUrl(tripRow) {
   return `${base}/${slug}`;
 }
 
-function IconActionButton({ icon, onPress, tone = 'default', accessibilityLabel }) {
+function IconActionButton({ iconName, onPress, tone = 'default', accessibilityLabel, compact = false }) {
   const palette = tone === 'danger'
     ? { bg: '#fef2f2', border: '#fecaca', fg: '#b91c1c' }
     : tone === 'primary'
@@ -205,8 +206,8 @@ function IconActionButton({ icon, onPress, tone = 'default', accessibilityLabel 
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
       style={{
-        width: 42,
-        height: 42,
+        width: compact ? 36 : 42,
+        height: compact ? 36 : 42,
         borderRadius: 999,
         borderWidth: 1,
         borderColor: palette.border,
@@ -215,7 +216,7 @@ function IconActionButton({ icon, onPress, tone = 'default', accessibilityLabel 
         justifyContent: 'center',
       }}
     >
-      <Text style={{ color: palette.fg, fontSize: 18, fontWeight: '800' }}>{icon}</Text>
+      <Ionicons name={iconName} size={compact ? 16 : 18} color={palette.fg} />
     </Pressable>
   );
 }
@@ -362,11 +363,13 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
 
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10, paddingHorizontal: 2 }}>
-        <IconActionButton icon="‹" onPress={onBack} accessibilityLabel="Back to saved trips" />
-        <IconActionButton icon="↗" onPress={handleShareTrip} accessibilityLabel="Share trip" />
-        <IconActionButton icon="✎" onPress={onEdit} tone="primary" accessibilityLabel="Edit trip" />
-        <IconActionButton icon="🗑" onPress={onDelete} tone="danger" accessibilityLabel="Delete trip" />
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingHorizontal: 2 }}>
+        <IconActionButton iconName="chevron-back-outline" onPress={onBack} accessibilityLabel="Back to saved trips" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <IconActionButton iconName="trash-outline" onPress={onDelete} tone="danger" accessibilityLabel="Delete trip" />
+          <IconActionButton iconName="create-outline" onPress={onEdit} tone="primary" accessibilityLabel="Edit trip" />
+          <IconActionButton iconName="share-social-outline" onPress={handleShareTrip} accessibilityLabel="Share trip" />
+        </View>
       </View>
 
       <ScrollView
@@ -382,7 +385,16 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
             </View>
           ) : null}
           <View style={{ padding: 14, gap: 6 }}>
-            <Text style={{ fontSize: 26, fontWeight: '800', color: '#111827' }}>{title}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+              <Text style={{ flex: 1, fontSize: 26, fontWeight: '800', color: '#111827' }}>{title}</Text>
+              <IconActionButton
+                iconName={hasOfflineCopy ? 'checkmark-done-outline' : 'download-outline'}
+                onPress={handleToggleOffline}
+                tone={hasOfflineCopy ? 'primary' : 'default'}
+                compact
+                accessibilityLabel={hasOfflineCopy ? 'Offline saved' : 'Save for offline'}
+              />
+            </View>
             <Text style={{ color: '#6b7280' }}>
               {startDate ? `Starts ${startDate}` : 'Add dates in edit mode'} • {days.length} day(s)
             </Text>
@@ -401,23 +413,6 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
                 <Text style={{ color: '#1d4ed8', fontSize: 12, fontWeight: '700' }}>Coming up: {upcoming.title || `${upcoming.dow || ''} ${upcoming.date || ''}`}</Text>
               </View>
             ) : null}
-            <View style={{ marginTop: 4, alignSelf: 'flex-start' }}>
-              <Pressable
-                onPress={handleToggleOffline}
-                style={{
-                  borderWidth: 1,
-                  borderColor: hasOfflineCopy ? '#bbf7d0' : '#d1d5db',
-                  backgroundColor: hasOfflineCopy ? '#f0fdf4' : '#ffffff',
-                  borderRadius: 999,
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                }}
-              >
-                <Text style={{ color: hasOfflineCopy ? '#166534' : '#374151', fontSize: 11, fontWeight: '700' }}>
-                  {hasOfflineCopy ? 'Offline saved' : 'Save offline'}
-                </Text>
-              </Pressable>
-            </View>
             {tripFooter ? (
               <Text style={{ color: '#6b7280', fontSize: 12, marginTop: 2 }}>{tripFooter}</Text>
             ) : null}
