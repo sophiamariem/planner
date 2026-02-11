@@ -1,7 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
+
+function defaultDayTitle(index, total) {
+  if (index === 0) return 'Arrival';
+  if (index === total - 1) return 'Departure';
+  return `Day ${index + 1}`;
+}
+
+function normalizeDayTitle(title, index, total) {
+  const raw = String(title || '').trim();
+  if (!raw || /^day\s+nan$/i.test(raw)) return defaultDayTitle(index, total);
+  return raw;
+}
 
 function formatStartDate(days) {
   const start = (days || []).map((d) => d.isoDate).filter(Boolean).sort()[0];
@@ -13,6 +25,33 @@ function formatStartDate(days) {
 
 function extractCover(tripData) {
   return tripData?.tripConfig?.cover || (tripData?.days || []).find((d) => (d.photos || []).length > 0)?.photos?.[0] || null;
+}
+
+function getMapPreviewUrl(pins = []) {
+  const valid = (pins || []).filter((p) => Array.isArray(p?.ll) && p.ll.length === 2).slice(0, 8);
+  if (!valid.length) return null;
+  const lats = valid.map((p) => Number(p.ll[0])).filter(Number.isFinite);
+  const lons = valid.map((p) => Number(p.ll[1])).filter(Number.isFinite);
+  if (!lats.length || !lons.length) return null;
+  const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
+  const centerLon = lons.reduce((a, b) => a + b, 0) / lons.length;
+  const markerParam = valid
+    .map((p) => `${Number(p.ll[0]).toFixed(6)},${Number(p.ll[1]).toFixed(6)},red-pushpin`)
+    .join('|');
+  return `https://staticmap.openstreetmap.de/staticmap.php?center=${centerLat.toFixed(6)},${centerLon.toFixed(6)}&zoom=11&size=800x360&markers=${encodeURIComponent(markerParam)}`;
+}
+
+function getMapQueryUrl(pin) {
+  if (Array.isArray(pin?.ll) && pin.ll.length === 2) {
+    const lat = Number(pin.ll[0]);
+    const lon = Number(pin.ll[1]);
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      return `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+    }
+  }
+  const q = String(pin?.q || pin?.name || '').trim();
+  if (!q) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 }
 
 function getOfflineKey(tripId) {
@@ -27,6 +66,7 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onToast }) {
   const title = tripData?.tripConfig?.title || tripRow?.title || 'Untitled Trip';
   const days = Array.isArray(tripData?.days) ? tripData.days : [];
   const flights = Array.isArray(tripData?.flights) ? tripData.flights : [];
+  const dayBadges = tripData?.dayBadges || {};
   const startDate = formatStartDate(days);
   const cover = extractCover(tripData);
   const [hasOfflineCopy, setHasOfflineCopy] = useState(false);
@@ -77,6 +117,16 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onToast }) {
     const y = dayOffsetsRef.current[index];
     if (typeof y === 'number' && scrollRef.current) {
       scrollRef.current.scrollTo({ y: Math.max(0, y - 140), animated: true });
+    }
+  };
+
+  const openPinInMaps = async (pin) => {
+    const url = getMapQueryUrl(pin);
+    if (!url) return;
+    try {
+      await Linking.openURL(url);
+    } catch {
+      onToast?.('Could not open maps right now.');
     }
   };
 
@@ -190,7 +240,9 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onToast }) {
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: '#111827', fontWeight: '800', fontSize: 16 }}>{day.title || `Day ${index + 1}`}</Text>
+                  <Text style={{ color: '#111827', fontWeight: '800', fontSize: 16 }}>
+                    {normalizeDayTitle(day.title, index, days.length)}
+                  </Text>
                   <Text style={{ color: '#6b7280', fontSize: 12 }}>
                     {day.dow || ''} {day.date || day.isoDate || ''}
                   </Text>
@@ -212,6 +264,22 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onToast }) {
                 </ScrollView>
               ) : null}
 
+              {day.route ? (
+                <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, backgroundColor: '#fafafa', paddingHorizontal: 10, paddingVertical: 7 }}>
+                  <Text style={{ color: '#374151', fontSize: 12, fontWeight: '600' }}>Route: {day.route}</Text>
+                </View>
+              ) : null}
+
+              {Array.isArray(dayBadges?.[day.id]) && dayBadges[day.id].length > 0 ? (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {dayBadges[day.id].map((badge, badgeIndex) => (
+                    <View key={`${badge}-${badgeIndex}`} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 999, backgroundColor: '#fafafa', paddingHorizontal: 8, paddingVertical: 3 }}>
+                      <Text style={{ color: '#374151', fontSize: 12 }}>{badge}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+
               {(day.notes || []).length > 0 ? (
                 <View style={{ gap: 5 }}>
                   {(day.notes || []).map((note, i) => (
@@ -224,6 +292,24 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onToast }) {
               ) : (
                 <Text style={{ color: '#9ca3af', fontSize: 12 }}>No notes for this day.</Text>
               )}
+
+              {Array.isArray(day.pins) && day.pins.length > 0 ? (
+                <View style={{ gap: 6 }}>
+                  {getMapPreviewUrl(day.pins) ? (
+                    <Pressable onPress={() => openPinInMaps(day.pins[0])} style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 12, overflow: 'hidden' }}>
+                      <Image source={{ uri: getMapPreviewUrl(day.pins) }} style={{ width: '100%', height: 130, backgroundColor: '#f1f5f9' }} resizeMode="cover" />
+                    </Pressable>
+                  ) : null}
+                  <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Locations</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                    {day.pins.map((pin, pinIndex) => (
+                      <Pressable key={`${pin?.name || 'pin'}-${pinIndex}`} onPress={() => openPinInMaps(pin)} style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 999, backgroundColor: '#eff6ff', paddingHorizontal: 9, paddingVertical: 4 }}>
+                        <Text style={{ color: '#1e3a8a', fontSize: 12 }}>{pin?.name || 'Location'}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
             </View>
           ))}
         </View>

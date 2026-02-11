@@ -2,6 +2,7 @@ import 'react-native-gesture-handler';
 import React, { useCallback, useEffect, useState } from 'react';
 import { SafeAreaView, Text, View } from 'react-native';
 import * as Linking from 'expo-linking';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AuthScreen from './src/screens/AuthScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import NewTripScreen from './src/screens/NewTripScreen';
@@ -116,65 +117,67 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 260, backgroundColor: '#dbeafe' }} />
-      <View style={{ position: 'absolute', top: 180, left: -80, width: 240, height: 240, borderRadius: 999, backgroundColor: '#e0e7ff' }} />
-      <View style={{ position: 'absolute', top: 90, right: -70, width: 210, height: 210, borderRadius: 999, backgroundColor: '#dcfce7' }} />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 260, backgroundColor: '#dbeafe' }} />
+        <View style={{ position: 'absolute', top: 180, left: -80, width: 240, height: 240, borderRadius: 999, backgroundColor: '#e0e7ff' }} />
+        <View style={{ position: 'absolute', top: 90, right: -70, width: 210, height: 210, borderRadius: 999, backgroundColor: '#dcfce7' }} />
 
-      <View style={{ flex: 1, padding: 16 }}>
-        {user ? (
-          selectedTrip ? (
-            <TripViewScreen
-              tripRow={selectedTrip}
-              onBack={() => setSelectedTrip(null)}
-              onEdit={() => setEditingTrip(true)}
+        <View style={{ flex: 1, padding: 16 }}>
+          {user ? (
+            selectedTrip ? (
+              <TripViewScreen
+                tripRow={selectedTrip}
+                onBack={() => setSelectedTrip(null)}
+                onEdit={() => setEditingTrip(true)}
+                onToast={pushToast}
+              />
+            ) : (
+              <HomeScreen
+                user={user}
+                trips={trips}
+                loading={loading}
+                onRefresh={refreshSessionAndData}
+                onSelectTrip={handleOpenTrip}
+                onSignOut={handleSignOut}
+                onCreateNew={() => setCreatingTrip(true)}
+              />
+            )
+          ) : (
+            <AuthScreen
+              onAuthStarted={refreshSessionAndData}
               onToast={pushToast}
             />
-          ) : (
-            <HomeScreen
-              user={user}
-              trips={trips}
-              loading={loading}
-              onRefresh={refreshSessionAndData}
-              onSelectTrip={handleOpenTrip}
-              onSignOut={handleSignOut}
-              onCreateNew={() => setCreatingTrip(true)}
-            />
-          )
-        ) : (
-          <AuthScreen
-            onAuthStarted={refreshSessionAndData}
-            onToast={pushToast}
-          />
-        )}
-      </View>
-
-      <BottomSheet visible={Boolean(user && creatingTrip)} onClose={() => setCreatingTrip(false)}>
-        <NewTripScreen
-          submitting={createSaving}
-          onCancel={() => setCreatingTrip(false)}
-          onSubmit={handleCreateTrip}
-          mode="create"
-        />
-      </BottomSheet>
-
-      <BottomSheet visible={Boolean(user && editingTrip && selectedTrip)} onClose={() => setEditingTrip(false)}>
-        <NewTripScreen
-          submitting={editSaving}
-          onCancel={() => setEditingTrip(false)}
-          onSubmit={handleEditTrip}
-          mode="edit"
-          initialTripData={selectedTrip?.trip_data || null}
-        />
-      </BottomSheet>
-
-      {toast ? (
-        <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20 }}>
-          <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 14, backgroundColor: '#ffffff', padding: 12, shadowColor: '#111827', shadowOpacity: 0.14, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 4 }}>
-            <Text style={{ color: '#111827', textAlign: 'center', fontWeight: '600' }}>{toast}</Text>
-          </View>
+          )}
         </View>
-      ) : null}
-    </SafeAreaView>
+
+      <BottomSheet visible={Boolean(user && creatingTrip)} onClose={() => setCreatingTrip(false)} scrollable>
+          <NewTripScreen
+            submitting={createSaving}
+            onCancel={() => setCreatingTrip(false)}
+            onSubmit={handleCreateTrip}
+            mode="create"
+          />
+        </BottomSheet>
+
+      <BottomSheet visible={Boolean(user && editingTrip && selectedTrip)} onClose={() => setEditingTrip(false)} scrollable>
+          <NewTripScreen
+            submitting={editSaving}
+            onCancel={() => setEditingTrip(false)}
+            onSubmit={handleEditTrip}
+            mode="edit"
+            initialTripData={selectedTrip?.trip_data || null}
+          />
+        </BottomSheet>
+
+        {toast ? (
+          <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20 }}>
+            <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 14, backgroundColor: '#ffffff', padding: 12, shadowColor: '#111827', shadowOpacity: 0.14, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 4 }}>
+              <Text style={{ color: '#111827', textAlign: 'center', fontWeight: '600' }}>{toast}</Text>
+            </View>
+          </View>
+        ) : null}
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }

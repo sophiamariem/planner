@@ -1,7 +1,7 @@
 import React from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 
-export default function BottomSheet({ visible, onClose, children }) {
+export default function BottomSheet({ visible, onClose, children, scrollable = true }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
@@ -18,7 +18,7 @@ export default function BottomSheet({ visible, onClose, children }) {
               paddingHorizontal: 18,
               paddingTop: 12,
               paddingBottom: 24,
-              maxHeight: '90%',
+              maxHeight: '96%',
               borderWidth: 1.2,
               borderColor: '#e5e7eb',
               shadowColor: '#0f172a',
@@ -31,9 +31,13 @@ export default function BottomSheet({ visible, onClose, children }) {
             <View style={{ alignItems: 'center', marginBottom: 10 }}>
               <View style={{ width: 46, height: 5, borderRadius: 999, backgroundColor: '#cbd5e1' }} />
             </View>
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              {children}
-            </ScrollView>
+            {scrollable ? (
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                {children}
+              </ScrollView>
+            ) : (
+              <View>{children}</View>
+            )}
           </View>
         </View>
       </KeyboardAvoidingView>

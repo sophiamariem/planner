@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, Text, TextInput, View } from 'react-native';
-import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
+import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
 
-const UNSPLASH_ACCESS_KEY = process.env.EXPO_PUBLIC_UNSPLASH_ACCESS_KEY;
+const IMAGE_ACCESS_KEY = process.env.EXPO_PUBLIC_UNSPLASH_ACCESS_KEY;
 
 const TEMPLATE_OPTIONS = [
   { id: 'city', emoji: '🏙️', title: 'City Break', description: 'Museums, cafes, neighborhoods', cover: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1400&q=80' },
@@ -51,6 +50,10 @@ const TEMPLATE_DETAILS = {
   },
 };
 
+function createDraftKey(prefix) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 function toIso(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -67,88 +70,151 @@ function shortMonth(date) {
 }
 
 function formatChipLabel(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
   return `${shortDow(date)} ${date.getDate()} ${shortMonth(date)}`;
 }
 
-function defaultDayTitle(index, total) {
-  if (index === 0) return 'Arrival';
-  if (index === total - 1) return 'Departure';
-  return `Day ${index + 1}`;
-}
-
-function createDraftKey(prefix) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function createDayDraft(index, total) {
-  return { _key: createDraftKey('day'), title: defaultDayTitle(index, total), notesText: '', badgesText: '' };
-}
-
 function splitNotes(value) {
-  return String(value || '')
-    .split('\n')
-    .map((v) => v.trim())
-    .filter(Boolean);
+  return String(value || '').split('\n').map((v) => v.trim()).filter(Boolean);
 }
 
 function splitBadges(value) {
   return [...new Set(String(value || '').split(/[\s,]+/).map((v) => v.trim()).filter(Boolean))];
 }
 
+function defaultDayTitle(index, total) {
+  if (!Number.isFinite(index)) return 'Day';
+  if (index === 0) return 'Arrival';
+  if (Number.isFinite(total) && index === total - 1) return 'Departure';
+  return `Day ${index + 1}`;
+}
+
+function normalizeDayTitle(title, index, total) {
+  const safeIndex = Number.isFinite(index) ? index : 0;
+  const safeTotal = Number.isFinite(total) ? total : 1;
+  const raw = String(title || '').trim();
+  if (!raw) return defaultDayTitle(safeIndex, safeTotal);
+  if (/^day\s+nan\b/i.test(raw)) return defaultDayTitle(safeIndex, safeTotal);
+  return raw;
+}
+
+function createDayDraft(index, total) {
+  return {
+    _key: createDraftKey('day'),
+    title: defaultDayTitle(index, total),
+    notesText: '',
+    badgesText: '',
+    photos: [],
+    photoQuery: '',
+    photoResults: [],
+    photoLoading: false,
+    photoError: '',
+    locationQuery: '',
+    locationLoading: false,
+    locationError: '',
+    pins: [],
+  };
+}
+
+function hydrateDayDraft(day = {}, dayBadges = {}, index = 0, total = 3) {
+  return {
+    _key: createDraftKey('day'),
+    title: normalizeDayTitle(day.title, index, total),
+    notesText: Array.isArray(day.notes) ? day.notes.join('\n') : '',
+    badgesText: Array.isArray(dayBadges?.[day.id]) ? dayBadges[day.id].join(' ') : '',
+    photos: Array.isArray(day.photos) ? day.photos.filter(Boolean) : [],
+    photoQuery: day.title || '',
+    photoResults: [],
+    photoLoading: false,
+    photoError: '',
+    locationQuery: '',
+    locationLoading: false,
+    locationError: '',
+    pins: Array.isArray(day.pins) ? day.pins.filter((p) => Array.isArray(p?.ll) && p.ll.length === 2) : [],
+  };
+}
+
+function hydrateFlight(f = {}) {
+  return {
+    _key: createDraftKey('flight'),
+    from: f.flightFrom || (f.route?.split('→')[0] || '').trim(),
+    to: f.flightTo || (f.route?.split('→')[1] || '').trim(),
+    date: f.date || '',
+    flightNo: f.num || '',
+  };
+}
+
 function readInitialState(initialTripData) {
   const days = Array.isArray(initialTripData?.days) ? initialTripData.days : [];
   const firstDate = days.map((d) => d?.isoDate).find(Boolean) || toIso(new Date());
-  const firstDayPhotos = Array.isArray(days[0]?.photos) ? days[0].photos.filter(Boolean) : [];
+  const dayCount = Math.max(1, Math.min(14, days.length || 3));
   return {
     title: initialTripData?.tripConfig?.title || 'My New Trip',
     startDate: firstDate,
-    daysCount: String(Math.max(1, Math.min(14, days.length || 3))),
-    coverPhoto: initialTripData?.tripConfig?.cover || '',
-    dayPhotos: firstDayPhotos,
-    badgeLegend: Array.isArray(initialTripData?.tripConfig?.badgeLegend) ? initialTripData.tripConfig.badgeLegend : [],
-    footer: initialTripData?.tripConfig?.footer || 'Planned with PLNR',
+    daysCount: String(dayCount),
     templateId: initialTripData?.tripConfig?.templateId || '',
+    footer: initialTripData?.tripConfig?.footer || 'Planned with PLNR',
+    badgeLegend: Array.isArray(initialTripData?.tripConfig?.badgeLegend) ? initialTripData.tripConfig.badgeLegend : [{ emoji: '', label: '' }],
+    coverPhoto: initialTripData?.tripConfig?.cover || '',
     dayDrafts: days.length
-      ? days.map((d) => ({
-        _key: createDraftKey('day'),
-        title: d.title || '',
-        notesText: Array.isArray(d.notes) ? d.notes.join('\n') : '',
-        badgesText: Array.isArray(initialTripData?.dayBadges?.[d.id]) ? initialTripData.dayBadges[d.id].join(' ') : '',
-      }))
-      : [createDayDraft(0, 3), createDayDraft(1, 3), createDayDraft(2, 3)],
-    flights: Array.isArray(initialTripData?.flights)
-      ? initialTripData.flights.map((f) => ({
-        _key: createDraftKey('flight'),
-        from: f.flightFrom || (f.route?.split('→')[0] || '').trim(),
-        to: f.flightTo || (f.route?.split('→')[1] || '').trim(),
-        date: f.date || '',
-        flightNo: f.num || '',
-      }))
-      : [],
+      ? days.map((d, i) => hydrateDayDraft(d, initialTripData?.dayBadges || {}, i, dayCount))
+      : [createDayDraft(0, dayCount), createDayDraft(1, dayCount), createDayDraft(2, dayCount)],
+    flights: Array.isArray(initialTripData?.flights) ? initialTripData.flights.map((f) => hydrateFlight(f)) : [],
   };
+}
+
+function fallbackPhotoResults(query, count = 8) {
+  const seed = encodeURIComponent(String(query || 'travel').trim() || 'travel');
+  return Array.from({ length: count }, (_, i) => `https://picsum.photos/seed/${seed}-${i}/1200/800`);
+}
+
+async function searchPhotos(query, count = 12) {
+  const q = String(query || '').trim();
+  if (!q) return [];
+  if (!IMAGE_ACCESS_KEY) return fallbackPhotoResults(q, count);
+  try {
+    const response = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(q)}&per_page=${count}&orientation=landscape&content_filter=high`, {
+      headers: { Authorization: `Client-ID ${IMAGE_ACCESS_KEY}` },
+    });
+    if (!response.ok) return fallbackPhotoResults(q, count);
+    const data = await response.json();
+    const real = (data?.results || []).map((item) => item?.urls?.regular || item?.urls?.small || '').filter(Boolean);
+    return real.length ? real : fallbackPhotoResults(q, count);
+  } catch {
+    return fallbackPhotoResults(q, count);
+  }
+}
+
+async function searchLocation(query) {
+  const q = String(query || '').trim();
+  if (!q) return null;
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(q)}`;
+  const res = await fetch(url, {
+    headers: {
+      Accept: 'application/json',
+      'Accept-Language': 'en',
+    },
+  });
+  if (!res.ok) throw new Error('location_failed');
+  const rows = await res.json();
+  const row = Array.isArray(rows) ? rows[0] : null;
+  if (!row?.lat || !row?.lon) return null;
+  const lat = Number(row.lat);
+  const lon = Number(row.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  const display = String(row.display_name || '').split(',')[0]?.trim() || q;
+  return { name: display, q: q, ll: [lat, lon] };
 }
 
 function PhotoTile({ uri, onRemove }) {
   return (
-    <View style={{ width: '31%', aspectRatio: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#f4f4f5' }}>
+    <View style={{ width: 92, height: 92, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#f4f4f5' }}>
       <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
       <Pressable onPress={onRemove} style={{ position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: 999, backgroundColor: 'rgba(24,24,27,0.84)', alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: '#fff', fontWeight: '700' }}>X</Text>
+        <Text style={{ color: '#fff', fontWeight: '700', fontSize: 11 }}>X</Text>
       </Pressable>
     </View>
   );
-}
-
-async function searchUnsplashPhotos(query, count = 12) {
-  if (!UNSPLASH_ACCESS_KEY) throw new Error('missing');
-  const q = String(query || '').trim();
-  if (!q) return [];
-  const response = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(q)}&per_page=${count}&orientation=landscape&content_filter=high`, {
-    headers: { Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}` },
-  });
-  if (!response.ok) throw new Error('fetch_failed');
-  const data = await response.json();
-  return (data?.results || []).map((item) => item?.urls?.regular || item?.urls?.small || '').filter(Boolean);
 }
 
 export default function NewTripScreen({ onCancel, onSubmit, submitting = false, mode = 'create', initialTripData = null }) {
@@ -156,49 +222,48 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
   const [title, setTitle] = useState(initialState.title);
   const [startDate, setStartDate] = useState(initialState.startDate);
   const [daysCount, setDaysCount] = useState(initialState.daysCount);
-  const [coverPhoto, setCoverPhoto] = useState(initialState.coverPhoto);
-  const [dayPhotos, setDayPhotos] = useState(initialState.dayPhotos);
-  const [selectedTemplateId, setSelectedTemplateId] = useState(initialState.templateId || '');
+  const [selectedTemplateId, setSelectedTemplateId] = useState(initialState.templateId);
   const [tripFooter, setTripFooter] = useState(initialState.footer);
-  const [badgeLegend, setBadgeLegend] = useState(initialState.badgeLegend.length ? initialState.badgeLegend : [{ emoji: '', label: '' }]);
+  const [badgeLegend, setBadgeLegend] = useState(initialState.badgeLegend);
+  const [coverPhoto, setCoverPhoto] = useState(initialState.coverPhoto);
+  const [coverQuery, setCoverQuery] = useState(initialState.title || '');
+  const [coverResults, setCoverResults] = useState([]);
+  const [coverLoading, setCoverLoading] = useState(false);
+  const [coverError, setCoverError] = useState('');
   const [dayDrafts, setDayDrafts] = useState(initialState.dayDrafts);
   const [flights, setFlights] = useState(initialState.flights);
-  const [unsplashQuery, setUnsplashQuery] = useState(initialState.title || '');
-  const [unsplashResults, setUnsplashResults] = useState([]);
-  const [unsplashLoading, setUnsplashLoading] = useState(false);
-  const [unsplashError, setUnsplashError] = useState('');
-  const [unsplashTarget, setUnsplashTarget] = useState('day');
   const [step, setStep] = useState(0);
 
   const isEditing = mode === 'edit';
   const isCreating = mode === 'create';
   const dayCount = Math.max(1, Math.min(14, Number(daysCount) || 1));
-  const stepLabels = ['Basics', 'Photos', 'Plan', 'Review'];
-  const canContinueBasics = Boolean(title.trim() && !Number.isNaN(new Date(startDate).getTime()) && dayCount >= 1 && dayCount <= 14);
+  const stepLabels = ['Basics', 'Plan', 'Review'];
+  const canContinueBasics = Boolean(title.trim() && !Number.isNaN(new Date(startDate).getTime()));
 
   useEffect(() => {
     setTitle(initialState.title);
     setStartDate(initialState.startDate);
     setDaysCount(initialState.daysCount);
-    setCoverPhoto(initialState.coverPhoto);
-    setDayPhotos(initialState.dayPhotos);
-    setSelectedTemplateId(initialState.templateId || '');
+    setSelectedTemplateId(initialState.templateId);
     setTripFooter(initialState.footer);
-    setBadgeLegend(initialState.badgeLegend.length ? initialState.badgeLegend : [{ emoji: '', label: '' }]);
+    setBadgeLegend(initialState.badgeLegend);
+    setCoverPhoto(initialState.coverPhoto);
+    setCoverQuery(initialState.title || '');
+    setCoverResults([]);
+    setCoverLoading(false);
+    setCoverError('');
     setDayDrafts(initialState.dayDrafts);
     setFlights(initialState.flights);
-    setUnsplashQuery(initialState.title || '');
-    setUnsplashResults([]);
-    setUnsplashError('');
-    setUnsplashLoading(false);
-    setUnsplashTarget('day');
     setStep(0);
   }, [initialState]);
 
   useEffect(() => {
     setDayDrafts((prev) => {
       const next = Array.from({ length: dayCount }, (_, i) => prev[i] || createDayDraft(i, dayCount));
-      return next;
+      return next.map((day, i) => ({
+        ...day,
+        title: normalizeDayTitle(day.title, i, dayCount),
+      }));
     });
   }, [dayCount]);
 
@@ -221,64 +286,6 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
     });
   }, [startDate, dayCount]);
 
-  const dayCountPresets = ['3', '5', '7', '10'];
-
-  const applyTemplate = (templateId) => {
-    const template = TEMPLATE_OPTIONS.find((item) => item.id === templateId);
-    const details = TEMPLATE_DETAILS[templateId];
-    if (!template || !details) return;
-    setSelectedTemplateId(templateId);
-    setTitle(template.title);
-    setUnsplashQuery(template.title);
-    setDaysCount(String(details.days.length));
-    setCoverPhoto(template.cover);
-    setDayPhotos([template.cover]);
-    setTripFooter(details.footer);
-    setBadgeLegend(details.badgeLegend);
-    setDayDrafts(details.days.map((d) => ({
-      _key: createDraftKey('day'),
-      title: d.title,
-      notesText: (d.notes || []).join('\n'),
-      badgesText: (d.badges || []).join(' '),
-    })));
-  };
-
-  const runUnsplashSearch = async () => {
-    const query = unsplashQuery.trim() || title.trim();
-    if (!query) {
-      setUnsplashError('Add a photo search first.');
-      return;
-    }
-    if (!UNSPLASH_ACCESS_KEY) {
-      setUnsplashError('Photo search is unavailable right now.');
-      return;
-    }
-    setUnsplashLoading(true);
-    setUnsplashError('');
-    try {
-      const results = await searchUnsplashPhotos(query, 12);
-      if (!results.length) {
-        setUnsplashResults([]);
-        setUnsplashError('No photos found for this search.');
-      } else {
-        setUnsplashResults(results);
-      }
-    } catch {
-      setUnsplashResults([]);
-      setUnsplashError('Could not load photos right now.');
-    } finally {
-      setUnsplashLoading(false);
-    }
-  };
-
-  const applyUnsplashPhoto = (url) => {
-    if (unsplashTarget === 'cover') {
-      setCoverPhoto(url);
-      return;
-    }
-    setDayPhotos((prev) => (prev.includes(url) || prev.length >= 6 ? prev : [...prev, url]));
-  };
-
   const updateDayDraft = (index, patch) => {
     setDayDrafts((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)));
   };
@@ -291,6 +298,130 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
     setFlights((prev) => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)));
   };
 
+  const moveDay = (from, to) => {
+    setDayDrafts((prev) => {
+      if (to < 0 || to >= prev.length) return prev;
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
+  };
+
+  const moveFlight = (from, to) => {
+    setFlights((prev) => {
+      if (to < 0 || to >= prev.length) return prev;
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
+  };
+
+  const applyTemplate = (templateId) => {
+    const template = TEMPLATE_OPTIONS.find((item) => item.id === templateId);
+    const details = TEMPLATE_DETAILS[templateId];
+    if (!template || !details) return;
+    setSelectedTemplateId(templateId);
+    setTitle(template.title);
+    setDaysCount(String(details.days.length));
+    setTripFooter(details.footer);
+    setBadgeLegend(details.badgeLegend);
+    setCoverPhoto(template.cover);
+    setDayDrafts(details.days.map((d, i) => ({
+      ...createDayDraft(i, details.days.length),
+      title: normalizeDayTitle(d.title, i, details.days.length),
+      notesText: (d.notes || []).join('\n'),
+      badgesText: (d.badges || []).join(' '),
+      photoQuery: d.title,
+      photos: i === 0 ? [template.cover] : [],
+    })));
+  };
+
+  const runPhotoSearchForDay = async (index) => {
+    const day = dayDrafts[index];
+    const query = String(day?.photoQuery || day?.title || title).trim();
+    if (!query) {
+      updateDayDraft(index, { photoError: 'Add a search first.' });
+      return;
+    }
+    updateDayDraft(index, { photoLoading: true, photoError: '', photoResults: [] });
+    try {
+      const results = await searchPhotos(query, 10);
+      updateDayDraft(index, {
+        photoLoading: false,
+        photoResults: results,
+        photoError: results.length ? '' : 'No photos found.',
+      });
+    } catch {
+      updateDayDraft(index, { photoLoading: false, photoError: 'Could not load photos right now.' });
+    }
+  };
+
+  const runCoverSearch = async () => {
+    const query = String(coverQuery || title || '').trim();
+    if (!query) {
+      setCoverError('Add a search first.');
+      return;
+    }
+    setCoverLoading(true);
+    setCoverError('');
+    try {
+      const results = await searchPhotos(query, 10);
+      setCoverResults(results);
+      if (!results.length) setCoverError('No photos found.');
+    } catch {
+      setCoverResults([]);
+      setCoverError('Could not load photos right now.');
+    } finally {
+      setCoverLoading(false);
+    }
+  };
+
+  const addPhotoToDay = (index, url) => {
+    const day = dayDrafts[index];
+    const next = Array.isArray(day?.photos) ? day.photos : [];
+    if (next.includes(url) || next.length >= 6) return;
+    updateDayDraft(index, { photos: [...next, url] });
+  };
+
+  const removePhotoFromDay = (index, photoIndex) => {
+    const day = dayDrafts[index];
+    const next = Array.isArray(day?.photos) ? day.photos.filter((_, i) => i !== photoIndex) : [];
+    updateDayDraft(index, { photos: next });
+  };
+
+  const addLocationToDay = async (index) => {
+    const day = dayDrafts[index];
+    const query = String(day?.locationQuery || '').trim();
+    if (!query) {
+      updateDayDraft(index, { locationError: 'Enter a place first.' });
+      return;
+    }
+    updateDayDraft(index, { locationLoading: true, locationError: '' });
+    try {
+      const pin = await searchLocation(query);
+      if (!pin) {
+        updateDayDraft(index, { locationLoading: false, locationError: 'Could not find that place.' });
+        return;
+      }
+      const pins = Array.isArray(day?.pins) ? day.pins : [];
+      if (pins.some((p) => p.name === pin.name && String(p.q || '').toLowerCase() === String(pin.q || '').toLowerCase())) {
+        updateDayDraft(index, { locationLoading: false, locationQuery: '', locationError: '' });
+        return;
+      }
+      updateDayDraft(index, { locationLoading: false, locationQuery: '', locationError: '', pins: [...pins, pin] });
+    } catch {
+      updateDayDraft(index, { locationLoading: false, locationError: 'Could not find that place right now.' });
+    }
+  };
+
+  const removeLocationFromDay = (index, pinIndex) => {
+    const day = dayDrafts[index];
+    const pins = Array.isArray(day?.pins) ? day.pins.filter((_, i) => i !== pinIndex) : [];
+    updateDayDraft(index, { pins });
+  };
+
   const buildTripData = () => {
     const start = new Date(startDate);
     if (Number.isNaN(start.getTime())) return null;
@@ -300,27 +431,32 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
     const days = Array.from({ length: dayCount }, (_, i) => {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
-      const defaults = {
-        id: existingDays[i]?.id || `${d.getDate()}-${i + 1}`,
+      const prev = existingDays[i] || {};
+      const draft = dayDrafts[i] || createDayDraft(i, dayCount);
+      return {
+        ...prev,
+        id: prev.id || `${d.getDate()}-${i + 1}`,
         isoDate: toIso(d),
         dow: shortDow(d),
         date: `${d.getDate()} ${shortMonth(d)}`,
-      };
-      const draft = dayDrafts[i] || createDayDraft(i, dayCount);
-      return {
-        ...(existingDays[i] || {}),
-        ...defaults,
-        title: draft.title?.trim() || defaultDayTitle(i, dayCount),
+        title: normalizeDayTitle(draft.title, i, dayCount),
         notes: splitNotes(draft.notesText),
-        photos: i === 0 ? dayPhotos : Array.isArray(existingDays[i]?.photos) ? existingDays[i].photos : [],
+        photos: Array.isArray(draft.photos) ? draft.photos.filter(Boolean) : [],
+        pins: Array.isArray(draft.pins) ? draft.pins.filter((p) => Array.isArray(p?.ll) && p.ll.length === 2) : [],
       };
     });
 
     const dayBadges = {};
     days.forEach((day, i) => {
-      const draft = dayDrafts[i];
-      const badges = splitBadges(draft?.badgesText);
+      const badges = splitBadges(dayDrafts[i]?.badgesText);
       if (badges.length) dayBadges[day.id] = badges;
+    });
+
+    const ll = { ...(base?.ll || {}) };
+    days.forEach((day) => {
+      (day.pins || []).forEach((pin) => {
+        if (pin?.name && Array.isArray(pin.ll) && pin.ll.length === 2) ll[pin.name] = pin.ll;
+      });
     });
 
     const finalFlights = flights
@@ -340,6 +476,7 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
         };
       });
 
+    const coverFromDays = days.find((d) => (d.photos || []).length > 0)?.photos?.[0] || null;
     return {
       ...base,
       tripConfig: {
@@ -347,7 +484,7 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
         title: title.trim() || 'My New Trip',
         footer: tripFooter.trim() || 'Planned with PLNR',
         favicon: base?.tripConfig?.favicon || null,
-        cover: coverPhoto || dayPhotos[0] || null,
+        cover: coverPhoto || coverFromDays || null,
         templateId: selectedTemplateId || base?.tripConfig?.templateId || '',
         calendar: { year: start.getFullYear(), month: start.getMonth() },
         badgeLegend: badgeLegend.filter((entry) => String(entry.emoji || '').trim() || String(entry.label || '').trim()),
@@ -355,260 +492,276 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
       flights: finalFlights,
       days,
       dayBadges,
-      ll: base?.ll || {},
+      ll,
     };
   };
 
   return (
-    <View style={{ gap: 12, paddingBottom: 8 }}>
-      <Text style={{ fontSize: 24, fontWeight: '800', color: '#111827' }}>{isEditing ? 'Edit Trip' : 'New Trip'}</Text>
-      <Text style={{ color: '#6b7280' }}>
-        {isEditing ? 'Update details and itinerary on mobile.' : 'Create quickly here and keep everything cloud-synced.'}
-      </Text>
+    <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <View style={{ gap: 12, paddingBottom: 8 }}>
+        <Text style={{ fontSize: 24, fontWeight: '800', color: '#111827' }}>{isEditing ? 'Edit Trip' : 'New Trip'}</Text>
+        <Text style={{ color: '#6b7280' }}>
+          {isEditing ? 'Update details and itinerary on mobile.' : 'Create quickly here and keep everything cloud-synced.'}
+        </Text>
 
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        {stepLabels.map((label, index) => (
-          <Pressable key={label} onPress={() => setStep(index)} style={{ flex: 1, borderWidth: 1, borderColor: step === index ? '#111827' : '#d1d5db', backgroundColor: step === index ? '#111827' : '#ffffff', borderRadius: 999, paddingVertical: 8, alignItems: 'center' }}>
-            <Text style={{ color: step === index ? '#ffffff' : '#374151', fontSize: 12, fontWeight: '700' }}>{index + 1}. {label}</Text>
-          </Pressable>
-        ))}
-      </View>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {stepLabels.map((label, index) => (
+            <Pressable key={label} onPress={() => setStep(index)} style={{ flex: 1, borderWidth: 1, borderColor: step === index ? '#111827' : '#d1d5db', backgroundColor: step === index ? '#111827' : '#ffffff', borderRadius: 999, paddingVertical: 8, alignItems: 'center' }}>
+              <Text style={{ color: step === index ? '#ffffff' : '#374151', fontSize: 12, fontWeight: '700' }}>{index + 1}. {label}</Text>
+            </Pressable>
+          ))}
+        </View>
 
-      {step === 0 ? (
-        <View style={{ gap: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, padding: 12, backgroundColor: '#ffffff' }}>
-          {isCreating ? (
-            <View style={{ gap: 8 }}>
-              <Text style={{ color: '#111827', fontWeight: '700' }}>Start from template</Text>
+        {step === 0 ? (
+          <View style={{ gap: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, padding: 12, backgroundColor: '#ffffff' }}>
+            {isCreating ? (
               <View style={{ gap: 8 }}>
-                {TEMPLATE_OPTIONS.map((template) => {
-                  const active = selectedTemplateId === template.id;
+                <Text style={{ color: '#111827', fontWeight: '700' }}>Start from template</Text>
+                <View style={{ gap: 8 }}>
+                  {TEMPLATE_OPTIONS.map((template) => {
+                    const active = selectedTemplateId === template.id;
+                    return (
+                      <Pressable key={template.id} onPress={() => applyTemplate(template.id)} style={{ borderWidth: 1, borderColor: active ? '#111827' : '#d4d4d8', borderRadius: 14, padding: 10, backgroundColor: active ? '#f3f4f6' : '#ffffff', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <View style={{ width: 42, height: 42, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8' }}>
+                          <Image source={{ uri: template.cover }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: '#111827', fontWeight: '700' }}>{template.emoji} {template.title}</Text>
+                          <Text style={{ color: '#6b7280', fontSize: 12 }}>{template.description}</Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
+
+            <View style={{ gap: 8 }}>
+              <Text style={{ color: '#111827', fontWeight: '700' }}>Trip title</Text>
+              <TextInput value={title} onChangeText={setTitle} placeholder="Summer in Lisbon" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }} />
+            </View>
+
+            <View style={{ gap: 8 }}>
+              <Text style={{ color: '#111827', fontWeight: '700' }}>Start date</Text>
+              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                {datePresets.map((preset) => {
+                  const iso = toIso(preset);
+                  const active = iso === startDate;
                   return (
-                    <Pressable key={template.id} onPress={() => applyTemplate(template.id)} style={{ borderWidth: 1, borderColor: active ? '#111827' : '#d4d4d8', borderRadius: 14, padding: 10, backgroundColor: active ? '#f3f4f6' : '#ffffff', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <View style={{ width: 42, height: 42, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8' }}>
-                        <Image source={{ uri: template.cover }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: '#111827', fontWeight: '700' }}>{template.emoji} {template.title}</Text>
-                        <Text style={{ color: '#6b7280', fontSize: 12 }}>{template.description}</Text>
-                      </View>
+                    <Pressable key={iso} onPress={() => setStartDate(iso)} style={{ borderWidth: 1, borderColor: active ? '#111827' : '#d4d4d8', backgroundColor: active ? '#111827' : '#ffffff', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}>
+                      <Text style={{ color: active ? '#ffffff' : '#111827', fontWeight: '600', fontSize: 12 }}>{formatChipLabel(preset)}</Text>
                     </Pressable>
                   );
                 })}
               </View>
+              <TextInput value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" autoCapitalize="none" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }} />
             </View>
-          ) : null}
 
-          <View style={{ gap: 8 }}>
-            <Text style={{ color: '#111827', fontWeight: '700' }}>Trip title</Text>
-            <TextInput value={title} onChangeText={setTitle} placeholder="Summer in Lisbon" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }} />
-          </View>
-          <View style={{ gap: 8 }}>
-            <Text style={{ color: '#111827', fontWeight: '700' }}>Start date</Text>
-            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-              {datePresets.map((preset) => {
-                const iso = toIso(preset);
-                const active = iso === startDate;
-                return (
-                  <Pressable key={iso} onPress={() => setStartDate(iso)} style={{ borderWidth: 1, borderColor: active ? '#111827' : '#d4d4d8', backgroundColor: active ? '#111827' : '#ffffff', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}>
-                    <Text style={{ color: active ? '#ffffff' : '#111827', fontWeight: '600', fontSize: 12 }}>{formatChipLabel(preset)}</Text>
-                  </Pressable>
-                );
-              })}
+            <View style={{ gap: 8 }}>
+              <Text style={{ color: '#111827', fontWeight: '700' }}>Duration</Text>
+              <TextInput value={daysCount} onChangeText={setDaysCount} placeholder="1-14" keyboardType="numeric" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }} />
             </View>
-            <TextInput value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" autoCapitalize="none" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }} />
-          </View>
-          <View style={{ gap: 8 }}>
-            <Text style={{ color: '#111827', fontWeight: '700' }}>Duration</Text>
-            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-              {dayCountPresets.map((preset) => {
-                const active = preset === daysCount;
-                return (
-                  <Pressable key={preset} onPress={() => setDaysCount(preset)} style={{ borderWidth: 1, borderColor: active ? '#111827' : '#d4d4d8', backgroundColor: active ? '#111827' : '#ffffff', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}>
-                    <Text style={{ color: active ? '#ffffff' : '#111827', fontWeight: '600', fontSize: 12 }}>{preset} days</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <TextInput value={daysCount} onChangeText={setDaysCount} placeholder="1-14" keyboardType="numeric" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }} />
-          </View>
-        </View>
-      ) : null}
 
-      {step === 1 ? (
-        <View style={{ gap: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, padding: 12, backgroundColor: '#ffffff' }}>
-          <Text style={{ color: '#111827', fontWeight: '700' }}>Unsplash photos</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Pressable onPress={() => setUnsplashTarget('day')} style={{ borderWidth: 1, borderColor: unsplashTarget === 'day' ? '#111827' : '#d4d4d8', backgroundColor: unsplashTarget === 'day' ? '#111827' : '#ffffff', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}>
-              <Text style={{ color: unsplashTarget === 'day' ? '#ffffff' : '#111827', fontWeight: '600', fontSize: 12 }}>Add to Day 1</Text>
-            </Pressable>
-            <Pressable onPress={() => setUnsplashTarget('cover')} style={{ borderWidth: 1, borderColor: unsplashTarget === 'cover' ? '#111827' : '#d4d4d8', backgroundColor: unsplashTarget === 'cover' ? '#111827' : '#ffffff', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}>
-              <Text style={{ color: unsplashTarget === 'cover' ? '#ffffff' : '#111827', fontWeight: '600', fontSize: 12 }}>Set Cover</Text>
-            </Pressable>
-          </View>
-          <TextInput value={unsplashQuery} onChangeText={setUnsplashQuery} placeholder="Search photos (e.g. lisbon rooftops)" autoCapitalize="none" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 15, backgroundColor: '#fff' }} />
-          <PrimaryButton title={unsplashLoading ? 'Finding photos...' : 'Find Photos'} onPress={runUnsplashSearch} disabled={unsplashLoading} variant="outline" />
-          {unsplashError ? <Text style={{ color: '#dc2626', fontSize: 12 }}>{unsplashError}</Text> : null}
-          {unsplashResults.length > 0 ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {unsplashResults.map((uri, index) => (
-                <Pressable key={`${uri}-${index}`} onPress={() => applyUnsplashPhoto(uri)} style={{ width: '31%', aspectRatio: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8' }}>
-                  <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-
-          <Text style={{ color: '#111827', fontWeight: '700' }}>Cover photo</Text>
-          {coverPhoto ? (
-            <View style={{ width: '100%', aspectRatio: 1.8, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#f4f4f5' }}>
-              <Image source={{ uri: coverPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-              <Pressable onPress={() => setCoverPhoto('')} style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: 999, backgroundColor: 'rgba(24,24,27,0.84)', alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ color: '#fff', fontWeight: '700' }}>X</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <View style={{ borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 12, padding: 10, backgroundColor: '#fafafa' }}>
-              <Text style={{ color: '#71717a', fontSize: 12 }}>No cover photo yet.</Text>
-            </View>
-          )}
-
-          <Text style={{ color: '#111827', fontWeight: '700' }}>Day 1 photo preview</Text>
-          {dayPhotos.length > 0 ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {dayPhotos.map((uri, index) => (
-                <PhotoTile key={`${uri}-${index}`} uri={uri} onRemove={() => setDayPhotos((prev) => prev.filter((_, i) => i !== index))} />
-              ))}
-            </View>
-          ) : (
-            <View style={{ borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 12, padding: 10, backgroundColor: '#fafafa' }}>
-              <Text style={{ color: '#71717a', fontSize: 12 }}>No photos added yet.</Text>
-            </View>
-          )}
-        </View>
-      ) : null}
-
-      {step === 2 ? (
-        <View style={{ gap: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, padding: 12, backgroundColor: '#ffffff' }}>
-          <Text style={{ color: '#111827', fontWeight: '700' }}>Days</Text>
-          <Text style={{ color: '#6b7280', fontSize: 12 }}>Long-press and drag a card to reorder.</Text>
-          <DraggableFlatList
-            data={dayDrafts}
-            keyExtractor={(item, index) => item._key || `day-${index}`}
-            scrollEnabled={false}
-            activationDistance={10}
-            onDragEnd={({ data }) => setDayDrafts(data)}
-            ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-            renderItem={({ item, index, drag, isActive }) => (
-              <ScaleDecorator>
-                <View style={{ borderWidth: 1, borderColor: isActive ? '#93c5fd' : '#e5e7eb', borderRadius: 12, padding: 10, gap: 8, backgroundColor: isActive ? '#f8fbff' : '#fff' }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>
-                      Day {index + 1} {previewDates[index] ? `(${formatChipLabel(previewDates[index])})` : ''}
-                    </Text>
-                    <Pressable onLongPress={drag} delayLongPress={120} style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
-                      <Text style={{ color: '#374151', fontSize: 11, fontWeight: '700' }}>Drag</Text>
-                    </Pressable>
-                  </View>
-                  <TextInput value={item.title} onChangeText={(value) => updateDayDraft(index, { title: value })} placeholder="Day title" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
-                  <TextInput value={item.notesText} onChangeText={(value) => updateDayDraft(index, { notesText: value })} placeholder="Notes (one per line)" multiline style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff', minHeight: 70, textAlignVertical: 'top' }} />
-                  <TextInput value={item.badgesText} onChangeText={(value) => updateDayDraft(index, { badgesText: value })} placeholder="Badges (e.g. ✈️ 🍽️)" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+            <View style={{ gap: 8 }}>
+              <Text style={{ color: '#111827', fontWeight: '700' }}>Cover photo</Text>
+              <TextInput value={coverQuery} onChangeText={setCoverQuery} placeholder="Search cover photo" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 15, backgroundColor: '#fff' }} />
+              <PrimaryButton title={coverLoading ? 'Finding...' : 'Find Photos'} onPress={runCoverSearch} disabled={coverLoading} variant="outline" />
+              {coverError ? <Text style={{ color: '#dc2626', fontSize: 12 }}>{coverError}</Text> : null}
+              {coverPhoto ? (
+                <View style={{ width: '100%', height: 150, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8' }}>
+                  <Image source={{ uri: coverPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                 </View>
-              </ScaleDecorator>
-            )}
-          />
-
-          <Text style={{ color: '#111827', fontWeight: '700' }}>Flights</Text>
-          <DraggableFlatList
-            data={flights}
-            keyExtractor={(item, index) => item._key || `flight-${index}`}
-            scrollEnabled={false}
-            activationDistance={10}
-            onDragEnd={({ data }) => setFlights(data)}
-            ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-            ListEmptyComponent={<Text style={{ color: '#71717a', fontSize: 12 }}>No flights yet.</Text>}
-            renderItem={({ item, index, drag, isActive }) => (
-              <ScaleDecorator>
-                <View style={{ borderWidth: 1, borderColor: isActive ? '#93c5fd' : '#e5e7eb', borderRadius: 12, padding: 10, gap: 8, backgroundColor: isActive ? '#f8fbff' : '#fff' }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Flight {index + 1}</Text>
-                    <Pressable onLongPress={drag} delayLongPress={120} style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
-                      <Text style={{ color: '#374151', fontSize: 11, fontWeight: '700' }}>Drag</Text>
+              ) : null}
+              {coverResults.length > 0 ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                  {coverResults.map((uri, idx) => (
+                    <Pressable key={`${uri}-${idx}`} onPress={() => setCoverPhoto(uri)} style={{ width: 90, height: 90, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: coverPhoto === uri ? '#111827' : '#d4d4d8' }}>
+                      <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                     </Pressable>
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TextInput value={item.from} onChangeText={(value) => updateFlight(index, { from: value })} placeholder="From" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
-                    <TextInput value={item.to} onChangeText={(value) => updateFlight(index, { to: value })} placeholder="To" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TextInput value={item.date} onChangeText={(value) => updateFlight(index, { date: value })} placeholder="Date" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
-                    <TextInput value={item.flightNo} onChangeText={(value) => updateFlight(index, { flightNo: value })} placeholder="Flight No" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
-                  </View>
-                  <Pressable onPress={() => setFlights((prev) => prev.filter((_, i) => i !== index))}>
-                    <Text style={{ color: '#b91c1c', fontWeight: '700', fontSize: 12 }}>Remove flight</Text>
-                  </Pressable>
-                </View>
-              </ScaleDecorator>
-            )}
-          />
-          <PrimaryButton title="Add Flight" onPress={() => setFlights((prev) => [...prev, { _key: createDraftKey('flight'), from: '', to: '', date: '', flightNo: '' }])} variant="outline" />
-
-          <Text style={{ color: '#111827', fontWeight: '700' }}>Badge legend</Text>
-          {badgeLegend.map((entry, index) => (
-            <View key={`legend-${index}`} style={{ flexDirection: 'row', gap: 8 }}>
-              <TextInput value={entry.emoji || ''} onChangeText={(value) => updateLegend(index, { emoji: value })} placeholder="Emoji" style={{ width: 90, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
-              <TextInput value={entry.label || ''} onChangeText={(value) => updateLegend(index, { label: value })} placeholder="Label" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
-              <Pressable onPress={() => setBadgeLegend((prev) => prev.filter((_, i) => i !== index))} style={{ justifyContent: 'center' }}>
-                <Text style={{ color: '#b91c1c', fontWeight: '700' }}>X</Text>
-              </Pressable>
+                  ))}
+                </ScrollView>
+              ) : null}
             </View>
-          ))}
-          <PrimaryButton title="Add Badge Type" onPress={() => setBadgeLegend((prev) => [...prev, { emoji: '', label: '' }])} variant="outline" />
-        </View>
-      ) : null}
-
-      {step === 3 ? (
-        <View style={{ gap: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, padding: 12, backgroundColor: '#ffffff' }}>
-          <View style={{ borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 16, padding: 12, backgroundColor: '#fafafa', gap: 4 }}>
-            <Text style={{ color: '#111827', fontWeight: '700' }}>Review</Text>
-            <Text style={{ color: '#52525b', fontSize: 12 }}>{previewDates[0]?.toDateString()} -> {previewDates[previewDates.length - 1]?.toDateString()} ({previewDates.length} day{previewDates.length > 1 ? 's' : ''})</Text>
-            <Text style={{ color: '#6b7280', fontSize: 12 }}>Title: {title || 'Untitled'}</Text>
-            <Text style={{ color: '#6b7280', fontSize: 12 }}>Cover: {coverPhoto ? 'Added' : 'Not set'}</Text>
-            <Text style={{ color: '#6b7280', fontSize: 12 }}>Day 1 photos: {dayPhotos.length}</Text>
-            <Text style={{ color: '#6b7280', fontSize: 12 }}>Flights: {flights.length}</Text>
-            <Text style={{ color: '#6b7280', fontSize: 12 }}>Badge types: {badgeLegend.filter((b) => b.emoji || b.label).length}</Text>
-          </View>
-          <View style={{ gap: 8 }}>
-            <Text style={{ color: '#111827', fontWeight: '700' }}>Footer</Text>
-            <TextInput value={tripFooter} onChangeText={setTripFooter} placeholder="Planned with PLNR" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: '#fff' }} />
-          </View>
-        </View>
-      ) : null}
-
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        <View style={{ flex: 1 }}>
-          <PrimaryButton title="Close" onPress={onCancel} variant="outline" />
-        </View>
-        {step > 0 ? (
-          <View style={{ flex: 1 }}>
-            <PrimaryButton title="Back" onPress={() => setStep((prev) => Math.max(0, prev - 1))} variant="outline" />
           </View>
         ) : null}
-        <View style={{ flex: 1 }}>
-          <PrimaryButton
-            title={step < 3 ? 'Continue' : (submitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Save Trip')}
-            onPress={() => {
-              if (step < 3) {
-                if (step === 0 && !canContinueBasics) return;
-                setStep((prev) => Math.min(3, prev + 1));
-                return;
-              }
-              const tripData = buildTripData();
-              if (tripData) onSubmit(tripData);
-            }}
-            disabled={submitting || (step === 0 && !canContinueBasics)}
-          />
+
+        {step === 1 ? (
+          <View style={{ gap: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, padding: 12, backgroundColor: '#ffffff' }}>
+            <Text style={{ color: '#111827', fontWeight: '700' }}>Day order</Text>
+            <Text style={{ color: '#6b7280', fontSize: 12 }}>Use arrows to reorder.</Text>
+            {dayDrafts.map((item, index) => (
+              <View key={`order-${item._key || index}`} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 10, backgroundColor: '#fff', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12, flex: 1 }}>
+                  Day {index + 1} {previewDates[index] ? `(${formatChipLabel(previewDates[index])})` : ''} • {normalizeDayTitle(item.title, index, dayDrafts.length)}
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  <Pressable onPress={() => moveDay(index, index - 1)} disabled={index === 0} style={{ opacity: index === 0 ? 0.35 : 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
+                    <Text style={{ color: '#374151', fontWeight: '700', fontSize: 11 }}>Up</Text>
+                  </Pressable>
+                  <Pressable onPress={() => moveDay(index, index + 1)} disabled={index === dayDrafts.length - 1} style={{ opacity: index === dayDrafts.length - 1 ? 0.35 : 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
+                    <Text style={{ color: '#374151', fontWeight: '700', fontSize: 11 }}>Down</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+
+            <Text style={{ color: '#111827', fontWeight: '700' }}>Days</Text>
+            {dayDrafts.map((item, index) => (
+              <View key={item._key || `day-edit-${index}`} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 14, padding: 10, gap: 8, backgroundColor: '#fff' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>
+                    Day {index + 1} {previewDates[index] ? `(${formatChipLabel(previewDates[index])})` : ''}
+                  </Text>
+                </View>
+
+                <TextInput value={item.title} onChangeText={(value) => updateDayDraft(index, { title: value })} placeholder="Day title" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                <TextInput value={item.notesText} onChangeText={(value) => updateDayDraft(index, { notesText: value })} placeholder="Notes (one per line)" multiline style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff', minHeight: 70, textAlignVertical: 'top' }} />
+
+                <View style={{ gap: 6 }}>
+                  <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Photos</Text>
+                  <TextInput value={item.photoQuery} onChangeText={(value) => updateDayDraft(index, { photoQuery: value })} placeholder="Search photos for this day" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                  <PrimaryButton title={item.photoLoading ? 'Finding...' : 'Find Photos'} onPress={() => runPhotoSearchForDay(index)} disabled={item.photoLoading} variant="outline" />
+                  {item.photoError ? <Text style={{ color: '#dc2626', fontSize: 12 }}>{item.photoError}</Text> : null}
+                  {Array.isArray(item.photoResults) && item.photoResults.length > 0 ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                      {item.photoResults.map((uri, photoIndex) => (
+                        <Pressable key={`${uri}-${photoIndex}`} onPress={() => addPhotoToDay(index, uri)} style={{ width: 86, height: 86, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8' }}>
+                          <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  ) : null}
+                  {Array.isArray(item.photos) && item.photos.length > 0 ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                      {item.photos.map((uri, photoIndex) => (
+                        <PhotoTile key={`${uri}-${photoIndex}`} uri={uri} onRemove={() => removePhotoFromDay(index, photoIndex)} />
+                      ))}
+                    </ScrollView>
+                  ) : (
+                    <Text style={{ color: '#71717a', fontSize: 12 }}>No photos added yet.</Text>
+                  )}
+                </View>
+
+                <View style={{ gap: 6 }}>
+                  <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Locations</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <TextInput value={item.locationQuery} onChangeText={(value) => updateDayDraft(index, { locationQuery: value })} placeholder="Search place or address" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                    <Pressable onPress={() => addLocationToDay(index)} style={{ marginLeft: 8, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, justifyContent: 'center', backgroundColor: '#fff' }}>
+                      <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>{item.locationLoading ? '...' : 'Add'}</Text>
+                    </Pressable>
+                  </View>
+                  {item.locationError ? <Text style={{ color: '#dc2626', fontSize: 12 }}>{item.locationError}</Text> : null}
+                  {(item.pins || []).length > 0 ? (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                      {(item.pins || []).map((pin, pinIndex) => (
+                        <View key={`${pin.name}-${pinIndex}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: '#fafafa' }}>
+                          <Text style={{ color: '#374151', fontSize: 12 }}>{pin.name}</Text>
+                          <Pressable onPress={() => removeLocationFromDay(index, pinIndex)}>
+                            <Text style={{ color: '#b91c1c', fontWeight: '700', fontSize: 12 }}>X</Text>
+                          </Pressable>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text style={{ color: '#71717a', fontSize: 12 }}>No locations added yet.</Text>
+                  )}
+                </View>
+
+                <View style={{ gap: 6 }}>
+                  <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Badges</Text>
+                  <TextInput value={item.badgesText} onChangeText={(value) => updateDayDraft(index, { badgesText: value })} placeholder="e.g. ✈️ 🍽️ 🏛️" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                </View>
+              </View>
+            ))}
+
+            <Text style={{ color: '#111827', fontWeight: '700' }}>Flights</Text>
+            <Text style={{ color: '#6b7280', fontSize: 12 }}>Use arrows to reorder flights.</Text>
+            {flights.length === 0 ? <Text style={{ color: '#71717a', fontSize: 12 }}>No flights yet.</Text> : null}
+            {flights.map((item, index) => (
+              <View key={item._key || `flight-${index}`} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 10, gap: 8, backgroundColor: '#fff' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Flight {index + 1}</Text>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    <Pressable onPress={() => moveFlight(index, index - 1)} disabled={index === 0} style={{ opacity: index === 0 ? 0.35 : 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
+                      <Text style={{ color: '#374151', fontWeight: '700', fontSize: 11 }}>Up</Text>
+                    </Pressable>
+                    <Pressable onPress={() => moveFlight(index, index + 1)} disabled={index === flights.length - 1} style={{ opacity: index === flights.length - 1 ? 0.35 : 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
+                      <Text style={{ color: '#374151', fontWeight: '700', fontSize: 11 }}>Down</Text>
+                    </Pressable>
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TextInput value={item.from} onChangeText={(value) => updateFlight(index, { from: value })} placeholder="From" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                  <TextInput value={item.to} onChangeText={(value) => updateFlight(index, { to: value })} placeholder="To" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                </View>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TextInput value={item.date} onChangeText={(value) => updateFlight(index, { date: value })} placeholder="Date" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                  <TextInput value={item.flightNo} onChangeText={(value) => updateFlight(index, { flightNo: value })} placeholder="Flight No" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                </View>
+                <Pressable onPress={() => setFlights((prev) => prev.filter((_, i) => i !== index))}>
+                  <Text style={{ color: '#b91c1c', fontWeight: '700', fontSize: 12 }}>Remove flight</Text>
+                </Pressable>
+              </View>
+            ))}
+            <PrimaryButton title="Add Flight" onPress={() => setFlights((prev) => [...prev, { _key: createDraftKey('flight'), from: '', to: '', date: '', flightNo: '' }])} variant="outline" />
+
+            <Text style={{ color: '#111827', fontWeight: '700' }}>Badge legend</Text>
+            {badgeLegend.map((entry, index) => (
+              <View key={`legend-${index}`} style={{ flexDirection: 'row', gap: 8 }}>
+                <TextInput value={entry.emoji || ''} onChangeText={(value) => updateLegend(index, { emoji: value })} placeholder="Emoji" style={{ width: 90, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                <TextInput value={entry.label || ''} onChangeText={(value) => updateLegend(index, { label: value })} placeholder="Label" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                <Pressable onPress={() => setBadgeLegend((prev) => prev.filter((_, i) => i !== index))} style={{ justifyContent: 'center' }}>
+                  <Text style={{ color: '#b91c1c', fontWeight: '700' }}>X</Text>
+                </Pressable>
+              </View>
+            ))}
+            <PrimaryButton title="Add Badge Type" onPress={() => setBadgeLegend((prev) => [...prev, { emoji: '', label: '' }])} variant="outline" />
+          </View>
+        ) : null}
+
+        {step === 2 ? (
+          <View style={{ gap: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, padding: 12, backgroundColor: '#ffffff' }}>
+            <View style={{ borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 16, padding: 12, backgroundColor: '#fafafa', gap: 4 }}>
+              <Text style={{ color: '#111827', fontWeight: '700' }}>Review</Text>
+              <Text style={{ color: '#52525b', fontSize: 12 }}>{previewDates[0]?.toDateString()} -> {previewDates[previewDates.length - 1]?.toDateString()} ({previewDates.length} day{previewDates.length > 1 ? 's' : ''})</Text>
+              <Text style={{ color: '#6b7280', fontSize: 12 }}>Title: {title || 'Untitled'}</Text>
+              <Text style={{ color: '#6b7280', fontSize: 12 }}>Flights: {flights.length}</Text>
+              <Text style={{ color: '#6b7280', fontSize: 12 }}>Day photos: {dayDrafts.reduce((acc, d) => acc + (d.photos?.length || 0), 0)}</Text>
+              <Text style={{ color: '#6b7280', fontSize: 12 }}>Day locations: {dayDrafts.reduce((acc, d) => acc + (d.pins?.length || 0), 0)}</Text>
+            </View>
+            <View style={{ gap: 8 }}>
+              <Text style={{ color: '#111827', fontWeight: '700' }}>Footer</Text>
+              <TextInput value={tripFooter} onChangeText={setTripFooter} placeholder="Planned with PLNR" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: '#fff' }} />
+            </View>
+          </View>
+        ) : null}
+
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ flex: 1 }}>
+            <PrimaryButton title="Close" onPress={onCancel} variant="outline" />
+          </View>
+          {step > 0 ? (
+            <View style={{ flex: 1 }}>
+              <PrimaryButton title="Back" onPress={() => setStep((prev) => Math.max(0, prev - 1))} variant="outline" />
+            </View>
+          ) : null}
+          <View style={{ flex: 1 }}>
+            <PrimaryButton
+              title={step < 2 ? 'Continue' : (submitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Save Trip')}
+              onPress={() => {
+                if (step < 2) {
+                  if (step === 0 && !canContinueBasics) return;
+                  setStep((prev) => Math.min(2, prev + 1));
+                  return;
+                }
+                const tripData = buildTripData();
+                if (tripData) onSubmit(tripData);
+              }}
+              disabled={submitting || (step === 0 && !canContinueBasics)}
+            />
+          </View>
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }
