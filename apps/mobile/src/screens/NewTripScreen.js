@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, Text, TextInput, View } from 'react-native';
+import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
 import PrimaryButton from '../components/PrimaryButton';
 
 const UNSPLASH_ACCESS_KEY = process.env.EXPO_PUBLIC_UNSPLASH_ACCESS_KEY;
@@ -75,8 +76,12 @@ function defaultDayTitle(index, total) {
   return `Day ${index + 1}`;
 }
 
+function createDraftKey(prefix) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 function createDayDraft(index, total) {
-  return { title: defaultDayTitle(index, total), notesText: '', badgesText: '' };
+  return { _key: createDraftKey('day'), title: defaultDayTitle(index, total), notesText: '', badgesText: '' };
 }
 
 function splitNotes(value) {
@@ -105,6 +110,7 @@ function readInitialState(initialTripData) {
     templateId: initialTripData?.tripConfig?.templateId || '',
     dayDrafts: days.length
       ? days.map((d) => ({
+        _key: createDraftKey('day'),
         title: d.title || '',
         notesText: Array.isArray(d.notes) ? d.notes.join('\n') : '',
         badgesText: Array.isArray(initialTripData?.dayBadges?.[d.id]) ? initialTripData.dayBadges[d.id].join(' ') : '',
@@ -112,6 +118,7 @@ function readInitialState(initialTripData) {
       : [createDayDraft(0, 3), createDayDraft(1, 3), createDayDraft(2, 3)],
     flights: Array.isArray(initialTripData?.flights)
       ? initialTripData.flights.map((f) => ({
+        _key: createDraftKey('flight'),
         from: f.flightFrom || (f.route?.split('→')[0] || '').trim(),
         to: f.flightTo || (f.route?.split('→')[1] || '').trim(),
         date: f.date || '',
@@ -162,8 +169,6 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
   const [unsplashError, setUnsplashError] = useState('');
   const [unsplashTarget, setUnsplashTarget] = useState('day');
   const [step, setStep] = useState(0);
-  const [dragDayIndex, setDragDayIndex] = useState(null);
-  const [dragFlightIndex, setDragFlightIndex] = useState(null);
 
   const isEditing = mode === 'edit';
   const isCreating = mode === 'create';
@@ -188,8 +193,6 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
     setUnsplashLoading(false);
     setUnsplashTarget('day');
     setStep(0);
-    setDragDayIndex(null);
-    setDragFlightIndex(null);
   }, [initialState]);
 
   useEffect(() => {
@@ -232,7 +235,12 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
     setDayPhotos([template.cover]);
     setTripFooter(details.footer);
     setBadgeLegend(details.badgeLegend);
-    setDayDrafts(details.days.map((d) => ({ title: d.title, notesText: (d.notes || []).join('\n'), badgesText: (d.badges || []).join(' ') })));
+    setDayDrafts(details.days.map((d) => ({
+      _key: createDraftKey('day'),
+      title: d.title,
+      notesText: (d.notes || []).join('\n'),
+      badgesText: (d.badges || []).join(' '),
+    })));
   };
 
   const runUnsplashSearch = async () => {
@@ -281,25 +289,6 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
 
   const updateFlight = (index, patch) => {
     setFlights((prev) => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)));
-  };
-
-  const moveItem = (list, fromIndex, toIndex) => {
-    if (fromIndex === toIndex || fromIndex == null || toIndex == null) return list;
-    if (fromIndex < 0 || toIndex < 0 || fromIndex >= list.length || toIndex > list.length) return list;
-    const next = [...list];
-    const [moved] = next.splice(fromIndex, 1);
-    next.splice(toIndex, 0, moved);
-    return next;
-  };
-
-  const moveDayTo = (toIndex) => {
-    setDayDrafts((prev) => moveItem(prev, dragDayIndex, toIndex));
-    setDragDayIndex(null);
-  };
-
-  const moveFlightTo = (toIndex) => {
-    setFlights((prev) => moveItem(prev, dragFlightIndex, toIndex));
-    setDragFlightIndex(null);
   };
 
   const buildTripData = () => {
@@ -501,89 +490,67 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
       {step === 2 ? (
         <View style={{ gap: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, padding: 12, backgroundColor: '#ffffff' }}>
           <Text style={{ color: '#111827', fontWeight: '700' }}>Days</Text>
-          {dragDayIndex != null ? (
-            <View style={{ borderWidth: 1, borderColor: '#bfdbfe', borderRadius: 12, backgroundColor: '#eff6ff', padding: 10 }}>
-              <Text style={{ color: '#1d4ed8', fontWeight: '700', fontSize: 12 }}>Moving Day {dragDayIndex + 1}. Tap a position below.</Text>
-            </View>
-          ) : null}
-          {Array.from({ length: dayDrafts.length + 1 }, (_, slotIndex) => (
-            <View key={`day-slot-${slotIndex}`} style={{ gap: 8 }}>
-              {dragDayIndex != null ? (
-                <Pressable
-                  onPress={() => moveDayTo(slotIndex)}
-                  style={{ borderWidth: 1, borderStyle: 'dashed', borderColor: '#93c5fd', borderRadius: 10, backgroundColor: '#f8fbff', paddingVertical: 8, alignItems: 'center' }}
-                >
-                  <Text style={{ color: '#1d4ed8', fontSize: 12, fontWeight: '700' }}>Drop day here</Text>
-                </Pressable>
-              ) : null}
-              {slotIndex < dayDrafts.length ? (
-                <View key={`day-${slotIndex}`} style={{ borderWidth: 1, borderColor: dragDayIndex === slotIndex ? '#93c5fd' : '#e5e7eb', borderRadius: 12, padding: 10, gap: 8, backgroundColor: dragDayIndex === slotIndex ? '#f8fbff' : '#fff' }}>
+          <Text style={{ color: '#6b7280', fontSize: 12 }}>Long-press and drag a card to reorder.</Text>
+          <DraggableFlatList
+            data={dayDrafts}
+            keyExtractor={(item, index) => item._key || `day-${index}`}
+            scrollEnabled={false}
+            activationDistance={10}
+            onDragEnd={({ data }) => setDayDrafts(data)}
+            ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+            renderItem={({ item, index, drag, isActive }) => (
+              <ScaleDecorator>
+                <View style={{ borderWidth: 1, borderColor: isActive ? '#93c5fd' : '#e5e7eb', borderRadius: 12, padding: 10, gap: 8, backgroundColor: isActive ? '#f8fbff' : '#fff' }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>
-                      Day {slotIndex + 1} {previewDates[slotIndex] ? `(${formatChipLabel(previewDates[slotIndex])})` : ''}
+                      Day {index + 1} {previewDates[index] ? `(${formatChipLabel(previewDates[index])})` : ''}
                     </Text>
-                    <Pressable onLongPress={() => setDragDayIndex(slotIndex)} delayLongPress={180} onPress={() => setDragDayIndex(slotIndex)} style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
-                      <Text style={{ color: '#374151', fontSize: 11, fontWeight: '700' }}>Move</Text>
+                    <Pressable onLongPress={drag} delayLongPress={120} style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
+                      <Text style={{ color: '#374151', fontSize: 11, fontWeight: '700' }}>Drag</Text>
                     </Pressable>
                   </View>
-                  <TextInput value={dayDrafts[slotIndex].title} onChangeText={(value) => updateDayDraft(slotIndex, { title: value })} placeholder="Day title" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
-                  <TextInput value={dayDrafts[slotIndex].notesText} onChangeText={(value) => updateDayDraft(slotIndex, { notesText: value })} placeholder="Notes (one per line)" multiline style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff', minHeight: 70, textAlignVertical: 'top' }} />
-                  <TextInput value={dayDrafts[slotIndex].badgesText} onChangeText={(value) => updateDayDraft(slotIndex, { badgesText: value })} placeholder="Badges (e.g. ✈️ 🍽️)" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                  <TextInput value={item.title} onChangeText={(value) => updateDayDraft(index, { title: value })} placeholder="Day title" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                  <TextInput value={item.notesText} onChangeText={(value) => updateDayDraft(index, { notesText: value })} placeholder="Notes (one per line)" multiline style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff', minHeight: 70, textAlignVertical: 'top' }} />
+                  <TextInput value={item.badgesText} onChangeText={(value) => updateDayDraft(index, { badgesText: value })} placeholder="Badges (e.g. ✈️ 🍽️)" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
                 </View>
-              ) : null}
-            </View>
-          ))}
-          {dragDayIndex != null ? (
-            <Pressable onPress={() => setDragDayIndex(null)} style={{ alignSelf: 'flex-start' }}>
-              <Text style={{ color: '#1d4ed8', fontWeight: '700', fontSize: 12 }}>Cancel move</Text>
-            </Pressable>
-          ) : null}
+              </ScaleDecorator>
+            )}
+          />
 
           <Text style={{ color: '#111827', fontWeight: '700' }}>Flights</Text>
-          {dragFlightIndex != null ? (
-            <View style={{ borderWidth: 1, borderColor: '#bfdbfe', borderRadius: 12, backgroundColor: '#eff6ff', padding: 10 }}>
-              <Text style={{ color: '#1d4ed8', fontWeight: '700', fontSize: 12 }}>Moving flight {dragFlightIndex + 1}. Tap a position below.</Text>
-            </View>
-          ) : null}
-          {Array.from({ length: flights.length + 1 }, (_, slotIndex) => (
-            <View key={`flight-slot-${slotIndex}`} style={{ gap: 8 }}>
-              {dragFlightIndex != null ? (
-                <Pressable
-                  onPress={() => moveFlightTo(slotIndex)}
-                  style={{ borderWidth: 1, borderStyle: 'dashed', borderColor: '#93c5fd', borderRadius: 10, backgroundColor: '#f8fbff', paddingVertical: 8, alignItems: 'center' }}
-                >
-                  <Text style={{ color: '#1d4ed8', fontSize: 12, fontWeight: '700' }}>Drop flight here</Text>
-                </Pressable>
-              ) : null}
-              {slotIndex < flights.length ? (
-                <View key={`flight-${slotIndex}`} style={{ borderWidth: 1, borderColor: dragFlightIndex === slotIndex ? '#93c5fd' : '#e5e7eb', borderRadius: 12, padding: 10, gap: 8, backgroundColor: dragFlightIndex === slotIndex ? '#f8fbff' : '#fff' }}>
+          <DraggableFlatList
+            data={flights}
+            keyExtractor={(item, index) => item._key || `flight-${index}`}
+            scrollEnabled={false}
+            activationDistance={10}
+            onDragEnd={({ data }) => setFlights(data)}
+            ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+            ListEmptyComponent={<Text style={{ color: '#71717a', fontSize: 12 }}>No flights yet.</Text>}
+            renderItem={({ item, index, drag, isActive }) => (
+              <ScaleDecorator>
+                <View style={{ borderWidth: 1, borderColor: isActive ? '#93c5fd' : '#e5e7eb', borderRadius: 12, padding: 10, gap: 8, backgroundColor: isActive ? '#f8fbff' : '#fff' }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Flight {slotIndex + 1}</Text>
-                    <Pressable onLongPress={() => setDragFlightIndex(slotIndex)} delayLongPress={180} onPress={() => setDragFlightIndex(slotIndex)} style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
-                      <Text style={{ color: '#374151', fontSize: 11, fontWeight: '700' }}>Move</Text>
+                    <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Flight {index + 1}</Text>
+                    <Pressable onLongPress={drag} delayLongPress={120} style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
+                      <Text style={{ color: '#374151', fontSize: 11, fontWeight: '700' }}>Drag</Text>
                     </Pressable>
                   </View>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TextInput value={flights[slotIndex].from} onChangeText={(value) => updateFlight(slotIndex, { from: value })} placeholder="From" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
-                    <TextInput value={flights[slotIndex].to} onChangeText={(value) => updateFlight(slotIndex, { to: value })} placeholder="To" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                    <TextInput value={item.from} onChangeText={(value) => updateFlight(index, { from: value })} placeholder="From" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                    <TextInput value={item.to} onChangeText={(value) => updateFlight(index, { to: value })} placeholder="To" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
                   </View>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TextInput value={flights[slotIndex].date} onChangeText={(value) => updateFlight(slotIndex, { date: value })} placeholder="Date" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
-                    <TextInput value={flights[slotIndex].flightNo} onChangeText={(value) => updateFlight(slotIndex, { flightNo: value })} placeholder="Flight No" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                    <TextInput value={item.date} onChangeText={(value) => updateFlight(index, { date: value })} placeholder="Date" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+                    <TextInput value={item.flightNo} onChangeText={(value) => updateFlight(index, { flightNo: value })} placeholder="Flight No" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
                   </View>
-                  <Pressable onPress={() => setFlights((prev) => prev.filter((_, i) => i !== slotIndex))}>
+                  <Pressable onPress={() => setFlights((prev) => prev.filter((_, i) => i !== index))}>
                     <Text style={{ color: '#b91c1c', fontWeight: '700', fontSize: 12 }}>Remove flight</Text>
                   </Pressable>
                 </View>
-              ) : null}
-            </View>
-          ))}
-          {dragFlightIndex != null ? (
-            <Pressable onPress={() => setDragFlightIndex(null)} style={{ alignSelf: 'flex-start' }}>
-              <Text style={{ color: '#1d4ed8', fontWeight: '700', fontSize: 12 }}>Cancel move</Text>
-            </Pressable>
-          ) : null}
-          <PrimaryButton title="Add Flight" onPress={() => setFlights((prev) => [...prev, { from: '', to: '', date: '', flightNo: '' }])} variant="outline" />
+              </ScaleDecorator>
+            )}
+          />
+          <PrimaryButton title="Add Flight" onPress={() => setFlights((prev) => [...prev, { _key: createDraftKey('flight'), from: '', to: '', date: '', flightNo: '' }])} variant="outline" />
 
           <Text style={{ color: '#111827', fontWeight: '700' }}>Badge legend</Text>
           {badgeLegend.map((entry, index) => (
