@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Linking, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
 
 function defaultDayTitle(index, total) {
@@ -58,6 +58,13 @@ function getOfflineKey(tripId) {
   return `trip-offline:${tripId}`;
 }
 
+function buildShareUrl(tripRow) {
+  const slug = String(tripRow?.slug || '').trim();
+  if (!slug) return null;
+  const base = String(process.env.EXPO_PUBLIC_WEB_APP_URL || 'https://plnr.guide').replace(/\/+$/, '');
+  return `${base}/${slug}`;
+}
+
 export default function TripViewScreen({ tripRow, onBack, onEdit, onToast }) {
   const scrollRef = useRef(null);
   const dayOffsetsRef = useRef({});
@@ -71,6 +78,7 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onToast }) {
   const cover = extractCover(tripData);
   const [hasOfflineCopy, setHasOfflineCopy] = useState(false);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
+  const shareUrl = buildShareUrl(tripRow);
 
   const upcoming = useMemo(() => {
     const today = new Date();
@@ -130,11 +138,30 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onToast }) {
     }
   };
 
+  const handleShareTrip = async () => {
+    if (!shareUrl) {
+      onToast?.('Save this trip first to get a share link.');
+      return;
+    }
+    try {
+      await Share.share({
+        title,
+        message: `${title}\n${shareUrl}`,
+        url: shareUrl,
+      });
+    } catch {
+      onToast?.('Could not open share right now.');
+    }
+  };
+
   return (
     <View style={{ flex: 1 }}>
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
         <View style={{ flex: 1 }}>
           <PrimaryButton title="Back to Saved" onPress={onBack} variant="outline" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <PrimaryButton title="Share Trip" onPress={handleShareTrip} variant="outline" />
         </View>
         <View style={{ flex: 1 }}>
           <PrimaryButton title="Edit Trip" onPress={onEdit} />

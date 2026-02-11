@@ -501,7 +501,7 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
       <View style={{ gap: 12, paddingBottom: 8 }}>
         <Text style={{ fontSize: 24, fontWeight: '800', color: '#111827' }}>{isEditing ? 'Edit Trip' : 'New Trip'}</Text>
         <Text style={{ color: '#6b7280' }}>
-          {isEditing ? 'Update details and itinerary on mobile.' : 'Create quickly here and keep everything cloud-synced.'}
+          {isEditing ? 'Update details and itinerary.' : 'Create quickly here and keep everything cloud-synced.'}
         </Text>
 
         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -595,11 +595,11 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
                   Day {index + 1} {previewDates[index] ? `(${formatChipLabel(previewDates[index])})` : ''} • {normalizeDayTitle(item.title, index, dayDrafts.length)}
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 6 }}>
-                  <Pressable onPress={() => moveDay(index, index - 1)} disabled={index === 0} style={{ opacity: index === 0 ? 0.35 : 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
-                    <Text style={{ color: '#374151', fontWeight: '700', fontSize: 11 }}>Up</Text>
+                  <Pressable onPress={() => moveDay(index, index - 1)} disabled={index === 0} style={{ opacity: index === 0 ? 0.35 : 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
+                    <Text style={{ color: '#374151', fontWeight: '700', fontSize: 14 }}>↑</Text>
                   </Pressable>
-                  <Pressable onPress={() => moveDay(index, index + 1)} disabled={index === dayDrafts.length - 1} style={{ opacity: index === dayDrafts.length - 1 ? 0.35 : 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
-                    <Text style={{ color: '#374151', fontWeight: '700', fontSize: 11 }}>Down</Text>
+                  <Pressable onPress={() => moveDay(index, index + 1)} disabled={index === dayDrafts.length - 1} style={{ opacity: index === dayDrafts.length - 1 ? 0.35 : 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
+                    <Text style={{ color: '#374151', fontWeight: '700', fontSize: 14 }}>↓</Text>
                   </Pressable>
                 </View>
               </View>
@@ -682,11 +682,11 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Flight {index + 1}</Text>
                   <View style={{ flexDirection: 'row', gap: 6 }}>
-                    <Pressable onPress={() => moveFlight(index, index - 1)} disabled={index === 0} style={{ opacity: index === 0 ? 0.35 : 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
-                      <Text style={{ color: '#374151', fontWeight: '700', fontSize: 11 }}>Up</Text>
+                    <Pressable onPress={() => moveFlight(index, index - 1)} disabled={index === 0} style={{ opacity: index === 0 ? 0.35 : 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
+                      <Text style={{ color: '#374151', fontWeight: '700', fontSize: 14 }}>↑</Text>
                     </Pressable>
-                    <Pressable onPress={() => moveFlight(index, index + 1)} disabled={index === flights.length - 1} style={{ opacity: index === flights.length - 1 ? 0.35 : 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
-                      <Text style={{ color: '#374151', fontWeight: '700', fontSize: 11 }}>Down</Text>
+                    <Pressable onPress={() => moveFlight(index, index + 1)} disabled={index === flights.length - 1} style={{ opacity: index === flights.length - 1 ? 0.35 : 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
+                      <Text style={{ color: '#374151', fontWeight: '700', fontSize: 14 }}>↓</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -705,17 +705,7 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
             ))}
             <PrimaryButton title="Add Flight" onPress={() => setFlights((prev) => [...prev, { _key: createDraftKey('flight'), from: '', to: '', date: '', flightNo: '' }])} variant="outline" />
 
-            <Text style={{ color: '#111827', fontWeight: '700' }}>Badge legend</Text>
-            {badgeLegend.map((entry, index) => (
-              <View key={`legend-${index}`} style={{ flexDirection: 'row', gap: 8 }}>
-                <TextInput value={entry.emoji || ''} onChangeText={(value) => updateLegend(index, { emoji: value })} placeholder="Emoji" style={{ width: 90, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
-                <TextInput value={entry.label || ''} onChangeText={(value) => updateLegend(index, { label: value })} placeholder="Label" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
-                <Pressable onPress={() => setBadgeLegend((prev) => prev.filter((_, i) => i !== index))} style={{ justifyContent: 'center' }}>
-                  <Text style={{ color: '#b91c1c', fontWeight: '700' }}>X</Text>
-                </Pressable>
-              </View>
-            ))}
-            <PrimaryButton title="Add Badge Type" onPress={() => setBadgeLegend((prev) => [...prev, { emoji: '', label: '' }])} variant="outline" />
+            
           </View>
         ) : null}
 
