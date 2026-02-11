@@ -894,7 +894,7 @@ export default function TripPlannerApp() {
         <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8 md:p-12">
           <div className="text-center mb-8">
             <h1 className="text-4xl md:text-5xl font-black text-zinc-900 mb-4">
-              Trip Planner
+              plnr.guide
             </h1>
             <p className="text-lg text-zinc-600">
               Create beautiful, shareable trip itineraries in minutes

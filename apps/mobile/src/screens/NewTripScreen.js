@@ -153,7 +153,7 @@ function readInitialState(initialTripData) {
     startDate: firstDate,
     daysCount: String(dayCount),
     templateId: initialTripData?.tripConfig?.templateId || '',
-    footer: initialTripData?.tripConfig?.footer || 'Planned with PLNR',
+    footer: initialTripData?.tripConfig?.footer || 'Planned with plnr.guide',
     badgeLegend: Array.isArray(initialTripData?.tripConfig?.badgeLegend) ? initialTripData.tripConfig.badgeLegend : [{ emoji: '', label: '' }],
     coverPhoto: initialTripData?.tripConfig?.cover || '',
     dayDrafts: days.length
@@ -482,7 +482,7 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
       tripConfig: {
         ...(base?.tripConfig || {}),
         title: title.trim() || 'My New Trip',
-        footer: tripFooter.trim() || 'Planned with PLNR',
+        footer: tripFooter.trim() || 'Planned with plnr.guide',
         favicon: base?.tripConfig?.favicon || null,
         cover: coverPhoto || coverFromDays || null,
         templateId: selectedTemplateId || base?.tripConfig?.templateId || '',
@@ -721,7 +721,7 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
             </View>
             <View style={{ gap: 8 }}>
               <Text style={{ color: '#111827', fontWeight: '700' }}>Footer</Text>
-              <TextInput value={tripFooter} onChangeText={setTripFooter} placeholder="Planned with PLNR" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: '#fff' }} />
+              <TextInput value={tripFooter} onChangeText={setTripFooter} placeholder="Planned with plnr.guide" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: '#fff' }} />
             </View>
           </View>
         ) : null}

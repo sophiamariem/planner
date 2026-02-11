@@ -1,6 +1,6 @@
-# Trip Planner Mobile
+# plnr.guide Mobile
 
-Expo + React Native mobile app for Trip Planner.
+Expo + React Native mobile app for plnr.guide.
 
 ## Setup
 

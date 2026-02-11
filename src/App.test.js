@@ -7,9 +7,9 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-test('renders trip planner title', () => {
+test('renders brand title', () => {
   render(<App />);
-  const titleElement = screen.getByText(/Trip Planner/i);
+  const titleElement = screen.getByText(/plnr\.guide/i);
   expect(titleElement).toBeInTheDocument();
 });
 

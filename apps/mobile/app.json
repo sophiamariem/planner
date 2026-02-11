@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Trip Planner",
-    "slug": "trip-planner-mobile",
+    "name": "plnr.guide",
+    "slug": "plnr-guide-mobile",
     "scheme": "plnr",
     "version": "0.1.0",
     "orientation": "portrait",
