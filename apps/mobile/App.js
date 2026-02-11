@@ -4,6 +4,7 @@ import * as Linking from 'expo-linking';
 import AuthScreen from './src/screens/AuthScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import NewTripScreen from './src/screens/NewTripScreen';
+import TripViewScreen from './src/screens/TripViewScreen';
 import BottomSheet from './src/components/BottomSheet';
 import { getCurrentUser, listMyTrips, loadCloudTripById, saveTripToCloud, signOut, updateCloudTripById } from './src/lib/cloudTripsMobile';
 import { setSessionFromUrl } from './src/lib/supabaseMobile';
@@ -121,17 +122,23 @@ export default function App() {
 
       <View style={{ flex: 1, padding: 16 }}>
         {user ? (
-          <HomeScreen
-            user={user}
-            trips={trips}
-            selectedTrip={selectedTrip}
-            loading={loading}
-            onRefresh={refreshSessionAndData}
-            onSelectTrip={handleOpenTrip}
-            onSignOut={handleSignOut}
-            onCreateNew={() => setCreatingTrip(true)}
-            onEditSelected={() => setEditingTrip(true)}
-          />
+          selectedTrip ? (
+            <TripViewScreen
+              tripRow={selectedTrip}
+              onBack={() => setSelectedTrip(null)}
+              onEdit={() => setEditingTrip(true)}
+            />
+          ) : (
+            <HomeScreen
+              user={user}
+              trips={trips}
+              loading={loading}
+              onRefresh={refreshSessionAndData}
+              onSelectTrip={handleOpenTrip}
+              onSignOut={handleSignOut}
+              onCreateNew={() => setCreatingTrip(true)}
+            />
+          )
         ) : (
           <AuthScreen
             onAuthStarted={refreshSessionAndData}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
 
 const TEMPLATE_LABELS = {
@@ -15,19 +15,12 @@ function getStartDate(row) {
   return dates[0] || null;
 }
 
-function getPreviewPhotos(row) {
-  const cover = row?.trip_data?.tripConfig?.cover;
-  const dayPhotos = (row?.trip_data?.days || []).flatMap((d) => d.photos || []).filter(Boolean);
-  const merged = [cover, ...dayPhotos].filter(Boolean);
-  return [...new Set(merged)].slice(0, 4);
-}
-
 function getTemplateLabel(row) {
   const templateId = row?.trip_data?.tripConfig?.templateId;
   return TEMPLATE_LABELS[templateId] || null;
 }
 
-export default function HomeScreen({ user, trips, selectedTrip, loading, onRefresh, onSelectTrip, onSignOut, onCreateNew, onEditSelected }) {
+export default function HomeScreen({ user, trips, loading, onRefresh, onSelectTrip, onSignOut, onCreateNew }) {
   return (
     <View style={{ flex: 1, gap: 14 }}>
       <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, padding: 14, backgroundColor: '#ffffff', gap: 6, shadowColor: '#0f172a', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 3 }, elevation: 2 }}>
@@ -95,27 +88,6 @@ export default function HomeScreen({ user, trips, selectedTrip, loading, onRefre
           })
         )}
       </ScrollView>
-
-      {selectedTrip && (
-        <View style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 16, padding: 12, backgroundColor: '#eff6ff', gap: 4 }}>
-          <Text style={{ fontWeight: '700', color: '#111827' }}>{selectedTrip?.trip_data?.tripConfig?.title || selectedTrip.title}</Text>
-          <Text style={{ color: '#374151', fontSize: 12 }}>
-            {(selectedTrip?.trip_data?.days || []).length} day(s) • {(selectedTrip?.trip_data?.flights || []).length} flight(s)
-          </Text>
-          {getPreviewPhotos(selectedTrip).length > 0 ? (
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
-              {getPreviewPhotos(selectedTrip).map((uri, index) => (
-                <View key={`${uri}-${index}`} style={{ width: 68, height: 68, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e4e4e7' }}>
-                  <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                </View>
-              ))}
-            </View>
-          ) : null}
-          <View style={{ marginTop: 8 }}>
-            <PrimaryButton title="Edit Trip" onPress={onEditSelected} />
-          </View>
-        </View>
-      )}
 
       <Pressable
         onPress={onCreateNew}
