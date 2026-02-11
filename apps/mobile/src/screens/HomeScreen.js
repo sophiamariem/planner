@@ -2,6 +2,13 @@ import React from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
 
+const TEMPLATE_LABELS = {
+  city: 'City Break',
+  beach: 'Beach Week',
+  road: 'Road Trip',
+  family: 'Family Trip',
+};
+
 function getStartDate(row) {
   const days = row?.trip_data?.days || [];
   const dates = days.map((d) => d.isoDate).filter(Boolean).sort();
@@ -13,6 +20,11 @@ function getPreviewPhotos(row) {
   const dayPhotos = (row?.trip_data?.days || []).flatMap((d) => d.photos || []).filter(Boolean);
   const merged = [cover, ...dayPhotos].filter(Boolean);
   return [...new Set(merged)].slice(0, 4);
+}
+
+function getTemplateLabel(row) {
+  const templateId = row?.trip_data?.tripConfig?.templateId;
+  return TEMPLATE_LABELS[templateId] || null;
 }
 
 export default function HomeScreen({ user, trips, selectedTrip, loading, onRefresh, onSelectTrip, onSignOut, onCreateNew, onEditSelected }) {
@@ -40,6 +52,7 @@ export default function HomeScreen({ user, trips, selectedTrip, loading, onRefre
         ) : (
           trips.map((trip) => {
             const start = getStartDate(trip);
+            const templateLabel = getTemplateLabel(trip);
             return (
               <Pressable
                 key={trip.id}
@@ -57,6 +70,11 @@ export default function HomeScreen({ user, trips, selectedTrip, loading, onRefre
                 <Text style={{ color: '#71717a', fontSize: 12 }}>
                   {trip.slug || 'no-slug'} • {trip.visibility}
                 </Text>
+                {templateLabel ? (
+                  <View style={{ alignSelf: 'flex-start', marginTop: 2, borderRadius: 999, borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#fafafa', paddingHorizontal: 8, paddingVertical: 3 }}>
+                    <Text style={{ color: '#3f3f46', fontSize: 11, fontWeight: '600' }}>Template: {templateLabel}</Text>
+                  </View>
+                ) : null}
                 {start ? <Text style={{ color: '#52525b', fontSize: 12 }}>Starts {start}</Text> : null}
                 <Text style={{ color: '#27272a', fontSize: 12, fontWeight: '600', marginTop: 4 }}>Tap to open</Text>
               </Pressable>

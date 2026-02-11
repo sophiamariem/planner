@@ -2,6 +2,76 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, Text, TextInput, View } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
 
+const TEMPLATE_OPTIONS = [
+  {
+    id: 'city',
+    emoji: '🏙️',
+    title: 'City Break',
+    description: 'Museums, cafes, neighborhoods',
+    cover: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1400&q=80',
+  },
+  {
+    id: 'beach',
+    emoji: '🏖️',
+    title: 'Beach Week',
+    description: 'Relaxed days by the coast',
+    cover: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1400&q=80',
+  },
+  {
+    id: 'road',
+    emoji: '🚗',
+    title: 'Road Trip',
+    description: 'Multi-stop adventure',
+    cover: 'https://images.unsplash.com/photo-1472396961693-142e6e269027?auto=format&fit=crop&w=1400&q=80',
+  },
+  {
+    id: 'family',
+    emoji: '👨‍👩‍👧‍👦',
+    title: 'Family Trip',
+    description: 'Kid-friendly pace and plans',
+    cover: 'https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=1400&q=80',
+  },
+];
+
+const TEMPLATE_DETAILS = {
+  city: {
+    footer: '48 hours in the city',
+    badgeLegend: [{ emoji: '🏛️', label: 'Culture' }, { emoji: '🍽️', label: 'Food' }],
+    days: [
+      { title: 'Arrival + old town walk', notes: ['Hotel check-in', 'Sunset viewpoint'], hasMap: false, badges: ['🏛️'] },
+      { title: 'Museums + food market', notes: ['Museum in the morning', 'Market lunch'], hasMap: false, badges: ['🍽️'] },
+      { title: 'Departure', notes: ['Brunch', 'Airport transfer'], hasMap: false, badges: [] },
+    ],
+  },
+  beach: {
+    footer: 'Sun, swim, repeat',
+    badgeLegend: [{ emoji: '🏖️', label: 'Beach' }, { emoji: '🌅', label: 'Sunset' }],
+    days: [
+      { title: 'Arrival + beach sunset', notes: ['Check-in', 'Golden hour swim'], hasMap: false, badges: ['🏖️'] },
+      { title: 'Boat day', notes: ['Snorkel stop', 'Beach dinner'], hasMap: false, badges: ['🌅'] },
+      { title: 'Departure', notes: ['Slow morning', 'Checkout'], hasMap: false, badges: [] },
+    ],
+  },
+  road: {
+    footer: 'Drive, stop, explore',
+    badgeLegend: [{ emoji: '🚗', label: 'Drive' }, { emoji: '⛰️', label: 'Scenic' }],
+    days: [
+      { title: 'Pickup + first leg', notes: ['Collect car', 'Scenic stop'], hasMap: true, badges: ['🚗'] },
+      { title: 'Mountain loop', notes: ['Coffee stop', 'Hike'], hasMap: true, badges: ['⛰️'] },
+      { title: 'Final city + return', notes: ['City lunch', 'Return car'], hasMap: true, badges: [] },
+    ],
+  },
+  family: {
+    footer: 'Fun at a comfortable pace',
+    badgeLegend: [{ emoji: '🎡', label: 'Activities' }, { emoji: '🍽️', label: 'Family meal' }],
+    days: [
+      { title: 'Arrival + easy afternoon', notes: ['Hotel pool', 'Early dinner'], hasMap: false, badges: [] },
+      { title: 'Main activity day', notes: ['Theme park morning', 'Nap break'], hasMap: false, badges: ['🎡'] },
+      { title: 'Departure', notes: ['Pack slowly', 'Airport'], hasMap: false, badges: [] },
+    ],
+  },
+};
+
 function toIso(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -92,6 +162,7 @@ export default function NewTripScreen({
   const [coverPhoto, setCoverPhoto] = useState(initialState.coverPhoto);
   const [dayPhotoInput, setDayPhotoInput] = useState('');
   const [dayPhotos, setDayPhotos] = useState(initialState.dayPhotos);
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
 
   useEffect(() => {
     setTitle(initialState.title);
@@ -101,6 +172,7 @@ export default function NewTripScreen({
     setDayPhotos(initialState.dayPhotos);
     setCoverInput('');
     setDayPhotoInput('');
+    setSelectedTemplateId('');
   }, [initialState]);
 
   const datePresets = useMemo(() => {
@@ -131,6 +203,49 @@ export default function NewTripScreen({
     const count = Math.max(1, Math.min(14, Number(daysCount) || 1));
     const start = new Date(startDate);
     if (Number.isNaN(start.getTime())) return null;
+
+    if (!initialTripData && selectedTemplateId && TEMPLATE_DETAILS[selectedTemplateId]) {
+      const template = TEMPLATE_OPTIONS.find((item) => item.id === selectedTemplateId);
+      const details = TEMPLATE_DETAILS[selectedTemplateId];
+
+      const days = details.days.map((templateDay, i) => {
+        const date = new Date(start);
+        date.setDate(start.getDate() + i);
+        const defaults = buildDefaultDay(date, i, details.days.length);
+        return {
+          ...defaults,
+          title: templateDay.title,
+          notes: templateDay.notes || [],
+          hasMap: Boolean(templateDay.hasMap),
+          photos: i === 0 ? dayPhotos : [],
+        };
+      });
+
+      const dayBadges = {};
+      days.forEach((day, idx) => {
+        const badges = details.days[idx]?.badges || [];
+        if (badges.length) dayBadges[day.id] = badges;
+      });
+
+      return {
+        tripConfig: {
+          title: title.trim() || template?.title || 'My New Trip',
+          footer: details.footer,
+          favicon: null,
+          cover: coverPhoto || dayPhotos[0] || template?.cover || null,
+          templateId: selectedTemplateId,
+          calendar: {
+            year: start.getFullYear(),
+            month: start.getMonth(),
+          },
+          badgeLegend: details.badgeLegend || [],
+        },
+        flights: [],
+        days,
+        dayBadges,
+        ll: {},
+      };
+    }
 
     const base = initialTripData ? JSON.parse(JSON.stringify(initialTripData)) : null;
     const existingDays = Array.isArray(base?.days) ? base.days : [];
@@ -190,6 +305,18 @@ export default function NewTripScreen({
   };
 
   const isEditing = mode === 'edit';
+  const isCreating = mode === 'create';
+
+  const applyTemplate = (templateId) => {
+    const template = TEMPLATE_OPTIONS.find((item) => item.id === templateId);
+    const details = TEMPLATE_DETAILS[templateId];
+    if (!template || !details) return;
+    setSelectedTemplateId(templateId);
+    setTitle(template.title);
+    setDaysCount(String(details.days.length));
+    setCoverPhoto(template.cover);
+    setDayPhotos([template.cover]);
+  };
 
   return (
     <View style={{ gap: 12, paddingBottom: 8 }}>
@@ -197,6 +324,43 @@ export default function NewTripScreen({
       <Text style={{ color: '#52525b' }}>
         {isEditing ? 'Update the core details and keep the trip visual.' : 'Create quickly here, then expand details later on web or mobile.'}
       </Text>
+
+      {isCreating ? (
+        <View style={{ gap: 8 }}>
+          <Text style={{ color: '#27272a', fontWeight: '600' }}>Start from template</Text>
+          <View style={{ gap: 8 }}>
+            {TEMPLATE_OPTIONS.map((template) => {
+              const active = selectedTemplateId === template.id;
+              return (
+                <Pressable
+                  key={template.id}
+                  onPress={() => applyTemplate(template.id)}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: active ? '#18181b' : '#d4d4d8',
+                    borderRadius: 14,
+                    padding: 10,
+                    backgroundColor: active ? '#fafafa' : '#ffffff',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 10,
+                  }}
+                >
+                  <View style={{ width: 42, height: 42, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8' }}>
+                    <Image source={{ uri: template.cover }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: '#18181b', fontWeight: '700' }}>
+                      {template.emoji} {template.title}
+                    </Text>
+                    <Text style={{ color: '#71717a', fontSize: 12 }}>{template.description}</Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      ) : null}
 
       <View style={{ gap: 8 }}>
         <Text style={{ color: '#27272a', fontWeight: '600' }}>Trip title</Text>
