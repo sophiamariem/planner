@@ -42,7 +42,7 @@ export default function AuthScreen({ onAuthStarted, onToast }) {
 
       {!isSupabaseConfigured && (
         <Text style={{ color: '#b45309' }}>
-          Missing EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY.
+          Sign in is temporarily unavailable.
         </Text>
       )}
 

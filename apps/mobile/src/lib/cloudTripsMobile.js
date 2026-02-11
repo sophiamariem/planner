@@ -15,13 +15,41 @@ async function parseJson(response, fallback = 'Request failed.') {
   }
 
   if (!response.ok) {
-    const message = body?.msg || body?.error_description || body?.message || fallback;
+    const message = toFriendlyMessage(response, body, fallback);
     const error = new Error(message);
     error.code = body?.code;
+    error.details = body?.msg || body?.error_description || body?.message || null;
     throw error;
   }
 
   return body;
+}
+
+function toFriendlyMessage(response, body, fallback) {
+  const status = response?.status || 0;
+  const raw = String(body?.msg || body?.error_description || body?.message || '').toLowerCase();
+
+  if (status === 401 || status === 403 || raw.includes('jwt') || raw.includes('token') || raw.includes('expired')) {
+    return 'Your session expired. Please sign in again.';
+  }
+
+  if (status === 429) {
+    return 'Too many attempts. Please wait a moment and try again.';
+  }
+
+  if (raw.includes('unsupported provider') || raw.includes('provider is not enabled')) {
+    return 'Google sign-in is not available right now. Please use email sign-in.';
+  }
+
+  if (body?.code === '23505' || raw.includes('duplicate key')) {
+    return 'This trip already exists. Try saving again.';
+  }
+
+  if (status >= 500) {
+    return 'Something went wrong on our side. Please try again.';
+  }
+
+  return fallback || 'Something went wrong. Please try again.';
 }
 
 export async function getCurrentUser() {
