@@ -127,6 +127,7 @@ export default function App() {
               tripRow={selectedTrip}
               onBack={() => setSelectedTrip(null)}
               onEdit={() => setEditingTrip(true)}
+              onToast={pushToast}
             />
           ) : (
             <HomeScreen
