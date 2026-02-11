@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   build:
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -44,6 +45,7 @@ jobs:
           path: cyprus/build
 
   deploy:
+    if: false
     needs: build
     runs-on: ubuntu-latest
     environment:
