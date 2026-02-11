@@ -15,6 +15,123 @@ function normalizeDayTitle(title, index, total) {
   return raw;
 }
 
+function toIsoDate(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function parseIsoDate(value) {
+  const s = String(value || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const d = new Date(`${s}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function shortDow(date) {
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
+}
+
+function shortMonth(date) {
+  return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][date.getMonth()];
+}
+
+function parseFlightDateCandidates(text, fallbackYear) {
+  const monthMap = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+  const src = String(text || '');
+  const parsed = [];
+  const withYear = [...src.matchAll(/(\d{1,2})\s*([A-Za-z]{3,9})\s*(20\d{2})/g)];
+  for (const m of withYear) {
+    const day = Number(m[1]);
+    const month = monthMap[m[2].slice(0, 3).toLowerCase()];
+    const year = Number(m[3]);
+    if (month === undefined || !Number.isFinite(day) || !Number.isFinite(year)) continue;
+    const d = new Date(year, month, day);
+    if (!Number.isNaN(d.getTime())) parsed.push(d);
+  }
+  if (parsed.length) return parsed;
+
+  const year = Number.isFinite(fallbackYear) ? fallbackYear : new Date().getFullYear();
+  const withoutYear = [...src.matchAll(/(\d{1,2})\s*([A-Za-z]{3,9})/g)];
+  for (const m of withoutYear) {
+    const day = Number(m[1]);
+    const month = monthMap[m[2].slice(0, 3).toLowerCase()];
+    if (month === undefined || !Number.isFinite(day)) continue;
+    const d = new Date(year, month, day);
+    if (!Number.isNaN(d.getTime())) parsed.push(d);
+  }
+  return parsed;
+}
+
+function parseDayLabelDate(label, cursorDate, fallbackYear) {
+  const monthMap = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+  const m = String(label || '').trim().match(/(\d{1,2})\s+([A-Za-z]{3,9})/);
+  if (!m) return null;
+  const day = Number(m[1]);
+  const month = monthMap[m[2].slice(0, 3).toLowerCase()];
+  if (!Number.isFinite(day) || month === undefined) return null;
+  const year = Number.isFinite(fallbackYear) ? fallbackYear : (cursorDate ? cursorDate.getFullYear() : new Date().getFullYear());
+  let d = new Date(year, month, day);
+  if (cursorDate && d < cursorDate) d = new Date(year + 1, month, day);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function normalizeDaysWithInferredDates(days = [], flights = [], calendarYear) {
+  const result = [];
+  const candidates = flights.flatMap((f) => parseFlightDateCandidates(f?.date, calendarYear));
+  candidates.sort((a, b) => a.getTime() - b.getTime());
+  let cursor = candidates[0] ? new Date(candidates[0]) : null;
+
+  for (let i = 0; i < days.length; i += 1) {
+    const day = { ...(days[i] || {}) };
+    const explicit = parseIsoDate(day.isoDate);
+    let resolved = explicit ? new Date(explicit) : null;
+    if (!resolved) resolved = parseDayLabelDate(day.date, cursor, calendarYear);
+    if (!resolved && cursor) resolved = new Date(cursor);
+    if (!resolved && candidates[0]) {
+      resolved = new Date(candidates[0]);
+      resolved.setDate(resolved.getDate() + i);
+    }
+    if (resolved) {
+      day.isoDate = toIsoDate(resolved);
+      day.dow = shortDow(resolved);
+      day.date = `${resolved.getDate()} ${shortMonth(resolved)}`;
+      cursor = new Date(resolved);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    result.push(day);
+  }
+  return result;
+}
+
+function fallbackPhotoUri(query, index = 0) {
+  const seed = encodeURIComponent(String(query || 'travel').trim() || 'travel');
+  return `https://picsum.photos/seed/${seed}-${index}/1200/800`;
+}
+
+function RemoteImage({ uri, fallbackUri, style, resizeMode = 'cover' }) {
+  const [sourceUri, setSourceUri] = useState(uri || fallbackUri || '');
+  useEffect(() => {
+    setSourceUri(uri || fallbackUri || '');
+  }, [uri, fallbackUri]);
+  if (!sourceUri) {
+    return <View style={[style, { backgroundColor: '#e5e7eb' }]} />;
+  }
+  return (
+    <Image
+      source={{ uri: sourceUri }}
+      style={style}
+      resizeMode={resizeMode}
+      onError={() => {
+        if (sourceUri !== fallbackUri && fallbackUri) setSourceUri(fallbackUri);
+      }}
+    />
+  );
+}
+
 function formatStartDate(days) {
   const start = (days || []).map((d) => d.isoDate).filter(Boolean).sort()[0];
   if (!start) return null;
@@ -71,11 +188,15 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onToast }) {
   const tripData = tripRow?.trip_data || {};
   const tripId = tripRow?.id || 'unknown';
   const title = tripData?.tripConfig?.title || tripRow?.title || 'Untitled Trip';
-  const days = Array.isArray(tripData?.days) ? tripData.days : [];
+  const calendarYear = Number(tripData?.tripConfig?.calendar?.year);
   const flights = Array.isArray(tripData?.flights) ? tripData.flights : [];
-  const dayBadges = tripData?.dayBadges || {};
+  const days = useMemo(
+    () => normalizeDaysWithInferredDates(Array.isArray(tripData?.days) ? tripData.days : [], flights, Number.isFinite(calendarYear) ? calendarYear : undefined),
+    [tripData?.days, flights, calendarYear],
+  );
   const startDate = formatStartDate(days);
   const cover = extractCover(tripData);
+  const tripFooter = String(tripData?.tripConfig?.footer || '').trim();
   const [hasOfflineCopy, setHasOfflineCopy] = useState(false);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const shareUrl = buildShareUrl(tripRow);
@@ -177,7 +298,7 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onToast }) {
         <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, backgroundColor: '#ffffff', overflow: 'hidden' }}>
           {cover ? (
             <View style={{ width: '100%', height: 200 }}>
-              <Image source={{ uri: cover }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              <RemoteImage uri={cover} fallbackUri={fallbackPhotoUri(title)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
             </View>
           ) : null}
           <View style={{ padding: 14, gap: 6 }}>
@@ -185,10 +306,23 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onToast }) {
             <Text style={{ color: '#6b7280' }}>
               {startDate ? `Starts ${startDate}` : 'Add dates in edit mode'} • {days.length} day(s)
             </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
+              {startDate ? (
+                <View style={{ borderWidth: 1, borderColor: '#fde68a', backgroundColor: '#fef3c7', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+                  <Text style={{ color: '#92400e', fontSize: 11, fontWeight: '700' }}>{startDate}</Text>
+                </View>
+              ) : null}
+              <View style={{ borderWidth: 1, borderColor: '#dbeafe', backgroundColor: '#eff6ff', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+                <Text style={{ color: '#1d4ed8', fontSize: 11, fontWeight: '700' }}>{days.length} days</Text>
+              </View>
+            </View>
             {upcoming ? (
               <View style={{ marginTop: 4, alignSelf: 'flex-start', borderWidth: 1, borderColor: '#dbeafe', backgroundColor: '#eff6ff', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
                 <Text style={{ color: '#1d4ed8', fontSize: 12, fontWeight: '700' }}>Coming up: {upcoming.title || `${upcoming.dow || ''} ${upcoming.date || ''}`}</Text>
               </View>
+            ) : null}
+            {tripFooter ? (
+              <Text style={{ color: '#6b7280', fontSize: 12, marginTop: 2 }}>{tripFooter}</Text>
             ) : null}
           </View>
         </View>
@@ -284,8 +418,8 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onToast }) {
               {(day.photos || []).length > 0 ? (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                   {(day.photos || []).slice(0, 6).map((uri, i) => (
-                    <View key={`${uri}-${i}`} style={{ width: 140, height: 95, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
-                      <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    <View key={`${uri}-${i}`} style={{ width: 220, height: 150, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
+                      <RemoteImage uri={uri} fallbackUri={fallbackPhotoUri(day.photoQ || day.title, i)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                     </View>
                   ))}
                 </ScrollView>
@@ -294,16 +428,6 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onToast }) {
               {day.route ? (
                 <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, backgroundColor: '#fafafa', paddingHorizontal: 10, paddingVertical: 7 }}>
                   <Text style={{ color: '#374151', fontSize: 12, fontWeight: '600' }}>Route: {day.route}</Text>
-                </View>
-              ) : null}
-
-              {Array.isArray(dayBadges?.[day.id]) && dayBadges[day.id].length > 0 ? (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                  {dayBadges[day.id].map((badge, badgeIndex) => (
-                    <View key={`${badge}-${badgeIndex}`} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 999, backgroundColor: '#fafafa', paddingHorizontal: 8, paddingVertical: 3 }}>
-                      <Text style={{ color: '#374151', fontSize: 12 }}>{badge}</Text>
-                    </View>
-                  ))}
                 </View>
               ) : null}
 
@@ -323,8 +447,16 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onToast }) {
               {Array.isArray(day.pins) && day.pins.length > 0 ? (
                 <View style={{ gap: 6 }}>
                   {getMapPreviewUrl(day.pins) ? (
-                    <Pressable onPress={() => openPinInMaps(day.pins[0])} style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 12, overflow: 'hidden' }}>
-                      <Image source={{ uri: getMapPreviewUrl(day.pins) }} style={{ width: '100%', height: 130, backgroundColor: '#f1f5f9' }} resizeMode="cover" />
+                    <Pressable onPress={() => openPinInMaps(day.pins[0])} style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 12, overflow: 'hidden', backgroundColor: '#f8fafc' }}>
+                      <RemoteImage
+                        uri={getMapPreviewUrl(day.pins)}
+                        fallbackUri=""
+                        style={{ width: '100%', height: 170, backgroundColor: '#f1f5f9' }}
+                        resizeMode="cover"
+                      />
+                      <View style={{ position: 'absolute', right: 8, bottom: 8, borderWidth: 1, borderColor: '#dbeafe', backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
+                        <Text style={{ color: '#1e3a8a', fontSize: 11, fontWeight: '700' }}>Open map</Text>
+                      </View>
                     </Pressable>
                   ) : null}
                   <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Locations</Text>

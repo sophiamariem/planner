@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 
 const dbUrl = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL || '';
@@ -45,11 +44,12 @@ for (const file of files) {
   const fullPath = path.join(base, file);
   const raw = await fs.readFile(fullPath, 'utf8');
   const parsed = JSON.parse(raw);
-  const title = String(parsed?.tripConfig?.title || file.replace('.json', '')).trim() || file.replace('.json', '');
+  const normalized = normalizeTripData(parsed);
+  const normalizedRaw = JSON.stringify(normalized);
+  const title = String(normalized?.tripConfig?.title || file.replace('.json', '')).trim() || file.replace('.json', '');
   const baseSlug = slugify(file.replace('.json', ''));
-  const dataHash = crypto.createHash('sha1').update(raw).digest('hex').slice(0, 4);
-  const slug = `${baseSlug.slice(0, 18)}-${dataHash}${ownerShort}`.slice(0, 28);
-  const tripJsonB64 = Buffer.from(raw, 'utf8').toString('base64');
+  const slug = `${baseSlug.slice(0, 23)}-${ownerShort}`.slice(0, 28);
+  const tripJsonB64 = Buffer.from(normalizedRaw, 'utf8').toString('base64');
   const ownerIdSql = sqlLiteral(ownerId);
   const titleSql = sqlLiteral(title);
   const slugSql = sqlLiteral(slug);
@@ -96,6 +96,50 @@ returning id, slug;
   console.log(`Imported ${file} -> ${id} (${finalSlug || slug})`);
 }
 
+function normalizeTripData(input) {
+  const trip = input && typeof input === 'object' ? JSON.parse(JSON.stringify(input)) : {};
+  const days = Array.isArray(trip.days) ? trip.days : [];
+  const flights = Array.isArray(trip.flights) ? trip.flights : [];
+  const calendarYear = Number(trip?.tripConfig?.calendar?.year);
+  const inferredStart = inferStartDateFromFlights(flights, Number.isFinite(calendarYear) ? calendarYear : undefined);
+  let cursor = inferredStart ? new Date(inferredStart) : null;
+
+  trip.days = days.map((day, index) => {
+    const next = { ...(day || {}) };
+    const explicitIso = parseIso(next.isoDate);
+    let resolved = explicitIso;
+
+    if (!resolved) {
+      resolved = parseDayLabelIso(next.date, cursor || inferredStart, Number.isFinite(calendarYear) ? calendarYear : undefined);
+    }
+
+    if (!resolved && cursor) {
+      resolved = toIsoDate(cursor);
+    }
+
+    if (!resolved && inferredStart) {
+      const d = new Date(inferredStart);
+      d.setDate(d.getDate() + index);
+      resolved = toIsoDate(d);
+    }
+
+    if (resolved) {
+      next.isoDate = resolved;
+      const d = new Date(`${resolved}T00:00:00`);
+      if (!Number.isNaN(d.getTime())) {
+        next.dow = shortDow(d);
+        next.date = `${d.getDate()} ${shortMonth(d)}`;
+      }
+      cursor = new Date(`${resolved}T00:00:00`);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return next;
+  });
+
+  return trip;
+}
+
 function slugify(value) {
   return String(value || 'trip')
     .toLowerCase()
@@ -132,4 +176,90 @@ function runPsql(args) {
 
 function sqlLiteral(value) {
   return `'${String(value ?? '').replace(/'/g, "''")}'`;
+}
+
+function parseIso(value) {
+  const s = String(value || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
+  const d = new Date(`${s}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? '' : s;
+}
+
+function toIsoDate(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function inferStartDateFromFlights(flights, fallbackYear) {
+  const parsed = [];
+  for (const flight of flights || []) {
+    const dates = parseFlightDateCandidates(String(flight?.date || ''), fallbackYear);
+    parsed.push(...dates);
+  }
+  parsed.sort((a, b) => a.getTime() - b.getTime());
+  return parsed[0] || null;
+}
+
+function parseFlightDateCandidates(text, fallbackYear) {
+  const monthMap = {
+    jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+    jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+  };
+  const src = String(text || '');
+  const out = [];
+  const withYear = [...src.matchAll(/(\d{1,2})\s*([A-Za-z]{3,9})\s*(20\d{2})/g)];
+  for (const m of withYear) {
+    const day = Number(m[1]);
+    const monthKey = m[2].slice(0, 3).toLowerCase();
+    const year = Number(m[3]);
+    const month = monthMap[monthKey];
+    if (!Number.isFinite(day) || month === undefined || !Number.isFinite(year)) continue;
+    const date = new Date(year, month, day);
+    if (!Number.isNaN(date.getTime())) out.push(date);
+  }
+  if (out.length) return out;
+
+  const year = Number.isFinite(fallbackYear) ? fallbackYear : new Date().getFullYear();
+  const withoutYear = [...src.matchAll(/(\d{1,2})\s*([A-Za-z]{3,9})/g)];
+  for (const m of withoutYear) {
+    const day = Number(m[1]);
+    const monthKey = m[2].slice(0, 3).toLowerCase();
+    const month = monthMap[monthKey];
+    if (!Number.isFinite(day) || month === undefined) continue;
+    const date = new Date(year, month, day);
+    if (!Number.isNaN(date.getTime())) out.push(date);
+  }
+  return out;
+}
+
+function parseDayLabelIso(label, cursorDate, fallbackYear) {
+  const monthMap = {
+    jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+    jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+  };
+  const m = String(label || '').trim().match(/(\d{1,2})\s+([A-Za-z]{3,9})/);
+  if (!m) return '';
+  const day = Number(m[1]);
+  const monthKey = m[2].slice(0, 3).toLowerCase();
+  const month = monthMap[monthKey];
+  if (!Number.isFinite(day) || month === undefined) return '';
+
+  let year = Number.isFinite(fallbackYear) ? fallbackYear : (cursorDate ? cursorDate.getFullYear() : new Date().getFullYear());
+  let date = new Date(year, month, day);
+  if (cursorDate && date < cursorDate) {
+    date = new Date(year + 1, month, day);
+  }
+  return Number.isNaN(date.getTime()) ? '' : toIsoDate(date);
+}
+
+function shortDow(date) {
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
+}
+
+function shortMonth(date) {
+  return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][date.getMonth()];
 }

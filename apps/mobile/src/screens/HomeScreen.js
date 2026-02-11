@@ -12,13 +12,15 @@ const TEMPLATE_LABELS = {
 function getStartDate(row) {
   const days = row?.trip_data?.days || [];
   const dates = days.map((d) => d.isoDate).filter(Boolean).sort();
-  return dates[0] || null;
+  if (dates[0]) return dates[0];
+  return inferDatesFromTrip(row)?.startIso || null;
 }
 
 function getEndDate(row) {
   const days = row?.trip_data?.days || [];
   const dates = days.map((d) => d.isoDate).filter(Boolean).sort();
-  return dates[dates.length - 1] || null;
+  if (dates[dates.length - 1]) return dates[dates.length - 1];
+  return inferDatesFromTrip(row)?.endIso || null;
 }
 
 function getTemplateLabel(row) {
@@ -32,6 +34,108 @@ function getCoverPhoto(row) {
   const days = Array.isArray(row?.trip_data?.days) ? row.trip_data.days : [];
   const fromDay = days.find((day) => Array.isArray(day?.photos) && day.photos.length > 0)?.photos?.[0];
   return fromDay || null;
+}
+
+function parseFlightDateCandidates(text, fallbackYear) {
+  const monthMap = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+  const src = String(text || '');
+  const out = [];
+  const withYear = [...src.matchAll(/(\d{1,2})\s*([A-Za-z]{3,9})\s*(20\d{2})/g)];
+  for (const m of withYear) {
+    const day = Number(m[1]);
+    const month = monthMap[m[2].slice(0, 3).toLowerCase()];
+    const year = Number(m[3]);
+    if (month === undefined || !Number.isFinite(day) || !Number.isFinite(year)) continue;
+    const d = new Date(year, month, day);
+    if (!Number.isNaN(d.getTime())) out.push(d);
+  }
+  if (out.length) return out;
+  const year = Number.isFinite(fallbackYear) ? fallbackYear : new Date().getFullYear();
+  const withoutYear = [...src.matchAll(/(\d{1,2})\s*([A-Za-z]{3,9})/g)];
+  for (const m of withoutYear) {
+    const day = Number(m[1]);
+    const month = monthMap[m[2].slice(0, 3).toLowerCase()];
+    if (month === undefined || !Number.isFinite(day)) continue;
+    const d = new Date(year, month, day);
+    if (!Number.isNaN(d.getTime())) out.push(d);
+  }
+  return out;
+}
+
+function inferDatesFromTrip(row) {
+  const trip = row?.trip_data || {};
+  const days = Array.isArray(trip?.days) ? trip.days : [];
+  const flights = Array.isArray(trip?.flights) ? trip.flights : [];
+  const fallbackYear = Number(trip?.tripConfig?.calendar?.year);
+  const candidates = flights.flatMap((f) => parseFlightDateCandidates(f?.date, Number.isFinite(fallbackYear) ? fallbackYear : undefined));
+  candidates.sort((a, b) => a.getTime() - b.getTime());
+  let cursor = candidates[0] ? new Date(candidates[0]) : null;
+  const isoDates = [];
+
+  for (let i = 0; i < days.length; i += 1) {
+    const day = days[i] || {};
+    if (day.isoDate) {
+      isoDates.push(day.isoDate);
+      const explicit = new Date(`${day.isoDate}T00:00:00`);
+      if (!Number.isNaN(explicit.getTime())) {
+        cursor = new Date(explicit);
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      continue;
+    }
+
+    const parsedLabel = String(day.date || '').match(/(\d{1,2})\s+([A-Za-z]{3,9})/);
+    let resolved = null;
+    if (parsedLabel) {
+      const monthMap = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+      const dayNum = Number(parsedLabel[1]);
+      const month = monthMap[parsedLabel[2].slice(0, 3).toLowerCase()];
+      const year = Number.isFinite(fallbackYear) ? fallbackYear : (cursor ? cursor.getFullYear() : new Date().getFullYear());
+      if (month !== undefined && Number.isFinite(dayNum)) {
+        let date = new Date(year, month, dayNum);
+        if (cursor && date < cursor) date = new Date(year + 1, month, dayNum);
+        resolved = date;
+      }
+    }
+    if (!resolved && cursor) resolved = new Date(cursor);
+    if (!resolved && candidates[0]) {
+      resolved = new Date(candidates[0]);
+      resolved.setDate(resolved.getDate() + i);
+    }
+    if (resolved && !Number.isNaN(resolved.getTime())) {
+      const y = resolved.getFullYear();
+      const m = String(resolved.getMonth() + 1).padStart(2, '0');
+      const d = String(resolved.getDate()).padStart(2, '0');
+      isoDates.push(`${y}-${m}-${d}`);
+      cursor = new Date(resolved);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  }
+
+  return { startIso: isoDates[0] || null, endIso: isoDates[isoDates.length - 1] || null };
+}
+
+function fallbackPhotoUri(query, index = 0) {
+  const seed = encodeURIComponent(String(query || 'travel').trim() || 'travel');
+  return `https://picsum.photos/seed/${seed}-${index}/1200/800`;
+}
+
+function RemoteImage({ uri, fallbackUri, style }) {
+  const [currentUri, setCurrentUri] = React.useState(uri || fallbackUri || '');
+  React.useEffect(() => {
+    setCurrentUri(uri || fallbackUri || '');
+  }, [uri, fallbackUri]);
+  if (!currentUri) return <View style={[style, { backgroundColor: '#e5e7eb' }]} />;
+  return (
+    <Image
+      source={{ uri: currentUri }}
+      style={style}
+      resizeMode="cover"
+      onError={() => {
+        if (currentUri !== fallbackUri && fallbackUri) setCurrentUri(fallbackUri);
+      }}
+    />
+  );
 }
 
 function isPastTrip(row, todayIso) {
@@ -77,7 +181,7 @@ function TripCard({ trip, onSelectTrip }) {
     >
       {cover ? (
         <View style={{ width: '100%', height: 130, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 4 }}>
-          <Image source={{ uri: cover }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          <RemoteImage uri={cover} fallbackUri={fallbackPhotoUri(trip?.title || trip?.slug)} style={{ width: '100%', height: '100%' }} />
         </View>
       ) : null}
       <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{trip.title || 'Untitled Trip'}</Text>

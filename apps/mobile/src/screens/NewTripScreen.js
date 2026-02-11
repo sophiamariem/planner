@@ -405,10 +405,6 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
     setDayDrafts((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)));
   };
 
-  const updateLegend = (index, patch) => {
-    setBadgeLegend((prev) => prev.map((entry, i) => (i === index ? { ...entry, ...patch } : entry)));
-  };
-
   const updateFlight = (index, patch) => {
     setFlights((prev) => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)));
   };
@@ -582,11 +578,7 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
       };
     });
 
-    const dayBadges = {};
-    days.forEach((day, i) => {
-      const badges = splitBadges(dayDrafts[i]?.badgesText);
-      if (badges.length) dayBadges[day.id] = badges;
-    });
+    const dayBadges = (base?.dayBadges && typeof base.dayBadges === 'object') ? base.dayBadges : {};
 
     const ll = { ...(base?.ll || {}) };
     days.forEach((day) => {
@@ -823,10 +815,6 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
                   )}
                 </View>
 
-                <View style={{ gap: 6 }}>
-                  <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Badges</Text>
-                  <TextInput value={item.badgesText} onChangeText={(value) => updateDayDraft(index, { badgesText: value })} placeholder="e.g. ✈️ 🍽️ 🏛️" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
-                </View>
               </View>
             ))}
               </>
@@ -920,12 +908,16 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
                   <View style={{ borderWidth: 1, borderColor: '#dcfce7', backgroundColor: '#f0fdf4', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
                     <Text style={{ color: '#166534', fontSize: 12, fontWeight: '700' }}>{flights.length} flights</Text>
                   </View>
+                  {tripFooter ? (
+                    <View style={{ borderWidth: 1, borderColor: '#fbcfe8', backgroundColor: '#fdf2f8', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+                      <Text style={{ color: '#9d174d', fontSize: 12, fontWeight: '700' }} numberOfLines={1}>{tripFooter}</Text>
+                    </View>
+                  ) : null}
                 </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                   {dayDrafts.map((day, index) => {
                     const photo = Array.isArray(day?.photos) && day.photos.length > 0 ? day.photos[0] : '';
                     const pinsCount = Array.isArray(day?.pins) ? day.pins.length : 0;
-                    const badgesCount = splitBadges(day?.badgesText).length;
                     return (
                       <View key={day._key || `review-day-${index}`} style={{ width: 190, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, overflow: 'hidden', backgroundColor: '#fff' }}>
                         {photo ? (
@@ -938,7 +930,7 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
                         <View style={{ padding: 8, gap: 3 }}>
                           <Text style={{ color: '#111827', fontSize: 12, fontWeight: '700' }}>Day {index + 1}</Text>
                           <Text style={{ color: '#374151', fontSize: 12 }} numberOfLines={1}>{normalizeDayTitle(day.title, index, dayDrafts.length)}</Text>
-                          <Text style={{ color: '#6b7280', fontSize: 11 }}>{pinsCount} locations • {badgesCount} badges</Text>
+                          <Text style={{ color: '#6b7280', fontSize: 11 }}>{pinsCount} locations</Text>
                         </View>
                       </View>
                     );
