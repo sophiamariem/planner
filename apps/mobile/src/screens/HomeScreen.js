@@ -20,6 +20,14 @@ function getTemplateLabel(row) {
   return TEMPLATE_LABELS[templateId] || null;
 }
 
+function getCoverPhoto(row) {
+  const cover = row?.trip_data?.tripConfig?.cover;
+  if (cover) return cover;
+  const days = Array.isArray(row?.trip_data?.days) ? row.trip_data.days : [];
+  const fromDay = days.find((day) => Array.isArray(day?.photos) && day.photos.length > 0)?.photos?.[0];
+  return fromDay || null;
+}
+
 export default function HomeScreen({ user, trips, loading, onRefresh, onSelectTrip, onSignOut, onCreateNew }) {
   return (
     <View style={{ flex: 1, gap: 14 }}>
@@ -62,6 +70,7 @@ export default function HomeScreen({ user, trips, loading, onRefresh, onSelectTr
           trips.map((trip) => {
             const start = getStartDate(trip);
             const templateLabel = getTemplateLabel(trip);
+            const cover = getCoverPhoto(trip);
             return (
               <Pressable
                 key={trip.id}
@@ -80,6 +89,11 @@ export default function HomeScreen({ user, trips, loading, onRefresh, onSelectTr
                   elevation: 1,
                 }}
               >
+                {cover ? (
+                  <View style={{ width: '100%', height: 130, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 4 }}>
+                    <Image source={{ uri: cover }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  </View>
+                ) : null}
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{trip.title || 'Untitled Trip'}</Text>
                 <Text style={{ color: '#6b7280', fontSize: 12 }}>
                   {trip.slug || 'no-slug'} • {trip.visibility}
