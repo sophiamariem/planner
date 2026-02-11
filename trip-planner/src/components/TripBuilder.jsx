@@ -29,6 +29,8 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
     const [rangeStart, setRangeStart] = useState("");
     const [rangeEnd, setRangeEnd] = useState("");
     const [photoLoadingByDay, setPhotoLoadingByDay] = useState({});
+    const [showPhotoUrlInputByDay, setShowPhotoUrlInputByDay] = useState({});
+    const [photoUrlDraftByDay, setPhotoUrlDraftByDay] = useState({});
     const [photoPicker, setPhotoPicker] = useState({
         open: false,
         dayIndex: null,
@@ -300,22 +302,6 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
         });
     };
 
-    const addDayPhoto = (dayIndex) => {
-        const updated = [...days];
-        const photos = updated[dayIndex].photos ? [...updated[dayIndex].photos] : [];
-        photos.push('');
-        updated[dayIndex] = { ...updated[dayIndex], photos };
-        setDays(updated);
-    };
-
-    const updateDayPhoto = (dayIndex, photoIndex, value) => {
-        const updated = [...days];
-        const photos = updated[dayIndex].photos ? [...updated[dayIndex].photos] : [];
-        photos[photoIndex] = value;
-        updated[dayIndex] = { ...updated[dayIndex], photos };
-        setDays(updated);
-    };
-
     const removeDayPhoto = (dayIndex, photoIndex) => {
         const updated = [...days];
         const photos = updated[dayIndex].photos ? [...updated[dayIndex].photos] : [];
@@ -323,11 +309,19 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
         setDays(updated);
     };
 
-    const pruneEmptyPhotos = (dayIndex) => {
+    const addPhotoUrlToDay = (dayIndex) => {
+        const url = String(photoUrlDraftByDay[dayIndex] || "").trim();
+        if (!url) {
+            pushToast("Paste an image URL first.", "error");
+            return;
+        }
         const updated = [...days];
-        const photos = updated[dayIndex].photos ? updated[dayIndex].photos.filter(p => p.trim() !== '') : [];
+        const photos = updated[dayIndex].photos ? [...updated[dayIndex].photos] : [];
+        photos.push(url);
         updated[dayIndex] = { ...updated[dayIndex], photos };
         setDays(updated);
+        setPhotoUrlDraftByDay((prev) => ({ ...prev, [dayIndex]: "" }));
+        setShowPhotoUrlInputByDay((prev) => ({ ...prev, [dayIndex]: false }));
     };
 
     const addFlight = () => {
@@ -1072,7 +1066,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() => addDayPhoto(index)}
+                                                onClick={() => setShowPhotoUrlInputByDay((prev) => ({ ...prev, [index]: true }))}
                                                 className="px-3 py-1.5 rounded-lg bg-zinc-900 text-white text-xs font-medium hover:bg-zinc-800"
                                             >
                                                 + Add URL
@@ -1080,32 +1074,65 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                                         </div>
                                     </div>
                                     <p className="text-xs text-zinc-500 mt-1">
-                                        Use "Find Photos" for automatic images, or paste your own image URLs.
+                                        Use "Find Photos" for automatic images. Add a manual URL only when needed.
                                     </p>
-                                    <div className="mt-3 space-y-2">
-                                        {(day.photos || []).length === 0 && (
-                                            <p className="text-sm text-zinc-500 italic">No photos added yet.</p>
-                                        )}
-                                        {(day.photos || []).map((photoUrl, photoIndex) => (
-                                            <div key={`${index}-photo-${photoIndex}`} className="flex items-center gap-2">
-                                                <input
-                                                    type="url"
-                                                    value={photoUrl}
-                                                    onChange={e => updateDayPhoto(index, photoIndex, e.target.value)}
-                                                    onBlur={() => pruneEmptyPhotos(index)}
-                                                    placeholder="https://example.com/photo.jpg"
-                                                    className="flex-1 px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeDayPhoto(index, photoIndex)}
-                                                    className="px-2 py-2 rounded-lg text-red-600 hover:text-red-700 text-sm font-medium"
-                                                >
-                                                    Remove
-                                                </button>
+                                    {showPhotoUrlInputByDay[index] && (
+                                        <div className="mt-3 flex items-center gap-2">
+                                            <input
+                                                type="url"
+                                                value={photoUrlDraftByDay[index] || ""}
+                                                onChange={e => setPhotoUrlDraftByDay((prev) => ({ ...prev, [index]: e.target.value }))}
+                                                placeholder="https://example.com/photo.jpg"
+                                                className="flex-1 px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => addPhotoUrlToDay(index)}
+                                                className="px-3 py-2 rounded-lg bg-zinc-900 text-white text-sm font-medium hover:bg-zinc-800"
+                                            >
+                                                Add
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPhotoUrlInputByDay((prev) => ({ ...prev, [index]: false }))}
+                                                className="px-3 py-2 rounded-lg border border-zinc-300 text-sm font-medium hover:bg-zinc-50"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    )}
+                                    {(day.photos || []).filter(Boolean).length > 0 && (
+                                        <div className="mt-4">
+                                            <p className="text-xs text-zinc-500 mb-2">Photo preview</p>
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                                {(day.photos || [])
+                                                    .map((photoUrl, photoIndex) => ({ photoUrl, photoIndex }))
+                                                    .filter(({ photoUrl }) => String(photoUrl || "").trim() !== "")
+                                                    .slice(0, 4)
+                                                    .map(({ photoUrl, photoIndex }) => (
+                                                        <div key={`${index}-preview-${photoIndex}`} className="relative">
+                                                            <img
+                                                                src={photoUrl}
+                                                                alt=""
+                                                                loading="lazy"
+                                                                className="w-full h-24 object-cover rounded-lg border border-zinc-200 bg-zinc-100"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeDayPhoto(index, photoIndex)}
+                                                                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/65 text-white text-xs hover:bg-black/80"
+                                                                aria-label="Remove photo"
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        </div>
+                                                    ))}
                                             </div>
-                                        ))}
-                                    </div>
+                                        </div>
+                                    )}
+                                    {(day.photos || []).filter(Boolean).length === 0 && (
+                                        <p className="text-sm text-zinc-500 italic mt-3">No photos added yet.</p>
+                                    )}
                                 </div>
 
                                 <div className="border-t border-zinc-200 pt-4 mt-4">
