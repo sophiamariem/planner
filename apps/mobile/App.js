@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import React, { useCallback, useEffect, useState } from 'react';
-import { SafeAreaView, StatusBar, Text, View } from 'react-native';
+import { Alert, SafeAreaView, StatusBar, Text, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AuthScreen from './src/screens/AuthScreen';
@@ -8,7 +8,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import NewTripScreen from './src/screens/NewTripScreen';
 import TripViewScreen from './src/screens/TripViewScreen';
 import BottomSheet from './src/components/BottomSheet';
-import { getCurrentUser, listMyTrips, loadCloudTripById, saveTripToCloud, signOut, updateCloudTripById } from './src/lib/cloudTripsMobile';
+import { deleteCloudTripById, getCurrentUser, listMyTrips, loadCloudTripById, saveTripToCloud, signOut, updateCloudTripById } from './src/lib/cloudTripsMobile';
 import { setSessionFromUrl } from './src/lib/supabaseMobile';
 
 export default function App() {
@@ -22,8 +22,31 @@ export default function App() {
   const [editSaving, setEditSaving] = useState(false);
   const [toast, setToast] = useState('');
 
+  const toSafeUserMessage = (message, fallback = 'Something went wrong. Please try again.') => {
+    const raw = String(message || '').trim();
+    if (!raw) return fallback;
+    const lower = raw.toLowerCase();
+    if (
+      lower.includes('supabase') ||
+      lower.includes('expo_public_') ||
+      lower.includes('react_app_') ||
+      lower.includes('jwt') ||
+      lower.includes('token') ||
+      lower.includes('postgres') ||
+      lower.includes('sql') ||
+      lower.includes('schema') ||
+      lower.includes('relation') ||
+      lower.includes('policy') ||
+      lower.includes('unsupported provider') ||
+      lower.includes('provider is not enabled')
+    ) {
+      return fallback;
+    }
+    return raw;
+  };
+
   const pushToast = (msg) => {
-    setToast(msg);
+    setToast(toSafeUserMessage(msg));
     setTimeout(() => setToast(''), 2600);
   };
 
@@ -116,6 +139,31 @@ export default function App() {
     }
   };
 
+  const handleDeleteTrip = () => {
+    if (!selectedTrip?.id) return;
+    Alert.alert(
+      'Delete Trip',
+      'This will permanently delete this trip from your saved trips.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteCloudTripById(selectedTrip.id);
+              setSelectedTrip(null);
+              await refreshSessionAndData();
+              pushToast('Trip deleted.');
+            } catch (error) {
+              pushToast(error.message || 'Could not delete trip.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
@@ -131,6 +179,7 @@ export default function App() {
                 tripRow={selectedTrip}
                 onBack={() => setSelectedTrip(null)}
                 onEdit={() => setEditingTrip(true)}
+                onDelete={handleDeleteTrip}
                 onToast={pushToast}
               />
             ) : (

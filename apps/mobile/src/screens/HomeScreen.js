@@ -200,6 +200,7 @@ function TripCard({ trip, onSelectTrip }) {
 }
 
 export default function HomeScreen({ user, trips, loading, onRefresh, onSelectTrip, onSignOut, onCreateNew }) {
+  const [showPast, setShowPast] = React.useState(false);
   const todayIso = new Date().toISOString().slice(0, 10);
   const upcomingTrips = trips
     .filter((trip) => !isPastTrip(trip, todayIso))
@@ -259,14 +260,19 @@ export default function HomeScreen({ user, trips, loading, onRefresh, onSelectTr
             </View>
 
             <View style={{ gap: 8, marginTop: 6 }}>
-              <Text style={{ color: '#6b7280', fontSize: 13, fontWeight: '800' }}>Past ({pastTrips.length})</Text>
-              {pastTrips.length ? (
-                pastTrips.map((trip) => <TripCard key={trip.id} trip={trip} onSelectTrip={onSelectTrip} />)
-              ) : (
-                <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 10, backgroundColor: '#fff' }}>
-                  <Text style={{ color: '#6b7280', fontSize: 12 }}>No past trips yet.</Text>
-                </View>
-              )}
+              <Pressable onPress={() => setShowPast((prev) => !prev)} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, backgroundColor: '#fff', paddingHorizontal: 10, paddingVertical: 8 }}>
+                <Text style={{ color: '#6b7280', fontSize: 13, fontWeight: '800' }}>Past ({pastTrips.length})</Text>
+                <Text style={{ color: '#6b7280', fontSize: 12, fontWeight: '700' }}>{showPast ? 'Hide' : 'Show'}</Text>
+              </Pressable>
+              {showPast ? (
+                pastTrips.length ? (
+                  pastTrips.map((trip) => <TripCard key={trip.id} trip={trip} onSelectTrip={onSelectTrip} />)
+                ) : (
+                  <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 10, backgroundColor: '#fff' }}>
+                    <Text style={{ color: '#6b7280', fontSize: 12 }}>No past trips yet.</Text>
+                  </View>
+                )
+              ) : null}
             </View>
           </>
         )}

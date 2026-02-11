@@ -112,11 +112,18 @@ function fallbackPhotoUri(query, index = 0) {
   return `https://picsum.photos/seed/${seed}-${index}/1200/800`;
 }
 
-function RemoteImage({ uri, fallbackUri, style, resizeMode = 'cover' }) {
-  const [sourceUri, setSourceUri] = useState(uri || fallbackUri || '');
+function RemoteImage({ uri, fallbackUri, fallbackUris = [], style, resizeMode = 'cover' }) {
+  const candidates = useMemo(() => {
+    const list = [uri, ...(Array.isArray(fallbackUris) ? fallbackUris : []), fallbackUri].filter((v) => String(v || '').trim());
+    return [...new Set(list)];
+  }, [uri, fallbackUri, fallbackUris]);
+  const [sourceIndex, setSourceIndex] = useState(0);
+  const sourceUri = candidates[sourceIndex] || '';
+
   useEffect(() => {
-    setSourceUri(uri || fallbackUri || '');
-  }, [uri, fallbackUri]);
+    setSourceIndex(0);
+  }, [candidates]);
+
   if (!sourceUri) {
     return <View style={[style, { backgroundColor: '#e5e7eb' }]} />;
   }
@@ -126,7 +133,7 @@ function RemoteImage({ uri, fallbackUri, style, resizeMode = 'cover' }) {
       style={style}
       resizeMode={resizeMode}
       onError={() => {
-        if (sourceUri !== fallbackUri && fallbackUri) setSourceUri(fallbackUri);
+        setSourceIndex((prev) => Math.min(prev + 1, candidates.length - 1));
       }}
     />
   );
@@ -144,18 +151,23 @@ function extractCover(tripData) {
   return tripData?.tripConfig?.cover || (tripData?.days || []).find((d) => (d.photos || []).length > 0)?.photos?.[0] || null;
 }
 
-function getMapPreviewUrl(pins = []) {
+function getMapPreviewUrls(pins = []) {
   const valid = (pins || []).filter((p) => Array.isArray(p?.ll) && p.ll.length === 2).slice(0, 8);
-  if (!valid.length) return null;
+  if (!valid.length) return [];
   const lats = valid.map((p) => Number(p.ll[0])).filter(Number.isFinite);
   const lons = valid.map((p) => Number(p.ll[1])).filter(Number.isFinite);
-  if (!lats.length || !lons.length) return null;
+  if (!lats.length || !lons.length) return [];
   const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
   const centerLon = lons.reduce((a, b) => a + b, 0) / lons.length;
   const markerParam = valid
     .map((p) => `${Number(p.ll[0]).toFixed(6)},${Number(p.ll[1]).toFixed(6)},red-pushpin`)
     .join('|');
-  return `https://staticmap.openstreetmap.de/staticmap.php?center=${centerLat.toFixed(6)},${centerLon.toFixed(6)}&zoom=11&size=800x360&markers=${encodeURIComponent(markerParam)}`;
+  const osm = `https://staticmap.openstreetmap.de/staticmap.php?center=${centerLat.toFixed(6)},${centerLon.toFixed(6)}&zoom=11&size=800x360&markers=${encodeURIComponent(markerParam)}`;
+  const yandexMarkers = valid
+    .map((p) => `${Number(p.ll[1]).toFixed(6)},${Number(p.ll[0]).toFixed(6)},pm2rdm`)
+    .join('~');
+  const yandex = `https://static-maps.yandex.ru/1.x/?lang=en_US&ll=${centerLon.toFixed(6)},${centerLat.toFixed(6)}&z=11&l=map&size=650,320&pt=${encodeURIComponent(yandexMarkers)}`;
+  return [osm, yandex];
 }
 
 function getMapQueryUrl(pin) {
@@ -182,7 +194,7 @@ function buildShareUrl(tripRow) {
   return `${base}/${slug}`;
 }
 
-export default function TripViewScreen({ tripRow, onBack, onEdit, onToast }) {
+export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onToast }) {
   const scrollRef = useRef(null);
   const dayOffsetsRef = useRef({});
   const tripData = tripRow?.trip_data || {};
@@ -286,6 +298,9 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onToast }) {
         </View>
         <View style={{ flex: 1 }}>
           <PrimaryButton title="Edit Trip" onPress={onEdit} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <PrimaryButton title="Delete Trip" onPress={onDelete} variant="outline" />
         </View>
       </View>
 
@@ -446,10 +461,11 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onToast }) {
 
               {Array.isArray(day.pins) && day.pins.length > 0 ? (
                 <View style={{ gap: 6 }}>
-                  {getMapPreviewUrl(day.pins) ? (
+                  {getMapPreviewUrls(day.pins).length > 0 ? (
                     <Pressable onPress={() => openPinInMaps(day.pins[0])} style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 12, overflow: 'hidden', backgroundColor: '#f8fafc' }}>
                       <RemoteImage
-                        uri={getMapPreviewUrl(day.pins)}
+                        uri={getMapPreviewUrls(day.pins)[0]}
+                        fallbackUris={getMapPreviewUrls(day.pins).slice(1)}
                         fallbackUri=""
                         style={{ width: '100%', height: 170, backgroundColor: '#f1f5f9' }}
                         resizeMode="cover"

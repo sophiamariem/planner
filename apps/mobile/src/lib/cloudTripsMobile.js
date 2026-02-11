@@ -65,7 +65,7 @@ export async function getCurrentUser() {
 }
 
 export async function signInWithMagicLink(email) {
-  if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+  if (!isSupabaseConfigured) throw new Error('Sign in is unavailable right now.');
 
   const { url, anonKey } = getSupabaseConfig();
   const redirectTo = Linking.createURL('auth-callback');
@@ -87,7 +87,7 @@ export async function signInWithMagicLink(email) {
 }
 
 export async function signInWithGoogle() {
-  if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+  if (!isSupabaseConfigured) throw new Error('Google sign-in is unavailable right now.');
 
   const { url } = getSupabaseConfig();
   const redirectTo = Linking.createURL('auth-callback');
@@ -116,7 +116,7 @@ export async function listMyTrips() {
 }
 
 export async function loadCloudTripById(id) {
-  if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+  if (!isSupabaseConfigured) throw new Error('Saved trips are unavailable right now.');
 
   const response = await authedFetch(`/rest/v1/trips?id=eq.${encodeURIComponent(id)}&select=id,slug,title,visibility,trip_data,created_at,updated_at&limit=1`, {
     method: 'GET',
@@ -128,7 +128,7 @@ export async function loadCloudTripById(id) {
 }
 
 export async function saveTripToCloud(tripData, visibility = 'private') {
-  if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+  if (!isSupabaseConfigured) throw new Error('Saved trips are unavailable right now.');
 
   const title = tripData?.tripConfig?.title || 'Untitled Trip';
   const baseSlug = slugifyTitle(title);
@@ -163,7 +163,7 @@ export async function saveTripToCloud(tripData, visibility = 'private') {
 }
 
 export async function updateCloudTripById(id, tripData, visibility = 'private') {
-  if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+  if (!isSupabaseConfigured) throw new Error('Saved trips are unavailable right now.');
   if (!id) throw new Error('Trip id is required.');
 
   const title = tripData?.tripConfig?.title || 'Untitled Trip';
@@ -187,6 +187,22 @@ export async function updateCloudTripById(id, tripData, visibility = 'private') 
   const rows = await parseJson(response, 'Could not update trip.');
   if (!rows.length) throw new Error('Trip not found.');
   return rows[0];
+}
+
+export async function deleteCloudTripById(id) {
+  if (!isSupabaseConfigured) throw new Error('Saved trips are unavailable right now.');
+  if (!id) throw new Error('Trip id is required.');
+
+  const response = await authedFetch(`/rest/v1/trips?id=eq.${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: {
+      Prefer: 'return=minimal',
+    },
+  });
+
+  if (!response.ok) {
+    await parseJson(response, 'Could not delete trip.');
+  }
 }
 
 function slugifyTitle(title) {

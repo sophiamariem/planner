@@ -10,7 +10,7 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 export function getSupabaseConfig() {
   if (!isSupabaseConfigured) {
-    throw new Error('Supabase is not configured. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.');
+    throw new Error('This feature is temporarily unavailable.');
   }
   return { url: supabaseUrl, anonKey: supabaseAnonKey };
 }

@@ -10,7 +10,7 @@ export const supabase = null;
 
 export function getSupabaseConfig() {
   if (!isSupabaseConfigured) {
-    throw new Error('Supabase is not configured.');
+    throw new Error('This feature is temporarily unavailable.');
   }
 
   return { url: supabaseUrl, anonKey: supabaseAnonKey };

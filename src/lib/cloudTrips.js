@@ -13,14 +13,41 @@ async function parseJson(response, fallback = 'Request failed.') {
   }
 
   if (!response.ok) {
-    const message = body?.msg || body?.error_description || body?.message || fallback;
+    const message = toFriendlyMessage(response, body, fallback);
     const error = new Error(message);
     error.code = body?.code;
-    error.details = body?.details;
+    error.details = body?.msg || body?.error_description || body?.message || body?.details || null;
     throw error;
   }
 
   return body;
+}
+
+function toFriendlyMessage(response, body, fallback) {
+  const status = response?.status || 0;
+  const raw = String(body?.msg || body?.error_description || body?.message || '').toLowerCase();
+
+  if (status === 401 || status === 403 || raw.includes('jwt') || raw.includes('token') || raw.includes('expired')) {
+    return 'Your session expired. Please sign in again.';
+  }
+
+  if (status === 429) {
+    return 'Too many attempts. Please wait a moment and try again.';
+  }
+
+  if (raw.includes('unsupported provider') || raw.includes('provider is not enabled')) {
+    return 'Google sign-in is not available right now. Please use email sign-in.';
+  }
+
+  if (body?.code === '23505' || raw.includes('duplicate key')) {
+    return 'This trip already exists. Try saving again.';
+  }
+
+  if (status >= 500) {
+    return 'Something went wrong on our side. Please try again.';
+  }
+
+  return fallback || 'Something went wrong. Please try again.';
 }
 
 export async function getCurrentUser() {
@@ -32,7 +59,7 @@ export async function getCurrentUser() {
 }
 
 export async function signInWithMagicLink(email) {
-  if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+  if (!isSupabaseConfigured) throw new Error('Sign in is unavailable right now.');
 
   const { url, anonKey } = getSupabaseConfig();
   const redirectTo = window.location.origin + window.location.pathname;
@@ -54,7 +81,7 @@ export async function signInWithMagicLink(email) {
 }
 
 export function signInWithGoogle() {
-  if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+  if (!isSupabaseConfigured) throw new Error('Google sign-in is unavailable right now.');
 
   const { url } = getSupabaseConfig();
   const redirectTo = window.location.origin + window.location.pathname;
@@ -73,7 +100,7 @@ export async function signOut() {
 }
 
 export async function saveTripToCloud(tripData, visibility = 'private') {
-  if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+  if (!isSupabaseConfigured) throw new Error('Saved trips are unavailable right now.');
 
   const title = tripData?.tripConfig?.title || 'Untitled Trip';
   const baseSlug = slugifyTitle(title);
@@ -108,7 +135,7 @@ export async function saveTripToCloud(tripData, visibility = 'private') {
 }
 
 export async function updateCloudTrip(id, tripData, visibility = 'private', currentSlug = null) {
-  if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+  if (!isSupabaseConfigured) throw new Error('Saved trips are unavailable right now.');
 
   const title = tripData?.tripConfig?.title || 'Untitled Trip';
   const payload = {
@@ -141,7 +168,7 @@ export async function listMyTrips() {
 }
 
 export async function loadCloudTripById(id) {
-  if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+  if (!isSupabaseConfigured) throw new Error('Saved trips are unavailable right now.');
 
   const response = await authedFetch(`/rest/v1/trips?id=eq.${encodeURIComponent(id)}&select=id,slug,title,visibility,share_token,trip_data,owner_id,created_at,updated_at&limit=1`, {
     method: 'GET',
@@ -153,7 +180,7 @@ export async function loadCloudTripById(id) {
 }
 
 export async function loadCloudTripByShareToken(shareToken) {
-  if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+  if (!isSupabaseConfigured) throw new Error('Shared trips are unavailable right now.');
 
   const response = await authedFetch(`/rest/v1/trips?share_token=eq.${encodeURIComponent(shareToken)}&select=id,slug,title,visibility,share_token,trip_data,owner_id,created_at,updated_at&limit=1`, {
     method: 'GET',
@@ -165,7 +192,7 @@ export async function loadCloudTripByShareToken(shareToken) {
 }
 
 export async function loadCloudTripBySlug(slug) {
-  if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+  if (!isSupabaseConfigured) throw new Error('Shared trips are unavailable right now.');
 
   const response = await authedFetch(`/rest/v1/trips?slug=eq.${encodeURIComponent(slug)}&select=id,slug,title,visibility,share_token,trip_data,owner_id,created_at,updated_at&limit=1`, {
     method: 'GET',
@@ -176,8 +203,24 @@ export async function loadCloudTripBySlug(slug) {
   return rows[0];
 }
 
+export async function deleteCloudTripById(id) {
+  if (!isSupabaseConfigured) throw new Error('Saved trips are unavailable right now.');
+  if (!id) throw new Error('Trip id is required.');
+
+  const response = await authedFetch(`/rest/v1/trips?id=eq.${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: {
+      Prefer: 'return=minimal',
+    },
+  });
+
+  if (!response.ok) {
+    await parseJson(response, 'Could not delete trip.');
+  }
+}
+
 export async function generateShareToken(tripId) {
-  if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+  if (!isSupabaseConfigured) throw new Error('Sharing is unavailable right now.');
 
   const token = Math.random().toString(36).slice(2, 18);
   const response = await authedFetch(`/rest/v1/trips?id=eq.${encodeURIComponent(tripId)}&select=id,share_token`, {

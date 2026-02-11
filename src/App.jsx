@@ -4,7 +4,7 @@ import useFavicon from "./hooks/useFavicon";
 import { ensureTailwindCDN } from "./utils/tailwind";
 import { getTripFromURL, updateURLWithTrip, saveTripToLocalStorage, loadTripFromLocalStorage, generateShareURL, clearLocalStorageTrip, validateTripData, getSourceFromURL, getCloudFromURL, isViewOnlyFromURL } from "./utils/tripData";
 import { isSupabaseConfigured, setSessionFromUrl } from "./lib/supabaseClient";
-import { getCurrentUser, signInWithMagicLink, signInWithGoogle, signOut, saveTripToCloud, updateCloudTrip, listMyTrips, loadCloudTripById, loadCloudTripByShareToken, loadCloudTripBySlug, generateShareToken } from "./lib/cloudTrips";
+import { getCurrentUser, signInWithMagicLink, signInWithGoogle, signOut, saveTripToCloud, updateCloudTrip, listMyTrips, loadCloudTripById, loadCloudTripByShareToken, loadCloudTripBySlug, generateShareToken, deleteCloudTripById } from "./lib/cloudTrips";
 
 import FlightCard from "./components/FlightCard";
 import DayCard from "./components/DayCard";
@@ -176,6 +176,7 @@ export default function TripPlannerApp() {
   const [cloudSaving, setCloudSaving] = useState(false);
   const [myTrips, setMyTrips] = useState([]);
   const [myTripsLoading, setMyTripsLoading] = useState(false);
+  const [showPastSavedTrips, setShowPastSavedTrips] = useState(false);
   const [user, setUser] = useState(null);
 
   const templateJSON = JSON.stringify({
@@ -217,9 +218,38 @@ export default function TripPlannerApp() {
     setImportError("");
   };
 
+  const toSafeUserMessage = (message, fallback) => {
+    const raw = String(message || "").trim();
+    if (!raw) return fallback;
+    const lower = raw.toLowerCase();
+    if (
+      lower.includes("supabase") ||
+      lower.includes("react_app_") ||
+      lower.includes("expo_public_") ||
+      lower.includes("jwt") ||
+      lower.includes("token") ||
+      lower.includes("postgres") ||
+      lower.includes("sql") ||
+      lower.includes("schema") ||
+      lower.includes("relation") ||
+      lower.includes("policy") ||
+      lower.includes("auth/v1") ||
+      lower.includes("rest/v1") ||
+      lower.includes("unsupported provider") ||
+      lower.includes("provider is not enabled")
+    ) {
+      return fallback;
+    }
+    return raw;
+  };
+
   const pushToast = (message, tone = "info") => {
+    const safeMessage = toSafeUserMessage(
+      message,
+      tone === "error" ? "Something went wrong. Please try again." : "Done."
+    );
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    setToasts((prev) => [...prev, { id, message, tone }]);
+    setToasts((prev) => [...prev, { id, message: safeMessage, tone }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 2800);
@@ -413,7 +443,7 @@ export default function TripPlannerApp() {
 
   const submitSignIn = async () => {
     if (!isSupabaseConfigured) {
-      pushToast("Auth is not configured yet. Add Supabase env vars first.", "error");
+      pushToast("Sign in is unavailable right now. Please try again in a moment.", "error");
       return;
     }
     if (!signInEmail.trim()) {
@@ -437,7 +467,7 @@ export default function TripPlannerApp() {
 
   const submitGoogleSignIn = async () => {
     if (!isSupabaseConfigured) {
-      pushToast("Auth is not configured yet. Add Supabase env vars first.", "error");
+      pushToast("Google sign in is unavailable right now.", "error");
       return;
     }
     try {
@@ -450,7 +480,7 @@ export default function TripPlannerApp() {
 
   const handleSaveToCloud = async () => {
     if (!isSupabaseConfigured) {
-      pushToast("Saved trips are not configured yet.", "error");
+      pushToast("Saved trips are unavailable right now.", "error");
       return;
     }
     if (!user) {
@@ -510,6 +540,28 @@ export default function TripPlannerApp() {
     } catch (error) {
       console.error("Error opening trip:", error);
       pushToast(error.message || "Could not open trip.", "error");
+    }
+  };
+
+  const handleDeleteCloudTrip = async (id) => {
+    if (!id) return;
+    const confirmed = window.confirm("Delete this trip permanently?");
+    if (!confirmed) return;
+    try {
+      await deleteCloudTripById(id);
+      if (cloudTripId === id) {
+        setTripData(null);
+        setCloudTripId(null);
+        setCloudSlug(null);
+        setShareToken(null);
+        setSourceUrl(null);
+        setMode('onboarding');
+      }
+      await refreshMyTrips();
+      pushToast("Trip deleted.", "success");
+    } catch (error) {
+      console.error("Delete trip error:", error);
+      pushToast(error.message || "Could not delete trip.", "error");
     }
   };
 
@@ -813,7 +865,7 @@ export default function TripPlannerApp() {
         </button>
         {!isSupabaseConfigured && (
           <p className="text-sm text-amber-700 mb-4">
-            Auth is not configured in this environment. Add `REACT_APP_SUPABASE_URL` and `REACT_APP_SUPABASE_ANON_KEY`.
+            Sign in is temporarily unavailable right now.
           </p>
         )}
         <button
@@ -864,7 +916,7 @@ export default function TripPlannerApp() {
           </p>
           {!isSupabaseConfigured && (
             <p className="text-sm text-amber-700 mb-4">
-              Auth is not configured in this environment.
+              Sign in is temporarily unavailable right now.
             </p>
           )}
           {user ? (
@@ -948,7 +1000,7 @@ export default function TripPlannerApp() {
                 </p>
                 {!isSupabaseConfigured && (
                   <p className="text-xs text-amber-700 mt-1">
-                    Auth is not configured in this environment yet.
+                    Sign in is temporarily unavailable right now.
                   </p>
                 )}
               </div>
@@ -1272,7 +1324,7 @@ export default function TripPlannerApp() {
                   disabled={!isSupabaseConfigured || !user || cloudSaving}
                   className="mt-2 px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50"
                 >
-                  {!isSupabaseConfigured ? "Enable Supabase to get short links" : !user ? "Sign in to get short links" : (cloudSaving ? "Saving..." : "Save for short link")}
+                  {!isSupabaseConfigured ? "Short links unavailable" : !user ? "Sign in to get short links" : (cloudSaving ? "Saving..." : "Save for short link")}
                 </button>
               </div>
             )}
@@ -1411,27 +1463,37 @@ export default function TripPlannerApp() {
                       {savedUpcomingTrips.map((trip) => {
                         const cover = extractCoverImage(trip);
                         return (
-                          <button
-                            key={trip.id}
-                            type="button"
-                            onClick={() => handleOpenCloudTrip(trip.id)}
-                            className="w-full text-left rounded-xl border border-zinc-200 overflow-hidden hover:border-zinc-300 bg-white"
-                          >
-                            <div className="h-28 bg-zinc-100">
-                              {cover && (
-                                <img src={cover} alt="" className="w-full h-full object-cover" loading="lazy" />
-                              )}
+                          <div key={trip.id} className="rounded-xl border border-zinc-200 overflow-hidden bg-white">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenCloudTrip(trip.id)}
+                              className="w-full text-left hover:bg-zinc-50"
+                            >
+                              <div className="h-28 bg-zinc-100">
+                                {cover && (
+                                  <img src={cover} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                )}
+                              </div>
+                              <div className="p-3">
+                                <p className="font-medium text-zinc-900">{trip.title}</p>
+                                <p className="text-xs text-zinc-500 mt-1">
+                                  {trip.slug || "no-slug"} • {trip.visibility}
+                                </p>
+                                <p className="text-xs text-zinc-400 mt-1">
+                                  Updated {new Date(trip.updated_at || trip.created_at).toLocaleString()}
+                                </p>
+                              </div>
+                            </button>
+                            <div className="px-3 pb-3">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCloudTrip(trip.id)}
+                                className="w-full px-3 py-1.5 rounded-lg border border-rose-200 text-rose-700 text-xs font-medium hover:bg-rose-50"
+                              >
+                                Delete Trip
+                              </button>
                             </div>
-                            <div className="p-3">
-                              <p className="font-medium text-zinc-900">{trip.title}</p>
-                              <p className="text-xs text-zinc-500 mt-1">
-                                {trip.slug || "no-slug"} • {trip.visibility}
-                              </p>
-                              <p className="text-xs text-zinc-400 mt-1">
-                                Updated {new Date(trip.updated_at || trip.created_at).toLocaleString()}
-                              </p>
-                            </div>
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
@@ -1439,39 +1501,58 @@ export default function TripPlannerApp() {
                 </section>
 
                 <section>
-                  <h3 className="text-sm font-semibold text-zinc-700 mb-2">Past ({savedPastTrips.length})</h3>
-                  {savedPastTrips.length === 0 ? (
-                    <p className="text-xs text-zinc-500">No past trips.</p>
-                  ) : (
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      {savedPastTrips.map((trip) => {
-                        const cover = extractCoverImage(trip);
-                        return (
-                          <button
-                            key={trip.id}
-                            type="button"
-                            onClick={() => handleOpenCloudTrip(trip.id)}
-                            className="w-full text-left rounded-xl border border-zinc-200 overflow-hidden hover:border-zinc-300 bg-white"
-                          >
-                            <div className="h-28 bg-zinc-100">
-                              {cover && (
-                                <img src={cover} alt="" className="w-full h-full object-cover" loading="lazy" />
-                              )}
+                  <button
+                    type="button"
+                    onClick={() => setShowPastSavedTrips((prev) => !prev)}
+                    className="w-full mb-2 px-3 py-2 rounded-lg border border-zinc-200 text-sm font-semibold text-zinc-700 bg-zinc-50 hover:bg-zinc-100 flex items-center justify-between"
+                  >
+                    <span>Past ({savedPastTrips.length})</span>
+                    <span>{showPastSavedTrips ? "Hide" : "Show"}</span>
+                  </button>
+                  {showPastSavedTrips ? (
+                    savedPastTrips.length === 0 ? (
+                      <p className="text-xs text-zinc-500">No past trips.</p>
+                    ) : (
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        {savedPastTrips.map((trip) => {
+                          const cover = extractCoverImage(trip);
+                          return (
+                            <div key={trip.id} className="rounded-xl border border-zinc-200 overflow-hidden bg-white">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenCloudTrip(trip.id)}
+                                className="w-full text-left hover:bg-zinc-50"
+                              >
+                                <div className="h-28 bg-zinc-100">
+                                  {cover && (
+                                    <img src={cover} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                  )}
+                                </div>
+                                <div className="p-3">
+                                  <p className="font-medium text-zinc-900">{trip.title}</p>
+                                  <p className="text-xs text-zinc-500 mt-1">
+                                    {trip.slug || "no-slug"} • {trip.visibility}
+                                  </p>
+                                  <p className="text-xs text-zinc-400 mt-1">
+                                    Updated {new Date(trip.updated_at || trip.created_at).toLocaleString()}
+                                  </p>
+                                </div>
+                              </button>
+                              <div className="px-3 pb-3">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteCloudTrip(trip.id)}
+                                  className="w-full px-3 py-1.5 rounded-lg border border-rose-200 text-rose-700 text-xs font-medium hover:bg-rose-50"
+                                >
+                                  Delete Trip
+                                </button>
+                              </div>
                             </div>
-                            <div className="p-3">
-                              <p className="font-medium text-zinc-900">{trip.title}</p>
-                              <p className="text-xs text-zinc-500 mt-1">
-                                {trip.slug || "no-slug"} • {trip.visibility}
-                              </p>
-                              <p className="text-xs text-zinc-400 mt-1">
-                                Updated {new Date(trip.updated_at || trip.created_at).toLocaleString()}
-                              </p>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                          );
+                        })}
+                      </div>
+                    )
+                  ) : null}
                 </section>
               </div>
             )}
