@@ -95,40 +95,10 @@ create policy "Owners can delete their trips"
 on public.trips for delete
 using (owner_id = auth.uid());
 
--- Trips: collaborators read, editors write
+-- Trips collaborator policies intentionally omitted for now to avoid
+-- recursive RLS evaluation between trips <-> trip_collaborators.
 drop policy if exists "Collaborators can view shared trips" on public.trips;
-create policy "Collaborators can view shared trips"
-on public.trips for select
-using (
-  exists (
-    select 1
-    from public.trip_collaborators c
-    where c.trip_id = id
-      and c.user_id = auth.uid()
-  )
-);
-
 drop policy if exists "Editors can update shared trips" on public.trips;
-create policy "Editors can update shared trips"
-on public.trips for update
-using (
-  exists (
-    select 1
-    from public.trip_collaborators c
-    where c.trip_id = id
-      and c.user_id = auth.uid()
-      and c.role = 'editor'
-  )
-)
-with check (
-  exists (
-    select 1
-    from public.trip_collaborators c
-    where c.trip_id = id
-      and c.user_id = auth.uid()
-      and c.role = 'editor'
-  )
-);
 
 -- Trips: anonymous read for unlisted/public (for share links)
 drop policy if exists "Public or unlisted trips are readable" on public.trips;
@@ -137,21 +107,8 @@ on public.trips for select
 using (visibility in ('unlisted', 'public'));
 
 -- Collaborator table access
+-- Owner-management policy intentionally omitted for now to avoid recursion.
 drop policy if exists "Owners can manage collaborators" on public.trip_collaborators;
-create policy "Owners can manage collaborators"
-on public.trip_collaborators for all
-using (
-  exists (
-    select 1 from public.trips t
-    where t.id = trip_id and t.owner_id = auth.uid()
-  )
-)
-with check (
-  exists (
-    select 1 from public.trips t
-    where t.id = trip_id and t.owner_id = auth.uid()
-  )
-);
 
 drop policy if exists "Users can see their collaborator rows" on public.trip_collaborators;
 create policy "Users can see their collaborator rows"
