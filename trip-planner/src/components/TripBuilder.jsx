@@ -24,6 +24,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
     const [jsonInput, setJsonInput] = useState(JSON.stringify(tripData || {}, null, 2));
     const [jsonError, setJsonError] = useState("");
     const [newPinByDay, setNewPinByDay] = useState({});
+    const [badgeInputByDay, setBadgeInputByDay] = useState({});
     const [pinLoadingByDay, setPinLoadingByDay] = useState({});
     const [rangeStart, setRangeStart] = useState("");
     const [rangeEnd, setRangeEnd] = useState("");
@@ -40,6 +41,47 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
     const pushToast = (message, tone = "info") => {
         setToast({ message, tone });
         setTimeout(() => setToast(null), 2500);
+    };
+
+    const COMMON_BADGES = ["✈️", "🚆", "🚗", "🏛️", "🏖️", "🍷", "🎉", "🌅", "🍽️", "🛍️"];
+
+    const addBadgeToDay = (day, emoji) => {
+        const clean = String(emoji || "").trim();
+        if (!clean) {
+            pushToast("Enter an emoji badge first.", "error");
+            return;
+        }
+        const dayKey = Number(day?.id);
+        if (Number.isNaN(dayKey)) {
+            pushToast("Set the day date first so we can place this on the calendar.", "error");
+            return;
+        }
+
+        setDayBadges((prev) => {
+            const current = Array.isArray(prev[dayKey]) ? prev[dayKey] : [];
+            if (current.includes(clean)) return prev;
+            if (current.length >= 3) {
+                pushToast("Use up to 3 badges per day.", "error");
+                return prev;
+            }
+            return { ...prev, [dayKey]: [...current, clean] };
+        });
+    };
+
+    const removeBadgeFromDay = (day, badgeIndex) => {
+        const dayKey = Number(day?.id);
+        if (Number.isNaN(dayKey)) return;
+
+        setDayBadges((prev) => {
+            const current = Array.isArray(prev[dayKey]) ? prev[dayKey] : [];
+            const next = current.filter((_, i) => i !== badgeIndex);
+            if (next.length === 0) {
+                const copy = { ...prev };
+                delete copy[dayKey];
+                return copy;
+            }
+            return { ...prev, [dayKey]: next };
+        });
     };
 
     useEffect(() => {
@@ -1161,6 +1203,70 @@ export default function TripBuilder({ tripData, onSave, onCancel, onReset }) {
                                             <DayMap pins={day.pins} className="h-52" />
                                         </div>
                                     )}
+
+                                    <div className="mt-4 border-t border-zinc-200 pt-4">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-sm font-medium text-zinc-700">Calendar Badges</label>
+                                            <span className="text-xs text-zinc-500">Up to 3 per day</span>
+                                        </div>
+                                        <p className="text-xs text-zinc-500 mt-1">
+                                            Optional: add quick emoji markers for calendar view.
+                                        </p>
+
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            {(dayBadges[Number(day.id)] || []).length > 0 ? (
+                                                (dayBadges[Number(day.id)] || []).map((b, badgeIdx) => (
+                                                    <span key={`${day.id}-badge-${badgeIdx}`} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-zinc-100 text-zinc-700 text-sm">
+                                                        <span>{b}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeBadgeFromDay(day, badgeIdx)}
+                                                            className="text-zinc-500 hover:text-red-600"
+                                                            aria-label="Remove badge"
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </span>
+                                                ))
+                                            ) : (
+                                                <p className="text-sm text-zinc-500 italic">No badges yet.</p>
+                                            )}
+                                        </div>
+
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            {COMMON_BADGES.map((emoji) => (
+                                                <button
+                                                    key={`${day.id}-${emoji}`}
+                                                    type="button"
+                                                    onClick={() => addBadgeToDay(day, emoji)}
+                                                    className="px-2.5 py-1.5 rounded-lg border border-zinc-300 text-sm hover:bg-zinc-50"
+                                                    aria-label={`Add ${emoji} badge`}
+                                                >
+                                                    {emoji}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        <div className="mt-3 flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                value={badgeInputByDay[index] || ""}
+                                                onChange={(e) => setBadgeInputByDay((prev) => ({ ...prev, [index]: e.target.value }))}
+                                                placeholder="Custom emoji"
+                                                className="w-40 px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    addBadgeToDay(day, badgeInputByDay[index]);
+                                                    setBadgeInputByDay((prev) => ({ ...prev, [index]: "" }));
+                                                }}
+                                                className="px-3 py-2 rounded-lg border border-zinc-300 text-sm font-medium hover:bg-zinc-50"
+                                            >
+                                                Add Badge
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         ))}
