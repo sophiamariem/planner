@@ -114,7 +114,11 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f4f4f5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 260, backgroundColor: '#dbeafe' }} />
+      <View style={{ position: 'absolute', top: 180, left: -80, width: 240, height: 240, borderRadius: 999, backgroundColor: '#e0e7ff' }} />
+      <View style={{ position: 'absolute', top: 90, right: -70, width: 210, height: 210, borderRadius: 999, backgroundColor: '#dcfce7' }} />
+
       <View style={{ flex: 1, padding: 16 }}>
         {user ? (
           <HomeScreen
@@ -156,9 +160,9 @@ export default function App() {
       </BottomSheet>
 
       {toast ? (
-        <View style={{ position: 'absolute', bottom: 22, left: 20, right: 20 }}>
-          <View style={{ borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 12, backgroundColor: '#ffffff', padding: 12 }}>
-            <Text style={{ color: '#18181b', textAlign: 'center' }}>{toast}</Text>
+        <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20 }}>
+          <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 14, backgroundColor: '#ffffff', padding: 12, shadowColor: '#111827', shadowOpacity: 0.14, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 4 }}>
+            <Text style={{ color: '#111827', textAlign: 'center', fontWeight: '600' }}>{toast}</Text>
           </View>
         </View>
       ) : null}

@@ -7,17 +7,23 @@ export default function PrimaryButton({ title, onPress, disabled = false, varian
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      style={{
-        backgroundColor: solid ? '#18181b' : '#ffffff',
-        borderColor: '#d4d4d8',
+      style={({ pressed }) => ({
+        backgroundColor: solid ? '#111827' : '#ffffff',
+        borderColor: solid ? '#111827' : '#d4d4d8',
         borderWidth: 1,
-        paddingVertical: 12,
+        paddingVertical: 13,
         paddingHorizontal: 14,
-        borderRadius: 12,
-        opacity: disabled ? 0.5 : 1,
-      }}
+        borderRadius: 14,
+        opacity: disabled ? 0.45 : 1,
+        transform: [{ scale: pressed ? 0.985 : 1 }],
+        shadowColor: solid ? '#111827' : '#000000',
+        shadowOpacity: pressed ? 0.05 : (solid ? 0.2 : 0.06),
+        shadowRadius: solid ? 10 : 6,
+        shadowOffset: { width: 0, height: solid ? 5 : 2 },
+        elevation: solid ? 3 : 1,
+      })}
     >
-      <Text style={{ color: solid ? '#ffffff' : '#18181b', fontWeight: '600', textAlign: 'center' }}>{title}</Text>
+      <Text style={{ color: solid ? '#ffffff' : '#111827', fontWeight: '700', textAlign: 'center', letterSpacing: 0.2 }}>{title}</Text>
     </Pressable>
   );
 }
