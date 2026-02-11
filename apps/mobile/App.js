@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 import React, { useCallback, useEffect, useState } from 'react';
 import { SafeAreaView, Text, View } from 'react-native';
 import * as Linking from 'expo-linking';
