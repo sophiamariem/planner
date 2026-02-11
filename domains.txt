@@ -1,0 +1,124 @@
+
+• Yes. Once you buy plnr.zone, we can switch fully.
+
+  Do this in order:
+
+  1. Add plnr.zone in Netlify Domain management and set it as primary.
+  2. Update DNS at registrar:
+
+  - apex @ -> Netlify A/ALIAS records
+  - www -> CNAME to Netlify target
+
+  3. In Supabase Auth settings:
+
+  - set Site URL to https://plnr.zone
+  - add redirect URLs for:
+      - https://plnr.zone
+      - https://www.plnr.zone (if used)
+      - http://localhost:3000 (dev)
+
+  4. In Google OAuth (if enabled), add authorized origins/redirects for https://plnr.zone.
+  5. Update local env:
+
+  - REACT_APP_SUPABASE_URL (same)
+  - REACT_APP_SUPABASE_ANON_KEY (same)
+  - no domain env needed unless you hardcoded URLs.
+
+  6. If using Resend custom email domain, add/verify DNS records (SPF/DKIM) for your sender domain.
+
+  After that, all share links and auth flows will run on plnr.zone.
+
+
+› Sign in to rxojshwdahyxyqewdiwy.supabase.co
+
+
+  Google will allow rxojshwdahyxyqewdiwy.supabase.co to access this info about you - cna we change it so i have a cuasotm name or no
+
+
+• Yes, you can change that, but not fully from frontend.
+
+  What you can brand:
+
+  1. OAuth consent app name (Google side)
+
+  - In Google Cloud OAuth consent screen, set app name to your brand (e.g. PLNR).
+  - Users will then see your app name in the consent UI.
+
+  2. Supabase hosted auth domain
+
+  - By default it shows *.supabase.co.
+  - To remove that domain from auth flows, use a custom auth domain in Supabase (if available on your plan/project features).
+  - If custom auth domain isn’t available, the consent may still reference Supabase-hosted endpoints.
+
+  3. Email branding
+
+  - You can fully brand magic link emails via custom SMTP + templates (which you’re already moving toward with Resend).
+
+  So:
+
+  - App name shown to users: yes, easy (Google OAuth consent settings).
+  - Replace ...supabase.co host in OAuth flow: only if Supabase custom auth domain is available for your setup.
+
+
+› does supabase offer this form free account?
+
+
+• Searched Supabase custom auth domain free plan availability
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• Short answer: not on Free for a full custom domain.
+
+  As of February 11, 2026, Supabase docs say:
+
+  - Custom domains are a paid add-on and are available for projects on a paid plan.
+  - Pricing is listed around $0.0137/hour (~$10/month) per active custom domain.
+
+  Sources:
+
+  - https://supabase.com/docs/guides/platform/custom-domains
+  - https://supabase.com/docs/guides/platform/manage-your-usage/custom-domains
+
+  Note: Supabase also mentions vanity *.supabase.co subdomains (experimental) as a cheaper/free-ish alternative depending on eligibility, but that still won’t be your own
+  domain.
+
+
+› is it better to move to aws? i also would like to build mobile apps for this
+
+
+• Searched Supabase React Native authentication docs
+
+• Searched Supabase docs React Native quickstart auth expo
+
+• Searched Supabase React Native quickstart auth Expo
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• Short answer: No, don’t move to AWS now just for mobile.
+
+  For your current stage, staying on Supabase is the pragmatic choice:
+
+  - Supabase has first-party React Native/Expo auth quickstarts and social auth docs.
+  - You can use deep links for mobile auth callbacks.
+  - You already built your web app around Supabase auth/data, so reusing backend is faster than replatforming.
+
+  When AWS is better:
+
+  - strict enterprise compliance controls
+  - heavy multi-account AWS governance
+  - very custom infra requirements your team already runs in AWS
+
+  For you right now:
+
+  1. Keep Supabase backend.
+  2. Build mobile with Expo + Supabase client.
+  3. Reassess only after traction/scale.
+
+  Sources:
+
+  - Supabase React Native auth quickstart: https://supabase.com/docs/guides/auth/quickstarts/react-native
+  - Supabase Expo social auth quickstart: https://supabase.com/docs/guides/auth/quickstarts/with-expo-react-native-social-auth
+  - Supabase native deep linking: https://supabase.com/docs/guides/auth/native-mobile-deep-linking
+  - Supabase redirect URL setup: https://supabase.com/docs/guides/auth/redirect-urls
+  - AWS Amplify React Native auth setup: https://docs.amplify.aws/gen1/react-native/build-a-backend/auth/set-up-auth/
+

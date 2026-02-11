@@ -759,6 +759,65 @@ export default function TripPlannerApp() {
     </div>
   );
 
+  const signInDrawer = showSignInModal && (
+    <div className="fixed inset-0 z-50" onClick={() => setShowSignInModal(false)}>
+      <div className="absolute inset-0 bg-black/40" />
+      <aside className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-2xl p-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-2xl font-bold text-zinc-900 mb-2">Sign In</h2>
+        <p className="text-sm text-zinc-600 mb-4">Continue with Google or use an email magic link.</p>
+        <button
+          type="button"
+          onClick={() => {
+            window.history.pushState(null, "", "/auth");
+            setShowSignInModal(false);
+          }}
+          className="text-xs text-blue-700 hover:underline mb-3"
+        >
+          Open full sign-in page
+        </button>
+        {!isSupabaseConfigured && (
+          <p className="text-sm text-amber-700 mb-4">
+            Auth is not configured in this environment. Add `REACT_APP_SUPABASE_URL` and `REACT_APP_SUPABASE_ANON_KEY`.
+          </p>
+        )}
+        <button
+          onClick={submitGoogleSignIn}
+          disabled={!isSupabaseConfigured}
+          className="w-full px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Continue with Google
+        </button>
+        <div className="flex items-center gap-2 my-4">
+          <div className="h-px bg-zinc-200 flex-1" />
+          <span className="text-xs text-zinc-500 uppercase tracking-wide">or</span>
+          <div className="h-px bg-zinc-200 flex-1" />
+        </div>
+        <input
+          type="email"
+          value={signInEmail}
+          onChange={(e) => setSignInEmail(e.target.value)}
+          placeholder="you@example.com"
+          className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-400"
+        />
+        <div className="flex gap-2 mt-5">
+          <button
+            onClick={() => setShowSignInModal(false)}
+            className="flex-1 px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium"
+          >
+            Close
+          </button>
+          <button
+            onClick={submitSignIn}
+            disabled={signInLoading || !isSupabaseConfigured}
+            className="flex-1 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-black text-sm font-medium disabled:opacity-50"
+          >
+            {signInLoading ? "Sending..." : "Send Link"}
+          </button>
+        </div>
+      </aside>
+    </div>
+  );
+
   if (isAuthRoute) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-zinc-100 flex items-center justify-center p-4">
@@ -1045,6 +1104,7 @@ export default function TripPlannerApp() {
             </ul>
           </div>
         </div>
+        {signInDrawer}
       </div>
     );
   }
@@ -1073,6 +1133,7 @@ export default function TripPlannerApp() {
           onReset={handleReset}
           initialTab={builderStartTab}
         />
+        {signInDrawer}
         {resetDrawer}
       </>
     );
@@ -1150,64 +1211,7 @@ export default function TripPlannerApp() {
         </div>
       )}
 
-      {showSignInModal && (
-        <div className="fixed inset-0 z-50" onClick={() => setShowSignInModal(false)}>
-          <div className="absolute inset-0 bg-black/40" />
-          <aside className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-2xl p-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-2xl font-bold text-zinc-900 mb-2">Sign In</h2>
-            <p className="text-sm text-zinc-600 mb-4">Continue with Google or use an email magic link.</p>
-            <button
-              type="button"
-              onClick={() => {
-                window.history.pushState(null, "", "/auth");
-                setShowSignInModal(false);
-              }}
-              className="text-xs text-blue-700 hover:underline mb-3"
-            >
-              Open full sign-in page
-            </button>
-            {!isSupabaseConfigured && (
-              <p className="text-sm text-amber-700 mb-4">
-                Auth is not configured in this environment. Add `REACT_APP_SUPABASE_URL` and `REACT_APP_SUPABASE_ANON_KEY`.
-              </p>
-            )}
-            <button
-              onClick={submitGoogleSignIn}
-              disabled={!isSupabaseConfigured}
-              className="w-full px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Continue with Google
-            </button>
-            <div className="flex items-center gap-2 my-4">
-              <div className="h-px bg-zinc-200 flex-1" />
-              <span className="text-xs text-zinc-500 uppercase tracking-wide">or</span>
-              <div className="h-px bg-zinc-200 flex-1" />
-            </div>
-            <input
-              type="email"
-              value={signInEmail}
-              onChange={(e) => setSignInEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <div className="flex gap-2 mt-5">
-              <button
-                onClick={() => setShowSignInModal(false)}
-                className="flex-1 px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium"
-              >
-                Close
-              </button>
-              <button
-                onClick={submitSignIn}
-                disabled={signInLoading || !isSupabaseConfigured}
-                className="flex-1 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-black text-sm font-medium disabled:opacity-50"
-              >
-                {signInLoading ? "Sending..." : "Send Link"}
-              </button>
-            </div>
-          </aside>
-        </div>
-      )}
+      {signInDrawer}
 
       {resetDrawer}
 
@@ -1359,7 +1363,7 @@ export default function TripPlannerApp() {
             {myTripsLoading ? (
               <p className="text-sm text-zinc-600">Loading trips...</p>
             ) : myTrips.length === 0 ? (
-              <p className="text-sm text-zinc-600">No cloud trips yet. Save your current trip first.</p>
+              <p className="text-sm text-zinc-600">No saved trips yet. Save your current trip first.</p>
             ) : (
               <div className="max-h-[70vh] overflow-auto grid sm:grid-cols-2 gap-3">
                 {myTrips.map((trip) => (

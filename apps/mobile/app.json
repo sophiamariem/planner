@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Trip Planner",
+    "slug": "trip-planner-mobile",
+    "scheme": "plnr",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    }
+  }
+}
