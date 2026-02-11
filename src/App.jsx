@@ -508,6 +508,16 @@ export default function TripPlannerApp() {
     setMode('view');
   };
 
+  const handleGoHome = () => {
+    window.history.pushState(null, "", "/");
+    setMode("onboarding");
+    setShowShareModal(false);
+    setShowMyTripsModal(false);
+    setShowSignInModal(false);
+    setShowImportModal(false);
+    setShowResetModal(false);
+  };
+
   const handleReset = () => {
     setShowResetModal(true);
   };
@@ -1059,6 +1069,7 @@ export default function TripPlannerApp() {
           tripData={tripData}
           onSave={handleSaveAndPreview}
           onCancel={handleCancelEdit}
+          onHome={handleGoHome}
           onReset={handleReset}
           initialTab={builderStartTab}
         />
@@ -1097,9 +1108,12 @@ export default function TripPlannerApp() {
                 </button>
               </>
             )}
+            <button type="button" onClick={handleGoHome} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50 flex items-center gap-1 text-zinc-700 font-medium" title="Go Home">
+              <span>Home</span>
+            </button>
             {!isViewOnly && !sourceUrl && (
-              <button type="button" onClick={handleReset} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50 flex items-center gap-1 text-zinc-600 font-medium" title="Reset and go Home">
-                <span>Reset</span>
+              <button type="button" onClick={handleReset} className="px-3 py-2 rounded-2xl border border-red-200 text-red-600 text-sm hover:bg-red-50 flex items-center gap-1 font-medium" title="Reset Trip">
+                <span>Reset Trip</span>
               </button>
             )}
             <div className="inline-flex rounded-2xl overflow-hidden border border-zinc-300">
