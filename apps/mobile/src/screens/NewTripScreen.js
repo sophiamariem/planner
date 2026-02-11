@@ -162,9 +162,7 @@ async function searchUnsplashPhotos(query, count = 12) {
   if (!response.ok) throw new Error('Could not load Unsplash photos.');
 
   const data = await response.json();
-  return (data?.results || [])
-    .map((item) => item?.urls?.regular || item?.urls?.small || '')
-    .filter(Boolean);
+  return (data?.results || []).map((item) => item?.urls?.regular || item?.urls?.small || '').filter(Boolean);
 }
 
 export default function NewTripScreen({
@@ -186,6 +184,7 @@ export default function NewTripScreen({
   const [unsplashLoading, setUnsplashLoading] = useState(false);
   const [unsplashError, setUnsplashError] = useState('');
   const [unsplashTarget, setUnsplashTarget] = useState('day');
+  const [step, setStep] = useState(0);
 
   useEffect(() => {
     setTitle(initialState.title);
@@ -199,6 +198,7 @@ export default function NewTripScreen({
     setUnsplashLoading(false);
     setUnsplashTarget('day');
     setSelectedTemplateId('');
+    setStep(0);
   }, [initialState]);
 
   const datePresets = useMemo(() => {
@@ -211,6 +211,12 @@ export default function NewTripScreen({
   }, []);
 
   const dayCountPresets = ['3', '5', '7', '10'];
+  const stepLabels = ['Basics', 'Photos', 'Review'];
+  const isEditing = mode === 'edit';
+  const isCreating = mode === 'create';
+  const startDateValid = !Number.isNaN(new Date(startDate).getTime());
+  const daysCountValid = Number(daysCount) >= 1 && Number(daysCount) <= 14;
+  const canContinueBasics = Boolean(title.trim() && startDateValid && daysCountValid);
 
   const previewDates = useMemo(() => {
     const count = Math.max(1, Math.min(14, Number(daysCount) || 1));
@@ -323,7 +329,7 @@ export default function NewTripScreen({
       return;
     }
     if (!UNSPLASH_ACCESS_KEY) {
-      setUnsplashError('Set EXPO_PUBLIC_UNSPLASH_ACCESS_KEY in apps/mobile/.env');
+      setUnsplashError('Photo search is unavailable right now.');
       return;
     }
 
@@ -337,9 +343,9 @@ export default function NewTripScreen({
       } else {
         setUnsplashResults(results);
       }
-    } catch (error) {
+    } catch {
       setUnsplashResults([]);
-      setUnsplashError(error.message || 'Could not load photos.');
+      setUnsplashError('Could not load photos right now.');
     } finally {
       setUnsplashLoading(false);
     }
@@ -352,9 +358,6 @@ export default function NewTripScreen({
     }
     setDayPhotos((prev) => (prev.includes(url) || prev.length >= 6 ? prev : [...prev, url]));
   };
-
-  const isEditing = mode === 'edit';
-  const isCreating = mode === 'create';
 
   const applyTemplate = (templateId) => {
     const template = TEMPLATE_OPTIONS.find((item) => item.id === templateId);
@@ -370,252 +373,303 @@ export default function NewTripScreen({
 
   return (
     <View style={{ gap: 12, paddingBottom: 8 }}>
-      <Text style={{ fontSize: 24, fontWeight: '800', color: '#18181b' }}>{isEditing ? 'Edit Trip' : 'New Trip'}</Text>
-      <Text style={{ color: '#52525b' }}>
+      <Text style={{ fontSize: 24, fontWeight: '800', color: '#111827' }}>{isEditing ? 'Edit Trip' : 'New Trip'}</Text>
+      <Text style={{ color: '#6b7280' }}>
         {isEditing ? 'Update the core details and keep the trip visual.' : 'Create quickly here, then expand details later on web or mobile.'}
       </Text>
 
-      {isCreating ? (
-        <View style={{ gap: 8 }}>
-          <Text style={{ color: '#27272a', fontWeight: '600' }}>Start from template</Text>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {stepLabels.map((label, index) => (
+          <Pressable
+            key={label}
+            onPress={() => setStep(index)}
+            style={{
+              flex: 1,
+              borderWidth: 1,
+              borderColor: step === index ? '#111827' : '#d1d5db',
+              backgroundColor: step === index ? '#111827' : '#ffffff',
+              borderRadius: 999,
+              paddingVertical: 8,
+              alignItems: 'center',
+            }}
+          >
+            <Text style={{ color: step === index ? '#ffffff' : '#374151', fontSize: 12, fontWeight: '700' }}>
+              {index + 1}. {label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {step === 0 ? (
+        <View style={{ gap: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, padding: 12, backgroundColor: '#ffffff' }}>
+          {isCreating ? (
+            <View style={{ gap: 8 }}>
+              <Text style={{ color: '#111827', fontWeight: '700' }}>Start from template</Text>
+              <View style={{ gap: 8 }}>
+                {TEMPLATE_OPTIONS.map((template) => {
+                  const active = selectedTemplateId === template.id;
+                  return (
+                    <Pressable
+                      key={template.id}
+                      onPress={() => applyTemplate(template.id)}
+                      style={{
+                        borderWidth: 1,
+                        borderColor: active ? '#111827' : '#d4d4d8',
+                        borderRadius: 14,
+                        padding: 10,
+                        backgroundColor: active ? '#f3f4f6' : '#ffffff',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 10,
+                      }}
+                    >
+                      <View style={{ width: 42, height: 42, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8' }}>
+                        <Image source={{ uri: template.cover }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: '#111827', fontWeight: '700' }}>
+                          {template.emoji} {template.title}
+                        </Text>
+                        <Text style={{ color: '#6b7280', fontSize: 12 }}>{template.description}</Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
+
           <View style={{ gap: 8 }}>
-            {TEMPLATE_OPTIONS.map((template) => {
-              const active = selectedTemplateId === template.id;
-              return (
-                <Pressable
-                  key={template.id}
-                  onPress={() => applyTemplate(template.id)}
-                  style={{
-                    borderWidth: 1,
-                    borderColor: active ? '#18181b' : '#d4d4d8',
-                    borderRadius: 14,
-                    padding: 10,
-                    backgroundColor: active ? '#fafafa' : '#ffffff',
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 10,
-                  }}
-                >
-                  <View style={{ width: 42, height: 42, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8' }}>
-                    <Image source={{ uri: template.cover }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: '#18181b', fontWeight: '700' }}>
-                      {template.emoji} {template.title}
+            <Text style={{ color: '#111827', fontWeight: '700' }}>Trip title</Text>
+            <TextInput
+              value={title}
+              onChangeText={setTitle}
+              placeholder="Summer in Lisbon"
+              style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }}
+            />
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <Text style={{ color: '#111827', fontWeight: '700' }}>Start date</Text>
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+              {datePresets.map((preset) => {
+                const iso = toIso(preset);
+                const active = iso === startDate;
+                return (
+                  <Pressable
+                    key={iso}
+                    onPress={() => setStartDate(iso)}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: active ? '#111827' : '#d4d4d8',
+                      backgroundColor: active ? '#111827' : '#ffffff',
+                      borderRadius: 999,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                    }}
+                  >
+                    <Text style={{ color: active ? '#ffffff' : '#111827', fontWeight: '600', fontSize: 12 }}>
+                      {formatChipLabel(preset)}
                     </Text>
-                    <Text style={{ color: '#71717a', fontSize: 12 }}>{template.description}</Text>
-                  </View>
-                </Pressable>
-              );
-            })}
+                  </Pressable>
+                );
+              })}
+            </View>
+            <TextInput
+              value={startDate}
+              onChangeText={setStartDate}
+              placeholder="YYYY-MM-DD"
+              autoCapitalize="none"
+              style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }}
+            />
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <Text style={{ color: '#111827', fontWeight: '700' }}>Duration</Text>
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+              {dayCountPresets.map((preset) => {
+                const active = preset === daysCount;
+                return (
+                  <Pressable
+                    key={preset}
+                    onPress={() => setDaysCount(preset)}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: active ? '#111827' : '#d4d4d8',
+                      backgroundColor: active ? '#111827' : '#ffffff',
+                      borderRadius: 999,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                    }}
+                  >
+                    <Text style={{ color: active ? '#ffffff' : '#111827', fontWeight: '600', fontSize: 12 }}>
+                      {preset} days
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <TextInput
+              value={daysCount}
+              onChangeText={setDaysCount}
+              placeholder="1-14"
+              keyboardType="numeric"
+              style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }}
+            />
           </View>
         </View>
       ) : null}
 
-      <View style={{ gap: 8 }}>
-        <Text style={{ color: '#27272a', fontWeight: '600' }}>Trip title</Text>
-        <TextInput
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Summer in Lisbon"
-          style={{ borderWidth: 1, borderColor: '#d4d4d8', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }}
-        />
-      </View>
-
-      <View style={{ gap: 8 }}>
-        <Text style={{ color: '#27272a', fontWeight: '600' }}>Start date</Text>
-        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-          {datePresets.map((preset) => {
-            const iso = toIso(preset);
-            const active = iso === startDate;
-            return (
+      {step === 1 ? (
+        <View style={{ gap: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, padding: 12, backgroundColor: '#ffffff' }}>
+          <View style={{ gap: 8 }}>
+            <Text style={{ color: '#111827', fontWeight: '700' }}>Unsplash photos</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
               <Pressable
-                key={iso}
-                onPress={() => setStartDate(iso)}
+                onPress={() => setUnsplashTarget('day')}
                 style={{
                   borderWidth: 1,
-                  borderColor: active ? '#18181b' : '#d4d4d8',
-                  backgroundColor: active ? '#18181b' : '#ffffff',
+                  borderColor: unsplashTarget === 'day' ? '#111827' : '#d4d4d8',
+                  backgroundColor: unsplashTarget === 'day' ? '#111827' : '#ffffff',
                   borderRadius: 999,
                   paddingHorizontal: 12,
                   paddingVertical: 8,
                 }}
               >
-                <Text style={{ color: active ? '#ffffff' : '#18181b', fontWeight: '600', fontSize: 12 }}>
-                  {formatChipLabel(preset)}
-                </Text>
+                <Text style={{ color: unsplashTarget === 'day' ? '#ffffff' : '#111827', fontWeight: '600', fontSize: 12 }}>Add to Day 1</Text>
               </Pressable>
-            );
-          })}
-        </View>
-        <TextInput
-          value={startDate}
-          onChangeText={setStartDate}
-          placeholder="YYYY-MM-DD"
-          autoCapitalize="none"
-          style={{ borderWidth: 1, borderColor: '#d4d4d8', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }}
-        />
-      </View>
-
-      <View style={{ gap: 8 }}>
-        <Text style={{ color: '#27272a', fontWeight: '600' }}>Duration</Text>
-        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-          {dayCountPresets.map((preset) => {
-            const active = preset === daysCount;
-            return (
               <Pressable
-                key={preset}
-                onPress={() => setDaysCount(preset)}
+                onPress={() => setUnsplashTarget('cover')}
                 style={{
                   borderWidth: 1,
-                  borderColor: active ? '#18181b' : '#d4d4d8',
-                  backgroundColor: active ? '#18181b' : '#ffffff',
+                  borderColor: unsplashTarget === 'cover' ? '#111827' : '#d4d4d8',
+                  backgroundColor: unsplashTarget === 'cover' ? '#111827' : '#ffffff',
                   borderRadius: 999,
                   paddingHorizontal: 12,
                   paddingVertical: 8,
                 }}
               >
-                <Text style={{ color: active ? '#ffffff' : '#18181b', fontWeight: '600', fontSize: 12 }}>
-                  {preset} days
-                </Text>
+                <Text style={{ color: unsplashTarget === 'cover' ? '#ffffff' : '#111827', fontWeight: '600', fontSize: 12 }}>Set Cover</Text>
               </Pressable>
-            );
-          })}
-        </View>
-        <TextInput
-          value={daysCount}
-          onChangeText={setDaysCount}
-          placeholder="1-14"
-          keyboardType="numeric"
-          style={{ borderWidth: 1, borderColor: '#d4d4d8', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }}
-        />
-      </View>
+            </View>
+            <TextInput
+              value={unsplashQuery}
+              onChangeText={setUnsplashQuery}
+              placeholder="Search photos (e.g. lisbon rooftops)"
+              autoCapitalize="none"
+              style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 15, backgroundColor: '#fff' }}
+            />
+            <PrimaryButton
+              title={unsplashLoading ? 'Finding photos...' : 'Find Photos'}
+              onPress={runUnsplashSearch}
+              disabled={unsplashLoading}
+              variant="outline"
+            />
+            {unsplashError ? <Text style={{ color: '#dc2626', fontSize: 12 }}>{unsplashError}</Text> : null}
+            {unsplashResults.length > 0 ? (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {unsplashResults.map((uri, index) => (
+                  <Pressable
+                    key={`${uri}-${index}`}
+                    onPress={() => applyUnsplashPhoto(uri)}
+                    style={{ width: '31%', aspectRatio: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8' }}
+                  >
+                    <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+          </View>
 
-      <View style={{ gap: 8 }}>
-        <Text style={{ color: '#27272a', fontWeight: '600' }}>Unsplash photos</Text>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Pressable
-            onPress={() => setUnsplashTarget('day')}
-            style={{
-              borderWidth: 1,
-              borderColor: unsplashTarget === 'day' ? '#18181b' : '#d4d4d8',
-              backgroundColor: unsplashTarget === 'day' ? '#18181b' : '#ffffff',
-              borderRadius: 999,
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-            }}
-          >
-            <Text style={{ color: unsplashTarget === 'day' ? '#ffffff' : '#18181b', fontWeight: '600', fontSize: 12 }}>Add to Day 1</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setUnsplashTarget('cover')}
-            style={{
-              borderWidth: 1,
-              borderColor: unsplashTarget === 'cover' ? '#18181b' : '#d4d4d8',
-              backgroundColor: unsplashTarget === 'cover' ? '#18181b' : '#ffffff',
-              borderRadius: 999,
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-            }}
-          >
-            <Text style={{ color: unsplashTarget === 'cover' ? '#ffffff' : '#18181b', fontWeight: '600', fontSize: 12 }}>Set Cover</Text>
-          </Pressable>
+          <View style={{ gap: 8 }}>
+            <Text style={{ color: '#111827', fontWeight: '700' }}>Cover photo</Text>
+            {coverPhoto ? (
+              <View style={{ width: '100%', aspectRatio: 1.8, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#f4f4f5' }}>
+                <Image source={{ uri: coverPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                <Pressable
+                  onPress={() => setCoverPhoto('')}
+                  style={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    width: 28,
+                    height: 28,
+                    borderRadius: 999,
+                    backgroundColor: 'rgba(24,24,27,0.84)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '700' }}>X</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={{ borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 12, padding: 10, backgroundColor: '#fafafa' }}>
+                <Text style={{ color: '#71717a', fontSize: 12 }}>No cover photo yet. Use Find Photos and choose Set Cover.</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <Text style={{ color: '#111827', fontWeight: '700' }}>Day 1 photo preview</Text>
+            {dayPhotos.length > 0 ? (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {dayPhotos.map((uri, index) => (
+                  <PhotoTile
+                    key={`${uri}-${index}`}
+                    uri={uri}
+                    onRemove={() => setDayPhotos((prev) => prev.filter((_, i) => i !== index))}
+                  />
+                ))}
+              </View>
+            ) : (
+              <View style={{ borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 12, padding: 10, backgroundColor: '#fafafa' }}>
+                <Text style={{ color: '#71717a', fontSize: 12 }}>No photos added yet.</Text>
+              </View>
+            )}
+          </View>
         </View>
-        <TextInput
-          value={unsplashQuery}
-          onChangeText={setUnsplashQuery}
-          placeholder="Search photos (e.g. lisbon rooftops)"
-          autoCapitalize="none"
-          style={{ borderWidth: 1, borderColor: '#d4d4d8', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 15, backgroundColor: '#fff' }}
-        />
-        <PrimaryButton
-          title={unsplashLoading ? 'Finding photos...' : 'Find Photos'}
-          onPress={runUnsplashSearch}
-          disabled={unsplashLoading}
-          variant="outline"
-        />
-        {unsplashError ? <Text style={{ color: '#dc2626', fontSize: 12 }}>{unsplashError}</Text> : null}
-        {unsplashResults.length > 0 ? (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {unsplashResults.map((uri, index) => (
-              <Pressable
-                key={`${uri}-${index}`}
-                onPress={() => applyUnsplashPhoto(uri)}
-                style={{ width: '31%', aspectRatio: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8' }}
-              >
-                <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-              </Pressable>
-            ))}
+      ) : null}
+
+      {step === 2 ? (
+        <View style={{ gap: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, padding: 12, backgroundColor: '#ffffff' }}>
+          <View style={{ borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 16, padding: 12, backgroundColor: '#fafafa', gap: 4 }}>
+            <Text style={{ color: '#111827', fontWeight: '700' }}>Trip preview</Text>
+            <Text style={{ color: '#52525b', fontSize: 12 }}>
+              {previewDates[0]?.toDateString()} -> {previewDates[previewDates.length - 1]?.toDateString()} ({previewDates.length} day{previewDates.length > 1 ? 's' : ''})
+            </Text>
+            <Text style={{ color: '#6b7280', fontSize: 12 }}>Title: {title || 'Untitled'}</Text>
+            <Text style={{ color: '#6b7280', fontSize: 12 }}>Cover: {coverPhoto ? 'Added' : 'Not set'}</Text>
+            <Text style={{ color: '#6b7280', fontSize: 12 }}>Day 1 photos: {dayPhotos.length}</Text>
+          </View>
+        </View>
+      ) : null}
+
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <View style={{ flex: 1 }}>
+          <PrimaryButton title="Close" onPress={onCancel} variant="outline" />
+        </View>
+        {step > 0 ? (
+          <View style={{ flex: 1 }}>
+            <PrimaryButton title="Back" onPress={() => setStep((prev) => Math.max(0, prev - 1))} variant="outline" />
           </View>
         ) : null}
-      </View>
-
-      <View style={{ gap: 8 }}>
-        <Text style={{ color: '#27272a', fontWeight: '600' }}>Cover photo</Text>
-        {coverPhoto ? (
-          <View style={{ width: '100%', aspectRatio: 1.8, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#f4f4f5' }}>
-            <Image source={{ uri: coverPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-            <Pressable
-              onPress={() => setCoverPhoto('')}
-              style={{
-                position: 'absolute',
-                top: 8,
-                right: 8,
-                width: 28,
-                height: 28,
-                borderRadius: 999,
-                backgroundColor: 'rgba(24,24,27,0.84)',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Text style={{ color: '#fff', fontWeight: '700' }}>X</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <View style={{ borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 12, padding: 10, backgroundColor: '#fafafa' }}>
-            <Text style={{ color: '#71717a', fontSize: 12 }}>No cover photo yet. Use Find Photos and choose Set Cover.</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={{ gap: 8 }}>
-        <Text style={{ color: '#27272a', fontWeight: '600' }}>Day 1 photo preview</Text>
-        {dayPhotos.length > 0 ? (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {dayPhotos.map((uri, index) => (
-              <PhotoTile
-                key={`${uri}-${index}`}
-                uri={uri}
-                onRemove={() => setDayPhotos((prev) => prev.filter((_, i) => i !== index))}
-              />
-            ))}
-          </View>
-        ) : (
-          <View style={{ borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 12, padding: 10, backgroundColor: '#fafafa' }}>
-            <Text style={{ color: '#71717a', fontSize: 12 }}>No photos added yet.</Text>
-          </View>
-        )}
-      </View>
-
-      {previewDates.length > 0 && (
-        <View style={{ borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 16, padding: 12, backgroundColor: '#fafafa', gap: 4 }}>
-          <Text style={{ color: '#27272a', fontWeight: '700' }}>Trip preview</Text>
-          <Text style={{ color: '#52525b', fontSize: 12 }}>
-            {previewDates[0].toDateString()} -> {previewDates[previewDates.length - 1].toDateString()} ({previewDates.length} day{previewDates.length > 1 ? 's' : ''})
-          </Text>
+        <View style={{ flex: 1 }}>
+          <PrimaryButton
+            title={step < 2 ? 'Continue' : (submitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Save Trip')}
+            onPress={() => {
+              if (step < 2) {
+                if (step === 0 && !canContinueBasics) return;
+                setStep((prev) => Math.min(2, prev + 1));
+                return;
+              }
+              const tripData = buildTripData();
+              if (tripData) onSubmit(tripData);
+            }}
+            disabled={submitting || (step === 0 && !canContinueBasics)}
+          />
         </View>
-      )}
-
-      <PrimaryButton
-        title={submitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Save Trip'}
-        onPress={() => {
-          const tripData = buildTripData();
-          if (tripData) onSubmit(tripData);
-        }}
-        disabled={submitting}
-      />
-      <PrimaryButton title="Close" onPress={onCancel} variant="outline" />
+      </View>
     </View>
   );
 }
