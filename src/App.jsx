@@ -226,7 +226,7 @@ export default function TripPlannerApp() {
       setMyTrips(rows);
     } catch (error) {
       console.error("Error loading trips:", error);
-      pushToast(error.message || "Could not load your cloud trips.", "error");
+      pushToast(error.message || "Could not load your saved trips.", "error");
     } finally {
       setMyTripsLoading(false);
     }
@@ -244,7 +244,7 @@ export default function TripPlannerApp() {
 
     const validation = validateTripData(row.trip_data);
     if (!validation.valid) {
-      throw new Error(`Invalid cloud trip data: ${validation.error}`);
+      throw new Error(`Invalid saved trip data: ${validation.error}`);
     }
 
     setTripData(row.trip_data);
@@ -287,8 +287,8 @@ export default function TripPlannerApp() {
           await loadCloudTrip(cloud);
           return;
         } catch (error) {
-          console.error("Error loading cloud trip:", error);
-          pushToast(error.message || "Could not load cloud trip.", "error");
+          console.error("Error loading saved trip:", error);
+          pushToast(error.message || "Could not load saved trip.", "error");
           setMode('onboarding');
           return;
         }
@@ -414,11 +414,11 @@ export default function TripPlannerApp() {
 
   const handleSaveToCloud = async () => {
     if (!isSupabaseConfigured) {
-      pushToast("Cloud is not configured yet.", "error");
+      pushToast("Saved trips are not configured yet.", "error");
       return;
     }
     if (!user) {
-      pushToast("Sign in first to save to cloud.", "error");
+      pushToast("Sign in first to save this trip.", "error");
       return;
     }
     if (!tripData) {
@@ -437,10 +437,10 @@ export default function TripPlannerApp() {
       const cloudHash = row.slug ? `#t=${encodeURIComponent(row.slug)}` : `#cloud=${encodeURIComponent(row.id)}`;
       window.history.pushState(null, '', cloudHash);
       await refreshMyTrips();
-      pushToast("Trip saved to cloud.", "success");
+      pushToast("Trip saved.", "success");
     } catch (error) {
-      console.error("Cloud save failed:", error);
-      pushToast(error.message || "Cloud save failed.", "error");
+      console.error("Save failed:", error);
+      pushToast(error.message || "Could not save trip.", "error");
     } finally {
       setCloudSaving(false);
     }
@@ -1160,7 +1160,7 @@ export default function TripPlannerApp() {
                       My Saved Trips
                     </button>
                     <button type="button" onClick={handleSaveToCloud} disabled={cloudSaving} className="px-3 py-2 rounded-2xl bg-emerald-600 text-white text-sm hover:bg-emerald-700 disabled:opacity-50">
-                      {cloudSaving ? "Saving..." : cloudTripId ? "Update Cloud" : "Save to Cloud"}
+                      {cloudSaving ? "Saving..." : cloudTripId ? "Update Saved" : "Save Trip"}
                     </button>
                   </>
                 )}
@@ -1223,7 +1223,7 @@ export default function TripPlannerApp() {
             <p className="text-zinc-600 mb-4">
               {isLocalDraftShare
                 ? "You're sharing a local draft link, so it will be long. Save to cloud for a short, clean link."
-                : "Copy this link to share your trip. Cloud trips use short slug links when available."}
+                : "Copy this link to share your trip. Saved trips use short slug links when available."}
             </p>
             {isLocalDraftShare && (
               <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
@@ -1236,7 +1236,7 @@ export default function TripPlannerApp() {
                   disabled={!isSupabaseConfigured || !user || cloudSaving}
                   className="mt-2 px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50"
                 >
-                  {!isSupabaseConfigured ? "Enable Supabase to get short links" : !user ? "Sign in to get short links" : (cloudSaving ? "Saving..." : "Save to Cloud for short link")}
+                  {!isSupabaseConfigured ? "Enable Supabase to get short links" : !user ? "Sign in to get short links" : (cloudSaving ? "Saving..." : "Save for short link")}
                 </button>
               </div>
             )}
@@ -1327,7 +1327,7 @@ export default function TripPlannerApp() {
                     </p>
                   )}
                   <p className="text-xs text-emerald-800 font-medium">
-                    Cloud trip ID: <code>{cloudTripId}</code>
+                    Saved trip ID: <code>{cloudTripId}</code>
                   </p>
                   {shareToken && (
                     <p className="text-xs text-emerald-700 mt-1">
@@ -1357,7 +1357,7 @@ export default function TripPlannerApp() {
         <div className="fixed inset-0 z-50" onClick={() => setShowMyTripsModal(false)}>
           <div className="absolute inset-0 bg-black/40" />
           <aside className="absolute right-0 top-0 h-full w-full sm:max-w-2xl bg-white shadow-2xl p-6 overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h2 className="text-2xl font-bold text-zinc-900 mb-2">My Cloud Trips</h2>
+            <h2 className="text-2xl font-bold text-zinc-900 mb-2">My Saved Trips</h2>
             <p className="text-zinc-600 mb-4 text-sm">Open one of your saved trips.</p>
 
             {myTripsLoading ? (
@@ -1425,7 +1425,7 @@ export default function TripPlannerApp() {
           <span className="font-medium text-zinc-900">Status:</span>
           {cloudTripId ? (
             <>
-              <span className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-800">Cloud synced</span>
+              <span className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-800">Saved & synced</span>
               {cloudSlug && <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-800">slug: {cloudSlug}</span>}
             </>
           ) : (
