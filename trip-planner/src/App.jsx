@@ -528,6 +528,9 @@ export default function TripPlannerApp() {
     }
   };
 
+  const currentShareURL = generateShareURL(tripData, { viewOnly: isViewOnly, source: sourceUrl, cloudId: cloudTripId, cloudSlug, shareToken });
+  const isLocalDraftShare = !cloudTripId && !sourceUrl;
+
   const resetDrawer = showResetModal && (
     <div className="fixed inset-0 z-50" onClick={() => setShowResetModal(false)}>
       <div className="absolute inset-0 bg-black/40" />
@@ -873,13 +876,30 @@ export default function TripPlannerApp() {
           <aside className="absolute right-0 top-0 h-full w-full sm:max-w-lg bg-white shadow-2xl p-6 overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h2 className="text-2xl font-bold text-zinc-900 mb-4">Share Your Trip</h2>
             <p className="text-zinc-600 mb-4">
-              Copy this link to share your trip planner with others. Cloud trips use short slug links when available.
+              {isLocalDraftShare
+                ? "You're sharing a local draft link, so it will be long. Save to cloud for a short, clean link."
+                : "Copy this link to share your trip. Cloud trips use short slug links when available."}
             </p>
+            {isLocalDraftShare && (
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <p className="text-xs text-amber-800">
+                  Local draft links include the full trip data in the URL.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleSaveToCloud}
+                  disabled={!isSupabaseConfigured || !user || cloudSaving}
+                  className="mt-2 px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {!isSupabaseConfigured ? "Enable Supabase to get short links" : !user ? "Sign in to get short links" : (cloudSaving ? "Saving..." : "Save to Cloud for short link")}
+                </button>
+              </div>
+            )}
             <div className="flex flex-col gap-4">
               <div className="flex gap-2">
                 <input
                   type="text"
-                  value={generateShareURL(tripData, { viewOnly: isViewOnly, source: sourceUrl, cloudId: cloudTripId, cloudSlug, shareToken })}
+                  value={currentShareURL}
                   readOnly
                   className="flex-1 px-3 py-2 border border-zinc-300 rounded-lg bg-zinc-50 text-sm font-mono"
                 />
