@@ -75,37 +75,9 @@ This app now supports an optional cloud mode while keeping the existing JSON wor
 
 Without env vars, the app runs in local-only mode (same behavior as before).
 
-## 📱 Mobile Apps (iOS + Android)
+## 📱 Mobile App
 
-This repo now includes a React Native app using Expo at `apps/mobile`.
-
-### Mobile setup
-
-1. Install mobile dependencies:
-   ```bash
-   npm --prefix apps/mobile install
-   ```
-2. Copy env template:
-   ```bash
-   cp apps/mobile/.env.example apps/mobile/.env
-   ```
-3. Fill mobile env values:
-   - `EXPO_PUBLIC_SUPABASE_URL`
-   - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-4. Start Expo:
-   ```bash
-   npm run mobile:start
-   ```
-5. Open on device/simulator:
-   ```bash
-   npm run mobile:ios
-   npm run mobile:android
-   ```
-
-### Supabase auth redirects for mobile
-
-Add this redirect URL in Supabase Auth settings:
-- `plnr://auth-callback`
+Mobile docs moved to `apps/mobile/README.md` for a separate mobile workflow.
 
 ### Optional one-time import of existing static JSON itineraries
 
