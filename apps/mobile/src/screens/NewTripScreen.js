@@ -148,6 +148,7 @@ function createDayDraft(index, total) {
     badgesText: '',
     photos: [],
     photoUrl: '',
+    showPhotoUrlInput: false,
     photoQuery: '',
     photoResults: [],
     photoLoading: false,
@@ -167,6 +168,7 @@ function hydrateDayDraft(day = {}, dayBadges = {}, index = 0, total = 3) {
     badgesText: Array.isArray(dayBadges?.[day.id]) ? dayBadges[day.id].join(' ') : '',
     photos: Array.isArray(day.photos) ? day.photos.filter(Boolean) : [],
     photoUrl: '',
+    showPhotoUrlInput: false,
     photoQuery: day.title || '',
     photoResults: [],
     photoLoading: false,
@@ -539,7 +541,7 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
       updateDayDraft(index, { photoError: 'You can add up to 6 photos per day.' });
       return;
     }
-    updateDayDraft(index, { photos: [...photos, url], photoUrl: '', photoError: '' });
+    updateDayDraft(index, { photos: [...photos, url], photoUrl: '', photoError: '', showPhotoUrlInput: false });
   };
 
   const removePhotoFromDay = (index, photoIndex) => {
@@ -780,25 +782,37 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
                 <TextInput value={item.title} onChangeText={(value) => updateDayDraft(index, { title: value })} placeholder="Day title" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
                 <TextInput value={item.notesText} onChangeText={(value) => updateDayDraft(index, { notesText: value })} placeholder="Notes (one per line)" multiline style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff', minHeight: 70, textAlignVertical: 'top' }} />
 
-                <View style={{ gap: 6 }}>
+                <View style={{ gap: 6, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, backgroundColor: '#fafafa', padding: 10 }}>
                   <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Photos</Text>
                   <TextInput value={item.photoQuery} onChangeText={(value) => updateDayDraft(index, { photoQuery: value })} placeholder="Search photos for this day" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
-                  <PrimaryButton title={item.photoLoading ? 'Finding...' : 'Find Photos'} onPress={() => runPhotoSearchForDay(index)} disabled={item.photoLoading} variant="outline" />
                   <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TextInput
-                      value={item.photoUrl || ''}
-                      onChangeText={(value) => updateDayDraft(index, { photoUrl: value })}
-                      placeholder="Paste photo URL"
-                      autoCapitalize="none"
-                      style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }}
-                    />
+                    <View style={{ flex: 1 }}>
+                      <PrimaryButton title={item.photoLoading ? 'Finding...' : 'Find Photos'} onPress={() => runPhotoSearchForDay(index)} disabled={item.photoLoading} variant="outline" />
+                    </View>
                     <Pressable
-                      onPress={() => addPhotoUrlToDay(index)}
+                      onPress={() => updateDayDraft(index, { showPhotoUrlInput: !item.showPhotoUrlInput, photoError: '' })}
                       style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 12, justifyContent: 'center', backgroundColor: '#fff' }}
                     >
-                      <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Add URL</Text>
+                      <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>{item.showPhotoUrlInput ? 'Close URL' : 'Add URL'}</Text>
                     </Pressable>
                   </View>
+                  {item.showPhotoUrlInput ? (
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TextInput
+                        value={item.photoUrl || ''}
+                        onChangeText={(value) => updateDayDraft(index, { photoUrl: value })}
+                        placeholder="Paste photo URL"
+                        autoCapitalize="none"
+                        style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }}
+                      />
+                      <Pressable
+                        onPress={() => addPhotoUrlToDay(index)}
+                        style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 12, justifyContent: 'center', backgroundColor: '#fff' }}
+                      >
+                        <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Add</Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
                   {item.photoError ? <Text style={{ color: '#dc2626', fontSize: 12 }}>{item.photoError}</Text> : null}
                   {Array.isArray(item.photoResults) && item.photoResults.length > 0 ? (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
