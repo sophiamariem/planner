@@ -2,12 +2,14 @@ import React, { useMemo, useEffect } from "react";
 import useFavicon from "./hooks/useFavicon";
 import useTripPlannerUiState from "./hooks/useTripPlannerUiState";
 import useTripCreationActions from "./hooks/useTripCreationActions";
-import { ensureTailwindCDN } from "./utils/tailwind";
-import { getTripFromURL, updateURLWithTrip, saveTripToLocalStorage, loadTripFromLocalStorage, generateShareURL, clearLocalStorageTrip, validateTripData, getSourceFromURL, getCloudFromURL, isViewOnlyFromURL } from "./utils/tripData";
+import useAuthActions from "./hooks/useAuthActions";
+import useShareActions from "./hooks/useShareActions";
+import useCloudTripLoader from "./hooks/useCloudTripLoader";
+import { updateURLWithTrip, saveTripToLocalStorage, clearLocalStorageTrip } from "./utils/tripData";
 import { QUICK_TEMPLATES } from "./utils/tripTemplates";
-import { extractCoverImage, attachCopyAttribution, formatVisibilityLabel } from "./utils/tripMeta";
-import { isSupabaseConfigured, setSessionFromUrl } from "./lib/supabaseClient";
-import { getCurrentUser, signInWithMagicLink, signInWithGoogle, signOut, saveTripToCloud, updateCloudTrip, listMyTrips, getMyCollaboratorRole, listTripCollaborators, addTripCollaboratorByEmail, removeTripCollaboratorByEmail, loadCloudTripById, loadCloudTripByShareToken, loadCloudTripBySlug, deleteCloudTripById } from "./lib/cloudTrips";
+import { extractCoverImage, formatVisibilityLabel } from "./utils/tripMeta";
+import { isSupabaseConfigured } from "./lib/supabaseClient";
+import { deleteCloudTripById } from "./lib/cloudTrips";
 
 import ToastLayer from "./components/ToastLayer";
 import AuthPage from "./components/AuthPage";
@@ -144,163 +146,48 @@ export default function TripPlannerApp() {
     setImportError,
   });
 
-  const refreshMyTrips = async (activeUser = user) => {
-    if (!isSupabaseConfigured || !activeUser) return;
-    setMyTripsLoading(true);
-    try {
-      const rows = await listMyTrips();
-      setMyTrips(rows);
-    } catch (error) {
-      console.error("Error loading trips:", error);
-      pushToast(error.message || "Could not load your saved trips.", "error");
-    } finally {
-      setMyTripsLoading(false);
-    }
-  };
+  const {
+    handleSignIn,
+    submitSignIn,
+    submitGoogleSignIn,
+    handleSignOut,
+  } = useAuthActions({
+    signInEmail,
+    setSignInLoading,
+    setShowSignInModal,
+    setSignInEmail,
+    setUser,
+    setMyTrips,
+    pushToast,
+  });
 
-  const refreshCollaborators = async (tripId = cloudTripId) => {
-    if (!tripId || !isCloudOwnedByCurrentUser) return;
-    setCollaboratorsLoading(true);
-    try {
-      const rows = await listTripCollaborators(tripId);
-      setCollaborators(rows || []);
-    } catch (error) {
-      console.error("Error loading collaborators:", error);
-      pushToast(error.message || "Could not load collaborators.", "error");
-    } finally {
-      setCollaboratorsLoading(false);
-    }
-  };
-
-  const loadCloudTrip = async (cloudRef) => {
-    let row;
-    if (cloudRef.type === "share") {
-      row = await loadCloudTripByShareToken(cloudRef.value);
-    } else if (cloudRef.type === "slug") {
-      row = await loadCloudTripBySlug(cloudRef.value);
-    } else {
-      row = await loadCloudTripById(cloudRef.value);
-    }
-
-    const validation = validateTripData(row.trip_data);
-    if (!validation.valid) {
-      throw new Error(`Invalid saved trip data: ${validation.error}`);
-    }
-
-    setTripData(row.trip_data);
-    setCloudTripId(row.id);
-    setCloudSlug(row.slug || null);
-    setShareToken(row.share_token || null);
-    setCloudVisibility(row.visibility || "private");
-    setCloudShareAccess(row.share_access || "view");
-    setCloudOwnerId(row.owner_id || null);
-    setCloudCollaboratorRole(null);
-    setSourceUrl(null);
-    setMode('view');
-
-    try {
-      if (user?.id && row.owner_id && user.id !== row.owner_id) {
-        const role = await getMyCollaboratorRole(row.id);
-        setCloudCollaboratorRole(role);
-      }
-    } catch (error) {
-      console.error("Error checking collaborator role:", error);
-      setCloudCollaboratorRole(null);
-    }
-  };
-
-  // Load auth + trip data on mount (only runs once)
-  useEffect(() => {
-    ensureTailwindCDN();
-
-    const viewOnly = isViewOnlyFromURL();
-    setIsViewOnly(viewOnly);
-
-    const initialize = async () => {
-      let currentUser = null;
-      if (isSupabaseConfigured) {
-        try {
-          setSessionFromUrl();
-          currentUser = await getCurrentUser();
-          setUser(currentUser);
-          if (currentUser) {
-            await refreshMyTrips(currentUser);
-          }
-        } catch (error) {
-          console.error("Error initializing auth:", error);
-        }
-      }
-
-      // Check for cloud URL first
-      const cloud = getCloudFromURL();
-      if (cloud && isSupabaseConfigured) {
-        try {
-          await loadCloudTrip(cloud);
-          return;
-        } catch (error) {
-          console.error("Error loading saved trip:", error);
-          pushToast(error.message || "Could not load saved trip.", "error");
-          setMode('onboarding');
-          return;
-        }
-      }
-
-      // Check for source URL next
-      const source = getSourceFromURL();
-      if (source) {
-        setSourceUrl(source);
-        setIsViewOnly(true); // Default to view-only for source trips
-        fetch(source)
-          .then(res => res.json())
-          .then(data => {
-            const validation = validateTripData(data);
-            if (validation.valid) {
-              setTripData(data);
-              setMode('view');
-            } else {
-              console.error("Invalid trip data from source:", validation.error);
-              setMode('onboarding');
-            }
-          })
-          .catch(err => {
-            console.error("Error fetching trip data from source:", err);
-            setMode('onboarding');
-          });
-        return;
-      }
-
-      // Check encoded URL trip next
-      const urlTrip = getTripFromURL();
-      if (urlTrip) {
-        setTripData(urlTrip);
-        setMode('view');
-        return;
-      }
-
-      const currentPath = window.location.pathname;
-      if (currentPath === "/app" || currentPath === "/new") {
-        setOnboardingPage(currentPath === "/new" ? "create" : (currentUser ? "trips" : "create"));
-        setMode("onboarding");
-        return;
-      }
-
-      // Check localStorage backup
-      const localTrip = loadTripFromLocalStorage();
-      if (localTrip) {
-        setTripData(localTrip);
-        setMode('view');
-        return;
-      }
-
-      // Show onboarding
-      setMode('onboarding');
-    };
-
-    initialize();
-
-    return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount, never again
+  const {
+    refreshMyTrips,
+    refreshCollaborators,
+    loadCloudTrip,
+  } = useCloudTripLoader({
+    user,
+    cloudTripId,
+    isCloudOwnedByCurrentUser,
+    pushToast,
+    setMode,
+    setOnboardingPage,
+    setTripData,
+    setIsViewOnly,
+    setSourceUrl,
+    setCloudTripId,
+    setCloudSlug,
+    setShareToken,
+    setCloudVisibility,
+    setCloudShareAccess,
+    setCloudOwnerId,
+    setCloudCollaboratorRole,
+    setCollaboratorsLoading,
+    setCollaborators,
+    setMyTripsLoading,
+    setMyTrips,
+    setUser,
+  });
 
   useFavicon(tripConfig.favicon);
 
@@ -312,134 +199,40 @@ export default function TripPlannerApp() {
     }
   };
 
-  const handleSignIn = async () => {
-    setShowSignInModal(true);
-  };
-
-  const submitSignIn = async () => {
-    if (!isSupabaseConfigured) {
-      pushToast("Sign in is unavailable right now. Please try again in a moment.", "error");
-      return;
-    }
-    if (!signInEmail.trim()) {
-      pushToast("Enter an email address.", "error");
-      return;
-    }
-
-    setSignInLoading(true);
-    try {
-      await signInWithMagicLink(signInEmail.trim());
-      setShowSignInModal(false);
-      setSignInEmail("");
-      pushToast("Check your inbox for your PLNR sign-in link.", "success");
-    } catch (error) {
-      console.error("Sign in error:", error);
-      pushToast(error.message || "Could not send sign-in link.", "error");
-    } finally {
-      setSignInLoading(false);
-    }
-  };
-
-  const submitGoogleSignIn = async () => {
-    if (!isSupabaseConfigured) {
-      pushToast("Google sign in is unavailable right now.", "error");
-      return;
-    }
-    try {
-      signInWithGoogle();
-    } catch (error) {
-      console.error("Google sign in error:", error);
-      pushToast(error.message || "Could not start Google sign-in.", "error");
-    }
-  };
-
-  const handleSaveSharedCopy = async () => {
-    if (!isSupabaseConfigured) {
-      pushToast("Saved trips are unavailable right now.", "error");
-      return;
-    }
-    if (!user) {
-      pushToast("Sign in first to save this trip.", "error");
-      return;
-    }
-    if (!tripData) {
-      pushToast("No trip loaded.", "error");
-      return;
-    }
-
-    setCloudSaving(true);
-    try {
-      const copiedTripData = attachCopyAttribution(tripData, {
-        ownerId: cloudOwnerId,
-        tripId: cloudTripId,
-        slug: cloudSlug,
-      });
-      const row = await saveTripToCloud(copiedTripData, "private", "view");
-      setCloudTripId(row.id);
-      setCloudSlug(row.slug || null);
-      setShareToken(null);
-      setCloudVisibility(row.visibility || "private");
-      setCloudShareAccess(row.share_access || "view");
-      setCloudOwnerId(row.owner_id || user.id);
-      setCloudCollaboratorRole(null);
-      const cloudHash = row.slug ? `#t=${encodeURIComponent(row.slug)}` : `#cloud=${encodeURIComponent(row.id)}`;
-      window.history.pushState(null, '', cloudHash);
-      await refreshMyTrips();
-      pushToast("Saved to your trips.", "success");
-    } catch (error) {
-      console.error("Save shared copy failed:", error);
-      pushToast(error.message || "Could not save this trip.", "error");
-    } finally {
-      setCloudSaving(false);
-    }
-  };
-
-  const handleAddCollaborator = async () => {
-    const email = collaboratorEmail.trim();
-    if (!email) {
-      pushToast("Enter a collaborator email.", "error");
-      return;
-    }
-    if (!cloudTripId || !isCloudOwnedByCurrentUser) return;
-
-    setCollaboratorsLoading(true);
-    try {
-      await addTripCollaboratorByEmail(cloudTripId, email, "editor");
-      setCollaboratorEmail("");
-      await refreshCollaborators(cloudTripId);
-      pushToast("Collaborator added.", "success");
-    } catch (error) {
-      console.error("Add collaborator error:", error);
-      pushToast(error.message || "Could not add collaborator.", "error");
-      setCollaboratorsLoading(false);
-    }
-  };
-
-  const handleRemoveCollaborator = async (email) => {
-    if (!email || !cloudTripId || !isCloudOwnedByCurrentUser) return;
-
-    setCollaboratorsLoading(true);
-    try {
-      await removeTripCollaboratorByEmail(cloudTripId, email);
-      await refreshCollaborators(cloudTripId);
-      pushToast("Collaborator removed.", "success");
-    } catch (error) {
-      console.error("Remove collaborator error:", error);
-      pushToast(error.message || "Could not remove collaborator.", "error");
-      setCollaboratorsLoading(false);
-    }
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error("Sign out error:", error);
-    } finally {
-      setUser(null);
-      setMyTrips([]);
-    }
-  };
+  const {
+    currentShareURL,
+    canCopyShareLink,
+    handleSaveSharedCopy,
+    handleAddCollaborator,
+    handleRemoveCollaborator,
+    handleShare,
+    handleShareAccessChange,
+    copyShareLink,
+  } = useShareActions({
+    user,
+    tripData,
+    cloudTripId,
+    cloudSlug,
+    shareToken,
+    cloudVisibility,
+    cloudShareAccess,
+    cloudOwnerId,
+    collaboratorEmail,
+    isCloudOwnedByCurrentUser,
+    setCloudSaving,
+    setCloudTripId,
+    setCloudSlug,
+    setShareToken,
+    setCloudVisibility,
+    setCloudShareAccess,
+    setCloudOwnerId,
+    setCloudCollaboratorRole,
+    setCollaboratorEmail,
+    setCollaboratorsLoading,
+    refreshMyTrips,
+    refreshCollaborators,
+    pushToast,
+  });
 
   const handleOpenCloudTrip = async (id) => {
     try {
@@ -527,105 +320,6 @@ export default function TripPlannerApp() {
     setMode('onboarding');
     setOnboardingPage(user ? "trips" : "create");
   };
-
-  const handleShare = async () => {
-    setShowShareModal(true);
-
-    // Auto-create a short link for signed-in users so sharing starts ready.
-    if (!cloudTripId && user && isSupabaseConfigured && tripData) {
-      setCloudSaving(true);
-      try {
-        const row = await saveTripToCloud(tripData, "unlisted", "view");
-        setCloudTripId(row.id);
-        setCloudSlug(row.slug || null);
-        setShareToken(row.share_token || null);
-        setCloudVisibility(row.visibility || "unlisted");
-        setCloudShareAccess(row.share_access || "view");
-        setCloudOwnerId(row.owner_id || user.id);
-        setCloudCollaboratorRole(null);
-        const cloudHash = row.slug ? `#t=${encodeURIComponent(row.slug)}` : `#cloud=${encodeURIComponent(row.id)}`;
-        window.history.pushState(null, "", cloudHash);
-        await refreshMyTrips();
-      } catch (error) {
-        console.error("Auto-create share link failed:", error);
-        pushToast(error.message || "Could not prepare share link.", "error");
-      } finally {
-        setCloudSaving(false);
-      }
-    }
-  };
-
-  const handleShareAccessChange = async (nextAccess) => {
-    if (!cloudTripId || !isCloudOwnedByCurrentUser || !tripData) return;
-    if (nextAccess === cloudShareAccess && cloudVisibility !== "private") return;
-
-    const previousAccess = cloudShareAccess;
-    const targetVisibility = cloudVisibility === "private" ? "unlisted" : cloudVisibility;
-    setCloudShareAccess(nextAccess);
-    setCloudSaving(true);
-    try {
-      const row = await updateCloudTrip(cloudTripId, tripData, targetVisibility, cloudSlug, nextAccess);
-      setCloudSlug(row.slug || null);
-      setCloudVisibility(row.visibility || targetVisibility);
-      setCloudShareAccess(row.share_access || nextAccess);
-      setCloudOwnerId(row.owner_id || cloudOwnerId || user?.id || null);
-      const nextHash = row.slug ? `#t=${encodeURIComponent(row.slug)}` : `#cloud=${encodeURIComponent(row.id)}`;
-      window.history.pushState(null, "", nextHash);
-      await refreshMyTrips();
-      if (nextAccess !== previousAccess) {
-        pushToast("Shared access updated.", "success");
-      }
-    } catch (error) {
-      console.error("Share access update failed:", error);
-      setCloudShareAccess(previousAccess);
-      pushToast(error.message || "Could not update shared access.", "error");
-    } finally {
-      setCloudSaving(false);
-    }
-  };
-
-  const copyShareLink = async () => {
-    if (!canCopyShareLink || !currentShareURL) {
-      pushToast("Short link is not ready yet.", "error");
-      return;
-    }
-    let shareURL = currentShareURL;
-
-    if (cloudTripId && isCloudOwnedByCurrentUser && cloudVisibility === "private") {
-      setCloudSaving(true);
-      try {
-        const row = await updateCloudTrip(cloudTripId, tripData, "unlisted", cloudSlug, cloudShareAccess);
-        setCloudSlug(row.slug || null);
-        setCloudVisibility(row.visibility || "unlisted");
-        setCloudShareAccess(row.share_access || cloudShareAccess);
-        setCloudOwnerId(row.owner_id || cloudOwnerId || user?.id || null);
-        setCloudCollaboratorRole(null);
-        const nextHash = row.slug ? `#t=${encodeURIComponent(row.slug)}` : `#cloud=${encodeURIComponent(row.id)}`;
-        window.history.pushState(null, "", nextHash);
-        shareURL = row.slug ? generateShareURL(tripData, { cloudSlug: row.slug }) : shareURL;
-        pushToast("Share link ready.", "success");
-      } catch (error) {
-        console.error("Share visibility update failed:", error);
-        pushToast(error.message || "Could not prepare share link.", "error");
-        return;
-      } finally {
-        setCloudSaving(false);
-      }
-    }
-
-    navigator.clipboard.writeText(shareURL)
-      .then(() => {
-        pushToast("Link copied.", "success");
-      })
-      .catch(() => {
-        pushToast("Could not copy link.", "error");
-      });
-  };
-
-  const currentShareURL = cloudSlug
-    ? generateShareURL(tripData, { cloudSlug, shareToken })
-    : (shareToken ? generateShareURL(tripData, { shareToken }) : null);
-  const canCopyShareLink = Boolean(currentShareURL);
 
   const publishIssues = useMemo(() => {
     const issues = [];
@@ -780,7 +474,7 @@ export default function TripPlannerApp() {
       onChangeView={setView}
       filter={filter}
       onChangeFilter={setFilter}
-      onShare={handleShare}
+      onShare={() => handleShare(setShowShareModal)}
       canSaveSharedCopy={canSaveSharedCopy}
       onSaveSharedCopy={handleSaveSharedCopy}
       cloudSaving={cloudSaving}
