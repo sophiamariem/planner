@@ -12,6 +12,8 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
   const {
     scrollRef,
     dayOffsetsRef,
+    dayListOffsetRef,
+    stickyHeaderHeightRef,
     title,
     flights,
     days,
@@ -26,7 +28,6 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
     shareUrl,
     isSharedNotOwned,
     copiedFrom,
-    selectedDay,
     calendarMonths,
     normalizeArrowText,
     handleToggleOffline,
@@ -69,47 +70,57 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
           tripFooter={tripFooter}
         />
 
-        <TripViewSwitcher
-          viewMode={viewMode}
-          onChangeViewMode={setViewMode}
-          days={days}
-          activeDayIndex={activeDayIndex}
-          onJumpToDay={handleJumpToDay}
-          calendarMonths={calendarMonths}
-          onSelectDayIndex={setActiveDayIndex}
-          getDayNavLabel={getDayNavLabel}
-        />
-
-        <TripFlightsCard flights={flights} normalizeArrowText={normalizeArrowText} />
-
-        <View style={{ gap: 12 }}>
-          {viewMode === 'cards'
-            ? days.map((day, index) => (
-              <TripDayCard
-                key={`day-card-${day.id || index}`}
-                day={day}
-                index={index}
-                totalDays={days.length}
-                isActive
-                onLayout={(event) => {
-                  dayOffsetsRef.current[index] = event.nativeEvent.layout.y;
-                }}
-                onOpenPin={openPinInMaps}
-                normalizeArrowText={normalizeArrowText}
-              />
-            ))
-            : (selectedDay ? (
-              <TripDayCard
-                key={`day-card-selected-${selectedDay.id || activeDayIndex}`}
-                day={selectedDay}
-                index={activeDayIndex}
-                totalDays={days.length}
-                isActive={false}
-                onOpenPin={openPinInMaps}
-                normalizeArrowText={normalizeArrowText}
-              />
-            ) : null)}
+        <View
+          onLayout={(event) => {
+            stickyHeaderHeightRef.current = event.nativeEvent.layout.height;
+          }}
+        >
+          <TripViewSwitcher
+            viewMode={viewMode}
+            onChangeViewMode={setViewMode}
+            days={days}
+            activeDayIndex={activeDayIndex}
+            onJumpToDay={handleJumpToDay}
+            calendarMonths={calendarMonths}
+            onSelectDayIndex={(index) => {
+              setActiveDayIndex(index);
+              setViewMode('cards');
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  handleJumpToDay(index);
+                });
+              });
+            }}
+            getDayNavLabel={getDayNavLabel}
+          />
         </View>
+
+        {viewMode === 'cards' ? (
+          <>
+            <TripFlightsCard flights={flights} normalizeArrowText={normalizeArrowText} />
+            <View
+              style={{ gap: 12 }}
+              onLayout={(event) => {
+                dayListOffsetRef.current = event.nativeEvent.layout.y;
+              }}
+            >
+              {days.map((day, index) => (
+                <TripDayCard
+                  key={`day-card-${day.id || index}`}
+                  day={day}
+                  index={index}
+                  totalDays={days.length}
+                  isActive
+                  onLayout={(event) => {
+                    dayOffsetsRef.current[index] = event.nativeEvent.layout.y;
+                  }}
+                  onOpenPin={openPinInMaps}
+                  normalizeArrowText={normalizeArrowText}
+                />
+              ))}
+            </View>
+          </>
+        ) : null}
       </ScrollView>
     </View>
   );

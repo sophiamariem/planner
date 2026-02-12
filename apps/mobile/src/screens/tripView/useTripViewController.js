@@ -39,6 +39,8 @@ function normalizeArrowText(value) {
 export default function useTripViewController({ tripRow, currentUserId, onToast }) {
   const scrollRef = useRef(null);
   const dayOffsetsRef = useRef({});
+  const dayListOffsetRef = useRef(0);
+  const stickyHeaderHeightRef = useRef(0);
   const tripData = tripRow?.trip_data || {};
   const tripId = tripRow?.id || 'unknown';
   const title = tripData?.tripConfig?.title || tripRow?.title || 'Untitled Trip';
@@ -57,7 +59,6 @@ export default function useTripViewController({ tripRow, currentUserId, onToast 
   const shareUrl = buildShareUrl(tripRow);
   const isSharedNotOwned = Boolean(tripRow?.owner_id && currentUserId && tripRow.owner_id !== currentUserId);
   const copiedFrom = tripData?.tripConfig?.copiedFrom || null;
-  const selectedDay = days[activeDayIndex] || null;
 
   const calendarMonths = useMemo(() => {
     const dated = (days || [])
@@ -130,12 +131,17 @@ export default function useTripViewController({ tripRow, currentUserId, onToast 
     onToast?.('Trip saved for offline use.');
   };
 
-  const handleJumpToDay = (index) => {
+  const handleJumpToDay = (index, attempt = 0) => {
     setActiveDayIndex(index);
     const y = dayOffsetsRef.current[index];
-    if (typeof y === 'number' && scrollRef.current) {
-      scrollRef.current.scrollTo({ y: Math.max(0, y - 140), animated: true });
+    if (typeof y !== 'number' || !scrollRef.current) {
+      if (attempt < 8) {
+        setTimeout(() => handleJumpToDay(index, attempt + 1), 45);
+      }
+      return;
     }
+    const targetY = Math.max(0, dayListOffsetRef.current + y - stickyHeaderHeightRef.current - 8);
+    scrollRef.current.scrollTo({ y: targetY, animated: true });
   };
 
   const openPinInMaps = async (pin) => {
@@ -167,6 +173,8 @@ export default function useTripViewController({ tripRow, currentUserId, onToast 
   return {
     scrollRef,
     dayOffsetsRef,
+    dayListOffsetRef,
+    stickyHeaderHeightRef,
     title,
     flights,
     days,
@@ -181,7 +189,6 @@ export default function useTripViewController({ tripRow, currentUserId, onToast 
     shareUrl,
     isSharedNotOwned,
     copiedFrom,
-    selectedDay,
     calendarMonths,
     normalizeArrowText,
     handleToggleOffline,
