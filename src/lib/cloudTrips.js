@@ -381,6 +381,52 @@ function isHttpUrl(value) {
   return /^https?:\/\//i.test(String(value || '').trim());
 }
 
+function isUnsplashUrl(value) {
+  const clean = String(value || '').trim();
+  if (!clean) return false;
+  try {
+    const host = new URL(clean).hostname.toLowerCase();
+    return host === 'unsplash.com' || host.endsWith('.unsplash.com');
+  } catch {
+    return false;
+  }
+}
+
+function coerceImageUrl(value) {
+  if (typeof value === 'string') return value.trim();
+  if (!value || typeof value !== 'object') return '';
+  const candidates = [value.url, value.uri, value.src, value.publicUrl, value.image];
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+  }
+  return '';
+}
+
+function normalizeSupabasePublicImageUrl(input) {
+  const clean = coerceImageUrl(input);
+  if (!clean) return '';
+  if (!clean.includes('/storage/v1/object/')) return clean;
+  if (clean.includes('/storage/v1/object/public/')) return clean;
+  try {
+    const parsed = new URL(clean);
+    const path = parsed.pathname || '';
+    const signMatch = path.match(/\/storage\/v1\/object\/sign\/([^/]+)\/(.+)$/);
+    if (signMatch) {
+      parsed.pathname = `/storage/v1/object/public/${signMatch[1]}/${signMatch[2]}`;
+      parsed.search = '';
+      return parsed.toString();
+    }
+    const rawMatch = path.match(/\/storage\/v1\/object\/([^/]+)\/(.+)$/);
+    if (rawMatch) {
+      parsed.pathname = `/storage/v1/object/public/${rawMatch[1]}/${rawMatch[2]}`;
+      return parsed.toString();
+    }
+  } catch {
+    return clean;
+  }
+  return clean;
+}
+
 function getFileExtFromUrl(url) {
   try {
     const parsed = new URL(url);
@@ -430,12 +476,16 @@ async function tryImportImageViaEdgeFunction(sourceUrl, cache = new Map()) {
 }
 
 async function uploadUrlToStorage(sourceUrl, cache = new Map()) {
-  const clean = String(sourceUrl || '').trim();
+  const clean = normalizeSupabasePublicImageUrl(sourceUrl);
   if (!isHttpUrl(clean)) return clean;
   if (cache.has(clean)) return cache.get(clean);
+  if (isUnsplashUrl(clean)) {
+    cache.set(clean, clean);
+    return clean;
+  }
 
   const { url, anonKey } = getSupabaseConfig();
-  if (clean.includes(`${url}/storage/v1/object/`)) {
+  if (clean.includes(`${url}/storage/v1/object/public/`)) {
     cache.set(clean, clean);
     return clean;
   }
@@ -516,7 +566,9 @@ async function importTripMediaToStorage(tripData) {
       if (Array.isArray(day.photos)) {
         const nextPhotos = [];
         for (const photo of day.photos) {
-          nextPhotos.push(await uploadUrlToStorage(photo, cache));
+          const normalized = normalizeSupabasePublicImageUrl(photo);
+          if (!normalized) continue;
+          nextPhotos.push(await uploadUrlToStorage(normalized, cache));
         }
         day.photos = nextPhotos;
       }

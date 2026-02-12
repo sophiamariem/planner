@@ -1,13 +1,50 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Text, View } from 'react-native';
 
+function coerceImageUri(value) {
+  if (typeof value === 'string') return value.trim();
+  if (!value || typeof value !== 'object') return '';
+  const candidates = [value.url, value.uri, value.src, value.publicUrl, value.image];
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+  }
+  return '';
+}
+
+function normalizeSupabasePublicImageUrl(uri) {
+  const clean = coerceImageUri(uri);
+  if (!clean) return '';
+  if (!clean.includes('/storage/v1/object/')) return clean;
+  if (clean.includes('/storage/v1/object/public/')) return clean;
+
+  try {
+    const parsed = new URL(clean);
+    const path = parsed.pathname || '';
+    const signMatch = path.match(/\/storage\/v1\/object\/sign\/([^/]+)\/(.+)$/);
+    if (signMatch) {
+      parsed.pathname = `/storage/v1/object/public/${signMatch[1]}/${signMatch[2]}`;
+      parsed.search = '';
+      return parsed.toString();
+    }
+    const rawMatch = path.match(/\/storage\/v1\/object\/([^/]+)\/(.+)$/);
+    if (rawMatch) {
+      parsed.pathname = `/storage/v1/object/public/${rawMatch[1]}/${rawMatch[2]}`;
+      return parsed.toString();
+    }
+  } catch {
+    return clean;
+  }
+
+  return clean;
+}
+
 export function fallbackPhotoUri(query, index = 0) {
   const seed = encodeURIComponent(String(query || 'travel').trim() || 'travel');
   return `https://picsum.photos/seed/${seed}-${index}/1200/800`;
 }
 
 export function proxyImageUris(uri) {
-  const raw = String(uri || '').trim();
+  const raw = normalizeSupabasePublicImageUrl(uri);
   if (!raw) return [];
   const stripped = raw.replace(/^https?:\/\//i, '');
   const encoded = encodeURIComponent(stripped);
@@ -39,11 +76,17 @@ export function getMapPreviewUrls(pins = []) {
 export function RemoteImage({ uri, fallbackUri, fallbackUris = [], style, resizeMode = 'cover' }) {
   const fallbackList = Array.isArray(fallbackUris) ? fallbackUris : [];
   const candidatesKey = useMemo(
-    () => [uri, ...fallbackList, fallbackUri].map((v) => String(v || '').trim()).filter(Boolean).join('|'),
+    () =>
+      [uri, ...fallbackList, fallbackUri]
+        .map((v) => normalizeSupabasePublicImageUrl(v))
+        .filter(Boolean)
+        .join('|'),
     [uri, fallbackUri, fallbackList.join('|')],
   );
   const candidates = useMemo(() => {
-    const list = [uri, ...fallbackList, fallbackUri].filter((v) => String(v || '').trim());
+    const list = [uri, ...fallbackList, fallbackUri]
+      .map((v) => normalizeSupabasePublicImageUrl(v))
+      .filter(Boolean);
     return [...new Set(list)];
   }, [candidatesKey]);
   const [sourceIndex, setSourceIndex] = useState(0);
@@ -83,7 +126,10 @@ export function RemoteImage({ uri, fallbackUri, fallbackUris = [], style, resize
 }
 
 export function DayPhotoLayout({ photos = [], query = '' }) {
-  const list = (Array.isArray(photos) ? photos : []).slice(0, 5);
+  const list = (Array.isArray(photos) ? photos : [])
+    .map((photo) => normalizeSupabasePublicImageUrl(photo))
+    .filter(Boolean)
+    .slice(0, 5);
   if (!list.length) return null;
 
   if (list.length === 1) {
