@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import FlightCard from "./FlightCard";
 import DayCard from "./DayCard";
 import CalendarView from "./CalendarView";
@@ -23,6 +23,17 @@ export default function TripPreviewContent({
   selectedDay,
   activePaletteCard,
 }) {
+  const selectedDayRef = useRef(null);
+
+  const handleSelectFromCalendar = (id) => {
+    onSelectDay?.(id);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        selectedDayRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  };
+
   return (
     <main className="max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-8">
       {tripConfig.cover && (
@@ -76,7 +87,7 @@ export default function TripPreviewContent({
                 month={tripConfig.calendar.month}
                 days={days}
                 selectedId={selectedId}
-                onSelect={onSelectDay}
+                onSelect={handleSelectFromCalendar}
                 badges={dayBadges}
               />
               {tripConfig.badgeLegend && tripConfig.badgeLegend.length > 0 && (
@@ -88,7 +99,7 @@ export default function TripPreviewContent({
                   ))}
                 </div>
               )}
-              <div className="grid gap-8 mt-6">
+              <div ref={selectedDayRef} className="grid gap-8 mt-6">
                 {selectedDay ? (
                   <DayCard d={selectedDay} showMaps={showMaps} imgClass={imgClass} />
                 ) : (

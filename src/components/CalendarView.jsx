@@ -57,73 +57,75 @@ export default function CalendarView({
         <div className="text-xs text-zinc-600">Tap a highlighted date</div>
       </div>
 
-      {monthsToRender.map(({ year: y, month: m }) => {
-        const name = new Date(y, m, 1).toLocaleString(undefined, { month: "long", year: "numeric" });
-        const firstDay = new Date(y, m, 1).getDay();
-        const firstMon = (firstDay + 6) % 7;
-        const daysIn = new Date(y, m + 1, 0).getDate();
-        const cells = [];
-        for (let i = 0; i < firstMon; i += 1) cells.push(null);
-        for (let d = 1; d <= daysIn; d += 1) cells.push(d);
-        while (cells.length % 7 !== 0) cells.push(null);
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {monthsToRender.map(({ year: y, month: m }) => {
+          const name = new Date(y, m, 1).toLocaleString(undefined, { month: "long", year: "numeric" });
+          const firstDay = new Date(y, m, 1).getDay();
+          const firstMon = (firstDay + 6) % 7;
+          const daysIn = new Date(y, m + 1, 0).getDate();
+          const cells = [];
+          for (let i = 0; i < firstMon; i += 1) cells.push(null);
+          for (let d = 1; d <= daysIn; d += 1) cells.push(d);
+          while (cells.length % 7 !== 0) cells.push(null);
 
-        return (
-          <div key={monthKey(y, m)} className="space-y-3">
-            <div className="text-sm font-bold text-zinc-800">{name}</div>
-            <div className="grid grid-cols-7 text-[11px] font-semibold text-zinc-600 uppercase tracking-wider">
-              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                <div key={`${name}-${d}`} className="px-2 py-1">
-                  {d}
-                </div>
-              ))}
+          return (
+            <div key={monthKey(y, m)} className="space-y-3">
+              <div className="text-sm font-bold text-zinc-800">{name}</div>
+              <div className="grid grid-cols-7 text-[11px] font-semibold text-zinc-600 uppercase tracking-wider">
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+                  <div key={`${name}-${d}`} className="px-2 py-1">
+                    {d}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-2">
+                {cells.map((dayNum, i) => {
+                  if (dayNum === null) return <div key={`${monthKey(y, m)}-blank-${i}`} className="h-16 md:h-20 rounded-2xl bg-transparent" />;
+
+                  const iso = `${y}-${String(m + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+                  const dayObj = dayByIso.get(iso) || null;
+                  const isActive = Boolean(dayObj);
+                  const isSelected = isActive && Number(selectedId) === Number(dayObj.id);
+
+                  const base = "h-16 md:h-20 rounded-2xl flex flex-col items-center justify-center text-sm font-semibold transition-all active:scale-95";
+                  const classes = isActive
+                    ? (isSelected
+                      ? "bg-gradient-to-b from-fuchsia-500 to-rose-500 text-white ring-2 ring-rose-400 shadow-md"
+                      : "bg-gradient-to-b from-pink-100 to-amber-100 text-zinc-800 border border-pink-200/80 hover:shadow hover:-translate-y-[1px] focus-visible:ring-2 focus-visible:ring-rose-300")
+                    : "bg-white/70 text-zinc-300 border border-zinc-200";
+
+                  const badgeKeyNum = Number(dayObj?.id);
+                  const dayBadges = dayObj
+                    ? (badges[badgeKeyNum] || badges[dayObj.id] || [])
+                    : [];
+
+                  return (
+                    <button
+                      key={`${monthKey(y, m)}-${dayNum}`}
+                      type="button"
+                      disabled={!isActive}
+                      className={`${base} ${classes}`}
+                      onClick={() => onSelect?.(Number(dayObj.id))}
+                    >
+                      <div className="leading-none">{dayNum}</div>
+                      {dayBadges.length > 0 && (
+                        <div className="mt-1 flex gap-1 justify-center">
+                          {dayBadges.slice(0, 3).map((b, ix) => (
+                            <span key={ix} className="text-base" aria-hidden="true">
+                              {b}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-
-            <div className="grid grid-cols-7 gap-2">
-              {cells.map((dayNum, i) => {
-                if (dayNum === null) return <div key={`${monthKey(y, m)}-blank-${i}`} className="h-16 md:h-20 rounded-2xl bg-transparent" />;
-
-                const iso = `${y}-${String(m + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
-                const dayObj = dayByIso.get(iso) || null;
-                const isActive = Boolean(dayObj);
-                const isSelected = isActive && Number(selectedId) === Number(dayObj.id);
-
-                const base = "h-16 md:h-20 rounded-2xl flex flex-col items-center justify-center text-sm font-semibold transition-all active:scale-95";
-                const classes = isActive
-                  ? (isSelected
-                    ? "bg-gradient-to-b from-fuchsia-500 to-rose-500 text-white ring-2 ring-rose-400 shadow-md"
-                    : "bg-gradient-to-b from-pink-100 to-amber-100 text-zinc-800 border border-pink-200/80 hover:shadow hover:-translate-y-[1px] focus-visible:ring-2 focus-visible:ring-rose-300")
-                  : "bg-white/70 text-zinc-300 border border-zinc-200";
-
-                const badgeKeyNum = Number(dayObj?.id);
-                const dayBadges = dayObj
-                  ? (badges[badgeKeyNum] || badges[dayObj.id] || [])
-                  : [];
-
-                return (
-                  <button
-                    key={`${monthKey(y, m)}-${dayNum}`}
-                    type="button"
-                    disabled={!isActive}
-                    className={`${base} ${classes}`}
-                    onClick={() => onSelect?.(Number(dayObj.id))}
-                  >
-                    <div className="leading-none">{dayNum}</div>
-                    {dayBadges.length > 0 && (
-                      <div className="mt-1 flex gap-1 justify-center">
-                        {dayBadges.slice(0, 3).map((b, ix) => (
-                          <span key={ix} className="text-base" aria-hidden="true">
-                            {b}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </section>
   );
 }
