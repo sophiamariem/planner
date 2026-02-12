@@ -1,6 +1,7 @@
 import { tripConfig as defaultTripConfig, flights as defaultFlights, days as defaultDays, dayBadges as defaultDayBadges, palette, ll as defaultLocations } from "../data/trip";
 import { buildTemplateTrip, getTemplateJson } from "../utils/tripTemplates";
 import { saveTripToLocalStorage, updateURLWithTrip, validateTripData } from "../utils/tripData";
+import { normalizeImportedTripData } from "../utils/importTripData";
 
 export default function useTripCreationActions({
   isAdminUser,
@@ -96,53 +97,7 @@ export default function useTripCreationActions({
       const validation = validateTripData(parsed);
 
       if (validation.valid) {
-        const importedLl = parsed.ll || {};
-        const extractedLl = { ...importedLl };
-
-        if (parsed.days && Array.isArray(parsed.days)) {
-          parsed.days.forEach((day) => {
-            if (day.pins && Array.isArray(day.pins)) {
-              day.pins.forEach((pin) => {
-                if (pin.name && pin.ll && !extractedLl[pin.name]) {
-                  extractedLl[pin.name] = pin.ll;
-                }
-              });
-            }
-          });
-        }
-
-        const importedBadges = parsed.dayBadges || {};
-        const extractedBadges = { ...importedBadges };
-
-        if (Object.keys(extractedBadges).length === 0 && parsed.days && Array.isArray(parsed.days)) {
-          parsed.days.forEach((day) => {
-            const dayId = Number(day.id);
-            if (isNaN(dayId)) return;
-
-            const emojis = [];
-            (day.notes || []).forEach((note) => {
-              const found = note.match(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu);
-              if (found) emojis.push(...found);
-            });
-
-            if (emojis.length > 0) {
-              extractedBadges[dayId] = [...new Set(emojis)];
-            }
-          });
-        }
-
-        const sanitizedData = {
-          ...parsed,
-          flights: parsed.flights || [],
-          days: (parsed.days || []).map((day) => ({
-            ...day,
-            pins: day.pins || [],
-            notes: day.notes || [],
-          })),
-          ll: extractedLl,
-          dayBadges: extractedBadges,
-          palette: parsed.palette || palette,
-        };
+        const sanitizedData = normalizeImportedTripData(parsed, palette);
 
         setTripData(sanitizedData);
         setCloudTripId(null);
