@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Linking, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { Linking, ScrollView, Share, View } from 'react-native';
 import TripTopBar from './tripView/TripTopBar';
 import TripHeaderCard from './tripView/TripHeaderCard';
 import TripDayCard from './tripView/TripDayCard';
-import TripCalendarPanel from './tripView/TripCalendarPanel';
 import TripFlightsCard from './tripView/TripFlightsCard';
+import TripViewSwitcher from './tripView/TripViewSwitcher';
 import { formatStartDate, getDayNavLabel, normalizeDaysWithInferredDates, parseIsoDate } from './tripView/dateUtils';
 
 function extractCover(tripData) {
@@ -199,65 +199,16 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
           tripFooter={tripFooter}
         />
 
-        <View style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 16, backgroundColor: '#ffffff', padding: 12, gap: 8 }}>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Pressable
-              onPress={() => setViewMode('cards')}
-              style={{
-                borderWidth: 1,
-                borderColor: viewMode === 'cards' ? '#111827' : '#d1d5db',
-                backgroundColor: viewMode === 'cards' ? '#111827' : '#ffffff',
-                borderRadius: 999,
-                paddingHorizontal: 12,
-                paddingVertical: 7,
-              }}
-            >
-              <Text style={{ color: viewMode === 'cards' ? '#ffffff' : '#374151', fontSize: 12, fontWeight: '700' }}>Cards</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setViewMode('calendar')}
-              style={{
-                borderWidth: 1,
-                borderColor: viewMode === 'calendar' ? '#111827' : '#d1d5db',
-                backgroundColor: viewMode === 'calendar' ? '#111827' : '#ffffff',
-                borderRadius: 999,
-                paddingHorizontal: 12,
-                paddingVertical: 7,
-              }}
-            >
-              <Text style={{ color: viewMode === 'calendar' ? '#ffffff' : '#374151', fontSize: 12, fontWeight: '700' }}>Calendar</Text>
-            </Pressable>
-          </View>
-
-          {viewMode === 'cards' ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              {days.map((day, index) => (
-                <Pressable
-                  key={`jump-${day.id || index}`}
-                  onPress={() => handleJumpToDay(index)}
-                  style={{
-                    borderWidth: 1,
-                    borderColor: activeDayIndex === index ? '#111827' : '#d1d5db',
-                    backgroundColor: activeDayIndex === index ? '#111827' : '#ffffff',
-                    borderRadius: 999,
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                  }}
-                >
-                  <Text style={{ color: activeDayIndex === index ? '#ffffff' : '#374151', fontSize: 12, fontWeight: '700' }}>
-                    {getDayNavLabel(day, index)}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          ) : (
-            <TripCalendarPanel
-              calendarMonths={calendarMonths}
-              activeDayIndex={activeDayIndex}
-              onSelectDayIndex={setActiveDayIndex}
-            />
-          )}
-        </View>
+        <TripViewSwitcher
+          viewMode={viewMode}
+          onChangeViewMode={setViewMode}
+          days={days}
+          activeDayIndex={activeDayIndex}
+          onJumpToDay={handleJumpToDay}
+          calendarMonths={calendarMonths}
+          onSelectDayIndex={setActiveDayIndex}
+          getDayNavLabel={getDayNavLabel}
+        />
 
         <TripFlightsCard flights={flights} normalizeArrowText={normalizeArrowText} />
 
