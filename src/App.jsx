@@ -1171,7 +1171,10 @@ export default function TripPlannerApp() {
                     Start with Example Template
                   </h3>
                   <p className="text-zinc-600">
-                    See a fully populated example trip you can customize. {isSupabaseConfigured && !user ? "Guest trips stay on this browser unless you sign in." : ""}
+                    See a fully populated example trip you can customize.
+                    {isSupabaseConfigured && !user ? (
+                      <span className="block mt-1 text-sm text-zinc-500">Guest trips stay on this browser unless you sign in.</span>
+                    ) : null}
                   </p>
                 </div>
               </div>
@@ -1208,7 +1211,10 @@ export default function TripPlannerApp() {
                     Start from Scratch
                   </h3>
                   <p className="text-zinc-600">
-                    Build your trip from the ground up. {isSupabaseConfigured && !user ? "Guest trips stay local to this device." : ""}
+                    Build your trip from the ground up.
+                    {isSupabaseConfigured && !user ? (
+                      <span className="block mt-1 text-sm text-zinc-500">Guest trips stay local to this device.</span>
+                    ) : null}
                   </p>
                 </div>
               </div>
