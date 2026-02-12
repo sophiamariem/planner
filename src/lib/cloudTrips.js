@@ -174,6 +174,19 @@ export async function listMyTrips() {
   return parseJson(response, 'Could not load trips.');
 }
 
+export async function getMyCollaboratorRole(tripId) {
+  if (!isSupabaseConfigured || !tripId) return null;
+  const user = await getCurrentUser();
+  if (!user?.id) return null;
+
+  const response = await authedFetch(
+    `/rest/v1/trip_collaborators?trip_id=eq.${encodeURIComponent(tripId)}&user_id=eq.${encodeURIComponent(user.id)}&select=role&limit=1`,
+    { method: 'GET' }
+  );
+  const rows = await parseJson(response, 'Could not check collaborator access.');
+  return rows?.[0]?.role || null;
+}
+
 export async function loadCloudTripById(id) {
   if (!isSupabaseConfigured) throw new Error('Saved trips are unavailable right now.');
   const user = await getCurrentUser();
@@ -198,6 +211,44 @@ export async function loadSharedCloudTripById(id) {
   const rows = await parseJson(response, 'Could not load shared trip.');
   if (!rows.length) throw new Error('Shared trip not found.');
   return rows[0];
+}
+
+export async function listTripCollaborators(tripId) {
+  if (!isSupabaseConfigured) throw new Error('Collaborators are unavailable right now.');
+  if (!tripId) throw new Error('Trip id is required.');
+
+  const response = await authedFetch('/rest/v1/rpc/list_trip_collaborators', {
+    method: 'POST',
+    body: JSON.stringify({ p_trip_id: tripId }),
+  });
+
+  return parseJson(response, 'Could not load collaborators.');
+}
+
+export async function addTripCollaboratorByEmail(tripId, email, role = 'editor') {
+  if (!isSupabaseConfigured) throw new Error('Collaborators are unavailable right now.');
+  if (!tripId) throw new Error('Trip id is required.');
+  if (!email) throw new Error('Email is required.');
+
+  const response = await authedFetch('/rest/v1/rpc/add_trip_collaborator_by_email', {
+    method: 'POST',
+    body: JSON.stringify({ p_trip_id: tripId, p_email: email, p_role: role }),
+  });
+
+  await parseJson(response, 'Could not add collaborator.');
+}
+
+export async function removeTripCollaboratorByEmail(tripId, email) {
+  if (!isSupabaseConfigured) throw new Error('Collaborators are unavailable right now.');
+  if (!tripId) throw new Error('Trip id is required.');
+  if (!email) throw new Error('Email is required.');
+
+  const response = await authedFetch('/rest/v1/rpc/remove_trip_collaborator_by_email', {
+    method: 'POST',
+    body: JSON.stringify({ p_trip_id: tripId, p_email: email }),
+  });
+
+  await parseJson(response, 'Could not remove collaborator.');
 }
 
 export async function loadCloudTripByShareToken(shareToken) {

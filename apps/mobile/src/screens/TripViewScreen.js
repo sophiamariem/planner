@@ -343,6 +343,7 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const shareUrl = buildShareUrl(tripRow);
   const isSharedNotOwned = Boolean(tripRow?.owner_id && currentUserId && tripRow.owner_id !== currentUserId);
+  const copiedFrom = tripData?.tripConfig?.copiedFrom || null;
 
   useEffect(() => {
     let mounted = true;
@@ -463,6 +464,11 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
                     {savingSharedCopy ? 'Saving...' : 'Save to My Trips'}
                   </Text>
                 </Pressable>
+              </View>
+            ) : null}
+            {!isSharedNotOwned && copiedFrom?.ownerId ? (
+              <View style={{ borderWidth: 1, borderColor: '#ddd6fe', backgroundColor: '#f5f3ff', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start' }}>
+                <Text style={{ color: '#6d28d9', fontSize: 12, fontWeight: '700' }}>Copied from shared trip</Text>
               </View>
             ) : null}
             <Text style={{ color: '#6b7280', fontSize: 14 }}>

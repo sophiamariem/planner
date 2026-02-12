@@ -144,7 +144,19 @@ export default function App() {
     if (!selectedTrip?.trip_data) return;
     setCreateSaving(true);
     try {
-      const row = await saveTripToCloud(selectedTrip.trip_data, 'private');
+      const copiedTripData = {
+        ...selectedTrip.trip_data,
+        tripConfig: {
+          ...(selectedTrip.trip_data?.tripConfig || {}),
+          copiedFrom: {
+            ownerId: selectedTrip?.owner_id || null,
+            tripId: selectedTrip?.id || null,
+            slug: selectedTrip?.slug || null,
+            savedAt: new Date().toISOString(),
+          },
+        },
+      };
+      const row = await saveTripToCloud(copiedTripData, 'private');
       setSelectedTrip(row);
       await refreshSessionAndData();
       pushToast('Saved to your trips.', 'success');

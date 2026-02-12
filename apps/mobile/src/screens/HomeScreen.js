@@ -227,6 +227,11 @@ function TripCard({ trip, onSelectTrip, onDeleteTrip }) {
           <Text style={{ color: '#1d4ed8', fontSize: 11, fontWeight: '700' }}>{templateLabel}</Text>
         </View>
       ) : null}
+      {trip?.trip_data?.tripConfig?.copiedFrom?.ownerId ? (
+        <View style={{ alignSelf: 'flex-start', marginTop: 2, borderRadius: 999, borderWidth: 1, borderColor: '#ddd6fe', backgroundColor: '#f5f3ff', paddingHorizontal: 8, paddingVertical: 3 }}>
+          <Text style={{ color: '#6d28d9', fontSize: 11, fontWeight: '700' }}>Copied</Text>
+        </View>
+      ) : null}
       {start ? <Text style={{ color: '#4b5563', fontSize: 12 }}>Starts {start}</Text> : null}
       <Text style={{ color: '#111827', fontSize: 12, fontWeight: '700', marginTop: 4 }}>Tap to open</Text>
     </Pressable>

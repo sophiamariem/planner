@@ -4,7 +4,7 @@ import useFavicon from "./hooks/useFavicon";
 import { ensureTailwindCDN } from "./utils/tailwind";
 import { getTripFromURL, updateURLWithTrip, saveTripToLocalStorage, loadTripFromLocalStorage, generateShareURL, clearLocalStorageTrip, validateTripData, getSourceFromURL, getCloudFromURL, isViewOnlyFromURL } from "./utils/tripData";
 import { isSupabaseConfigured, setSessionFromUrl } from "./lib/supabaseClient";
-import { getCurrentUser, signInWithMagicLink, signInWithGoogle, signOut, saveTripToCloud, updateCloudTrip, listMyTrips, loadCloudTripById, loadSharedCloudTripById, loadCloudTripByShareToken, loadCloudTripBySlug, deleteCloudTripById } from "./lib/cloudTrips";
+import { getCurrentUser, signInWithMagicLink, signInWithGoogle, signOut, saveTripToCloud, updateCloudTrip, listMyTrips, getMyCollaboratorRole, listTripCollaborators, addTripCollaboratorByEmail, removeTripCollaboratorByEmail, loadCloudTripById, loadCloudTripByShareToken, loadCloudTripBySlug, deleteCloudTripById } from "./lib/cloudTrips";
 
 import FlightCard from "./components/FlightCard";
 import DayCard from "./components/DayCard";
@@ -69,6 +69,23 @@ function extractCoverImage(tripLike) {
     tripLike?.trip_data?.days?.find((d) => (d.photos || []).length > 0)?.photos?.[0] ||
     null
   );
+}
+
+function attachCopyAttribution(tripData, source = {}) {
+  const base = tripData || {};
+  const existing = base?.tripConfig?.copiedFrom || {};
+  return {
+    ...base,
+    tripConfig: {
+      ...(base.tripConfig || {}),
+      copiedFrom: {
+        ownerId: source.ownerId || existing.ownerId || null,
+        tripId: source.tripId || existing.tripId || null,
+        slug: source.slug || existing.slug || null,
+        savedAt: new Date().toISOString(),
+      },
+    },
+  };
 }
 
 function formatVisibilityLabel(visibility) {
@@ -189,6 +206,10 @@ export default function TripPlannerApp() {
   const [cloudVisibility, setCloudVisibility] = useState("private");
   const [cloudShareAccess, setCloudShareAccess] = useState("view");
   const [cloudOwnerId, setCloudOwnerId] = useState(null);
+  const [cloudCollaboratorRole, setCloudCollaboratorRole] = useState(null);
+  const [collaboratorEmail, setCollaboratorEmail] = useState("");
+  const [collaborators, setCollaborators] = useState([]);
+  const [collaboratorsLoading, setCollaboratorsLoading] = useState(false);
   const [cloudSaving, setCloudSaving] = useState(false);
   const [myTrips, setMyTrips] = useState([]);
   const [myTripsLoading, setMyTripsLoading] = useState(false);
@@ -295,6 +316,20 @@ export default function TripPlannerApp() {
     }
   };
 
+  const refreshCollaborators = async (tripId = cloudTripId) => {
+    if (!tripId || !isCloudOwnedByCurrentUser) return;
+    setCollaboratorsLoading(true);
+    try {
+      const rows = await listTripCollaborators(tripId);
+      setCollaborators(rows || []);
+    } catch (error) {
+      console.error("Error loading collaborators:", error);
+      pushToast(error.message || "Could not load collaborators.", "error");
+    } finally {
+      setCollaboratorsLoading(false);
+    }
+  };
+
   const loadCloudTrip = async (cloudRef) => {
     let row;
     if (cloudRef.type === "share") {
@@ -302,11 +337,7 @@ export default function TripPlannerApp() {
     } else if (cloudRef.type === "slug") {
       row = await loadCloudTripBySlug(cloudRef.value);
     } else {
-      try {
-        row = await loadCloudTripById(cloudRef.value);
-      } catch {
-        row = await loadSharedCloudTripById(cloudRef.value);
-      }
+      row = await loadCloudTripById(cloudRef.value);
     }
 
     const validation = validateTripData(row.trip_data);
@@ -321,8 +352,19 @@ export default function TripPlannerApp() {
     setCloudVisibility(row.visibility || "private");
     setCloudShareAccess(row.share_access || "view");
     setCloudOwnerId(row.owner_id || null);
+    setCloudCollaboratorRole(null);
     setSourceUrl(null);
     setMode('view');
+
+    try {
+      if (user?.id && row.owner_id && user.id !== row.owner_id) {
+        const role = await getMyCollaboratorRole(row.id);
+        setCloudCollaboratorRole(role);
+      }
+    } catch (error) {
+      console.error("Error checking collaborator role:", error);
+      setCloudCollaboratorRole(null);
+    }
   };
 
   // Load auth + trip data on mount (only runs once)
@@ -470,7 +512,8 @@ export default function TripPlannerApp() {
     user &&
     isSharedCloudTrip &&
     cloudVisibility !== "private" &&
-    cloudShareAccess === "collaborate"
+    cloudShareAccess === "collaborate" &&
+    cloudCollaboratorRole === "editor"
   );
   const canEditCurrentTrip = Boolean(
     !sourceUrl &&
@@ -478,6 +521,7 @@ export default function TripPlannerApp() {
     (!cloudTripId || isCloudOwnedByCurrentUser || canCollaborateOnSharedTrip)
   );
   const canSaveSharedCopy = Boolean(user && isSharedCloudTrip && tripData);
+  const copiedFrom = tripData?.tripConfig?.copiedFrom || null;
 
   useFavicon(tripConfig.favicon);
 
@@ -551,7 +595,12 @@ export default function TripPlannerApp() {
         if (isCloudOwnedByCurrentUser || canCollaborateOnSharedTrip) {
           row = await updateCloudTrip(cloudTripId, tripData, cloudVisibility, cloudSlug, cloudShareAccess);
         } else {
-          row = await saveTripToCloud(tripData, "private", "view");
+          const copiedTripData = attachCopyAttribution(tripData, {
+            ownerId: cloudOwnerId,
+            tripId: cloudTripId,
+            slug: cloudSlug,
+          });
+          row = await saveTripToCloud(copiedTripData, "private", "view");
         }
       } else {
         row = await saveTripToCloud(tripData, cloudVisibility, cloudShareAccess);
@@ -562,6 +611,7 @@ export default function TripPlannerApp() {
       setCloudVisibility(row.visibility || "private");
       setCloudShareAccess(row.share_access || "view");
       setCloudOwnerId(row.owner_id || user?.id || null);
+      setCloudCollaboratorRole(null);
       const cloudHash = row.slug ? `#t=${encodeURIComponent(row.slug)}` : `#cloud=${encodeURIComponent(row.id)}`;
       window.history.pushState(null, '', cloudHash);
       await refreshMyTrips();
@@ -596,13 +646,19 @@ export default function TripPlannerApp() {
 
     setCloudSaving(true);
     try {
-      const row = await saveTripToCloud(tripData, "private", "view");
+      const copiedTripData = attachCopyAttribution(tripData, {
+        ownerId: cloudOwnerId,
+        tripId: cloudTripId,
+        slug: cloudSlug,
+      });
+      const row = await saveTripToCloud(copiedTripData, "private", "view");
       setCloudTripId(row.id);
       setCloudSlug(row.slug || null);
       setShareToken(null);
       setCloudVisibility(row.visibility || "private");
       setCloudShareAccess(row.share_access || "view");
       setCloudOwnerId(row.owner_id || user.id);
+      setCloudCollaboratorRole(null);
       const cloudHash = row.slug ? `#t=${encodeURIComponent(row.slug)}` : `#cloud=${encodeURIComponent(row.id)}`;
       window.history.pushState(null, '', cloudHash);
       await refreshMyTrips();
@@ -612,6 +668,42 @@ export default function TripPlannerApp() {
       pushToast(error.message || "Could not save this trip.", "error");
     } finally {
       setCloudSaving(false);
+    }
+  };
+
+  const handleAddCollaborator = async () => {
+    const email = collaboratorEmail.trim();
+    if (!email) {
+      pushToast("Enter a collaborator email.", "error");
+      return;
+    }
+    if (!cloudTripId || !isCloudOwnedByCurrentUser) return;
+
+    setCollaboratorsLoading(true);
+    try {
+      await addTripCollaboratorByEmail(cloudTripId, email, "editor");
+      setCollaboratorEmail("");
+      await refreshCollaborators(cloudTripId);
+      pushToast("Collaborator added.", "success");
+    } catch (error) {
+      console.error("Add collaborator error:", error);
+      pushToast(error.message || "Could not add collaborator.", "error");
+      setCollaboratorsLoading(false);
+    }
+  };
+
+  const handleRemoveCollaborator = async (email) => {
+    if (!email || !cloudTripId || !isCloudOwnedByCurrentUser) return;
+
+    setCollaboratorsLoading(true);
+    try {
+      await removeTripCollaboratorByEmail(cloudTripId, email);
+      await refreshCollaborators(cloudTripId);
+      pushToast("Collaborator removed.", "success");
+    } catch (error) {
+      console.error("Remove collaborator error:", error);
+      pushToast(error.message || "Could not remove collaborator.", "error");
+      setCollaboratorsLoading(false);
     }
   };
 
@@ -654,6 +746,7 @@ export default function TripPlannerApp() {
         setShareToken(null);
         setCloudShareAccess("view");
         setCloudOwnerId(null);
+        setCloudCollaboratorRole(null);
         setSourceUrl(null);
         setMode('onboarding');
       }
@@ -705,6 +798,7 @@ export default function TripPlannerApp() {
     setShareToken(null);
     setCloudShareAccess("view");
     setCloudOwnerId(null);
+    setCloudCollaboratorRole(null);
     setSourceUrl(null);
     setShowResetModal(false);
     setMode('onboarding');
@@ -719,6 +813,7 @@ export default function TripPlannerApp() {
     setShareToken(null);
     setCloudShareAccess("view");
     setCloudOwnerId(null);
+    setCloudCollaboratorRole(null);
     setSourceUrl(null);
     setMode('builder');
   };
@@ -832,6 +927,7 @@ export default function TripPlannerApp() {
         setShareToken(null);
         setCloudShareAccess("view");
         setCloudOwnerId(null);
+        setCloudCollaboratorRole(null);
         setSourceUrl(null);
         setMode('view');
         setShowImportModal(false);
@@ -867,6 +963,7 @@ export default function TripPlannerApp() {
         setCloudVisibility(row.visibility || "unlisted");
         setCloudShareAccess(row.share_access || cloudShareAccess);
         setCloudOwnerId(row.owner_id || cloudOwnerId || user?.id || null);
+        setCloudCollaboratorRole(null);
         const nextHash = row.slug ? `#t=${encodeURIComponent(row.slug)}` : `#cloud=${encodeURIComponent(row.id)}`;
         window.history.pushState(null, "", nextHash);
         shareURL = row.slug ? generateShareURL(tripData, { cloudSlug: row.slug }) : shareURL;
@@ -921,6 +1018,12 @@ export default function TripPlannerApp() {
     setBuilderStartTab(map[issueAction] || "basic");
     setMode("builder");
   };
+
+  useEffect(() => {
+    if (!showShareModal || !isCloudOwnedByCurrentUser || !cloudTripId || cloudShareAccess !== "collaborate") return;
+    refreshCollaborators(cloudTripId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showShareModal, isCloudOwnedByCurrentUser, cloudTripId, cloudShareAccess]);
 
   const resetDrawer = showResetModal && (
     <div className="fixed inset-0 z-50" onClick={() => setShowResetModal(false)}>
@@ -1394,6 +1497,11 @@ export default function TripPlannerApp() {
                   {canCollaborateOnSharedTrip ? "Shared (collaborative)" : "Shared (read-only)"}
                 </span>
               )}
+              {!isSharedCloudTrip && copiedFrom?.ownerId && (
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-violet-50 text-violet-700 border-violet-200">
+                  Copied from shared trip
+                </span>
+              )}
             </div>
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-zinc-900">{tripConfig.title}</h1>
           </div>
@@ -1520,6 +1628,48 @@ export default function TripPlannerApp() {
                       <p className="text-xs text-zinc-500">
                         Save the trip after changing this setting so the shared link updates.
                       </p>
+                      {cloudShareAccess === "collaborate" && (
+                        <div className="mt-2 border border-zinc-200 rounded-lg bg-white p-3 space-y-2">
+                          <p className="text-xs font-semibold text-zinc-800">Collaborators who can edit</p>
+                          <div className="flex gap-2">
+                            <input
+                              type="email"
+                              value={collaboratorEmail}
+                              onChange={(e) => setCollaboratorEmail(e.target.value)}
+                              placeholder="name@example.com"
+                              className="flex-1 px-2 py-1.5 rounded border border-zinc-300 text-xs outline-none focus:ring-2 focus:ring-blue-400"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddCollaborator}
+                              disabled={collaboratorsLoading}
+                              className="px-2.5 py-1.5 rounded bg-zinc-900 text-white text-xs font-medium disabled:opacity-50"
+                            >
+                              Add
+                            </button>
+                          </div>
+                          {collaboratorsLoading ? (
+                            <p className="text-xs text-zinc-500">Updating collaborators...</p>
+                          ) : collaborators.length === 0 ? (
+                            <p className="text-xs text-zinc-500">No collaborators yet.</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {collaborators.map((c) => (
+                                <div key={`${c.user_id}-${c.email}`} className="flex items-center justify-between gap-2">
+                                  <p className="text-xs text-zinc-700">{c.email}</p>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveCollaborator(c.email)}
+                                    className="px-2 py-1 rounded border border-rose-200 text-rose-700 text-xs hover:bg-rose-50"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </>
                   ) : (
                     <p className="text-xs text-zinc-600">

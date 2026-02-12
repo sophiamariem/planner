@@ -126,19 +126,34 @@ using (owner_id = auth.uid())
 with check (owner_id = auth.uid());
 
 drop policy if exists "Collaborators can update shared trips" on public.trips;
-create policy "Collaborators can update shared trips"
+drop policy if exists "Collaborator editors can update shared trips" on public.trips;
+create policy "Collaborator editors can update shared trips"
 on public.trips for update
 using (
   auth.uid() is not null
   and owner_id <> auth.uid()
   and visibility in ('unlisted', 'public')
   and share_access = 'collaborate'
+  and exists (
+    select 1
+    from public.trip_collaborators tc
+    where tc.trip_id = trips.id
+      and tc.user_id = auth.uid()
+      and tc.role = 'editor'
+  )
 )
 with check (
   auth.uid() is not null
   and owner_id <> auth.uid()
   and visibility in ('unlisted', 'public')
   and share_access = 'collaborate'
+  and exists (
+    select 1
+    from public.trip_collaborators tc
+    where tc.trip_id = trips.id
+      and tc.user_id = auth.uid()
+      and tc.role = 'editor'
+  )
 );
 
 drop policy if exists "Owners can delete their trips" on public.trips;
@@ -158,10 +173,178 @@ on public.trips for select
 using (visibility in ('unlisted', 'public'));
 
 -- Collaborator table access
--- Owner-management policy intentionally omitted for now to avoid recursion.
-drop policy if exists "Owners can manage collaborators" on public.trip_collaborators;
-
 drop policy if exists "Users can see their collaborator rows" on public.trip_collaborators;
+drop policy if exists "Owners can view collaborator rows" on public.trip_collaborators;
+drop policy if exists "Owners can insert collaborators" on public.trip_collaborators;
+drop policy if exists "Owners can update collaborators" on public.trip_collaborators;
+drop policy if exists "Owners can delete collaborators" on public.trip_collaborators;
+
 create policy "Users can see their collaborator rows"
 on public.trip_collaborators for select
 using (user_id = auth.uid());
+
+create policy "Owners can view collaborator rows"
+on public.trip_collaborators for select
+using (
+  exists (
+    select 1
+    from public.trips t
+    where t.id = trip_collaborators.trip_id
+      and t.owner_id = auth.uid()
+  )
+);
+
+create policy "Owners can insert collaborators"
+on public.trip_collaborators for insert
+with check (
+  exists (
+    select 1
+    from public.trips t
+    where t.id = trip_collaborators.trip_id
+      and t.owner_id = auth.uid()
+  )
+);
+
+create policy "Owners can update collaborators"
+on public.trip_collaborators for update
+using (
+  exists (
+    select 1
+    from public.trips t
+    where t.id = trip_collaborators.trip_id
+      and t.owner_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.trips t
+    where t.id = trip_collaborators.trip_id
+      and t.owner_id = auth.uid()
+  )
+);
+
+create policy "Owners can delete collaborators"
+on public.trip_collaborators for delete
+using (
+  exists (
+    select 1
+    from public.trips t
+    where t.id = trip_collaborators.trip_id
+      and t.owner_id = auth.uid()
+  )
+);
+
+create or replace function public.add_trip_collaborator_by_email(p_trip_id uuid, p_email text, p_role text default 'editor')
+returns void
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  target_user_id uuid;
+begin
+  if auth.uid() is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  if not exists (
+    select 1
+    from public.trips t
+    where t.id = p_trip_id
+      and t.owner_id = auth.uid()
+  ) then
+    raise exception 'Only owner can manage collaborators';
+  end if;
+
+  if p_role not in ('viewer', 'editor') then
+    raise exception 'Invalid collaborator role';
+  end if;
+
+  select u.id
+  into target_user_id
+  from auth.users u
+  where lower(u.email) = lower(trim(p_email))
+  limit 1;
+
+  if target_user_id is null then
+    raise exception 'User not found for that email';
+  end if;
+
+  insert into public.trip_collaborators (trip_id, user_id, role)
+  values (p_trip_id, target_user_id, p_role)
+  on conflict (trip_id, user_id) do update
+  set role = excluded.role;
+end;
+$$;
+
+create or replace function public.remove_trip_collaborator_by_email(p_trip_id uuid, p_email text)
+returns void
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  target_user_id uuid;
+begin
+  if auth.uid() is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  if not exists (
+    select 1
+    from public.trips t
+    where t.id = p_trip_id
+      and t.owner_id = auth.uid()
+  ) then
+    raise exception 'Only owner can manage collaborators';
+  end if;
+
+  select u.id
+  into target_user_id
+  from auth.users u
+  where lower(u.email) = lower(trim(p_email))
+  limit 1;
+
+  if target_user_id is null then
+    return;
+  end if;
+
+  delete from public.trip_collaborators
+  where trip_id = p_trip_id
+    and user_id = target_user_id;
+end;
+$$;
+
+create or replace function public.list_trip_collaborators(p_trip_id uuid)
+returns table (user_id uuid, email text, role text)
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  if not exists (
+    select 1
+    from public.trips t
+    where t.id = p_trip_id
+      and t.owner_id = auth.uid()
+  ) then
+    raise exception 'Only owner can view collaborators';
+  end if;
+
+  return query
+  select tc.user_id, u.email::text, tc.role
+  from public.trip_collaborators tc
+  join auth.users u on u.id = tc.user_id
+  where tc.trip_id = p_trip_id
+  order by u.email asc;
+end;
+$$;
+
+grant execute on function public.add_trip_collaborator_by_email(uuid, text, text) to authenticated;
+grant execute on function public.remove_trip_collaborator_by_email(uuid, text) to authenticated;
+grant execute on function public.list_trip_collaborators(uuid) to authenticated;
