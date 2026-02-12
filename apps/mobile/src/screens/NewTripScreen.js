@@ -69,7 +69,7 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
     <View style={{ gap: 12, paddingBottom: 8 }}>
       <Text style={{ fontSize: 24, fontWeight: '800', color: '#111827' }}>{isEditing ? 'Edit Trip' : 'New Trip'}</Text>
       <Text style={{ color: '#6b7280' }}>
-        {isEditing ? 'Update details and itinerary.' : 'Create quickly here and keep everything cloud-synced.'}
+        {isEditing ? 'Update details and itinerary.' : 'Create quickly here and keep everything synced.'}
       </Text>
 
       <StepSwitcher stepLabels={stepLabels} step={step} setStep={setStep} />

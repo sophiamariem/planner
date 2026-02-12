@@ -1,10 +1,14 @@
 import { clearLocalStorageTrip, saveTripToLocalStorage, updateURLWithTrip } from "../utils/tripData";
-import { deleteCloudTripById } from "../lib/cloudTrips";
+import { deleteCloudTripById, updateCloudTrip } from "../lib/cloudTrips";
 
 export default function useTripNavigationActions({
   user,
   myTrips,
   cloudTripId,
+  cloudSlug,
+  cloudVisibility,
+  cloudShareAccess,
+  canEditCurrentTrip,
   loadCloudTrip,
   refreshMyTrips,
   pushToast,
@@ -25,16 +29,35 @@ export default function useTripNavigationActions({
   setCloudTripId,
   setCloudSlug,
   setShareToken,
+  setCloudVisibility,
   setCloudShareAccess,
   setCloudOwnerId,
   setCloudCollaboratorRole,
 }) {
-  const handleSaveTrip = (newTripData) => {
+  const handleSaveTrip = async (newTripData) => {
     setTripData(newTripData);
     saveTripToLocalStorage(newTripData);
+    if (cloudTripId && canEditCurrentTrip) {
+      try {
+        const row = await updateCloudTrip(cloudTripId, newTripData, cloudVisibility, cloudSlug, cloudShareAccess);
+        setCloudSlug(row.slug || cloudSlug || null);
+        setCloudVisibility(row.visibility || cloudVisibility || "private");
+        setCloudShareAccess(row.share_access || cloudShareAccess || "view");
+        setCloudOwnerId(row.owner_id || null);
+        const cloudHash = row.slug ? `#t=${encodeURIComponent(row.slug)}` : `#cloud=${encodeURIComponent(row.id)}`;
+        window.history.pushState(null, "", cloudHash);
+        await refreshMyTrips();
+      } catch (error) {
+        console.error("Cloud save failed:", error);
+        pushToast(error.message || "Could not save changes to this trip.", "error");
+        return false;
+      }
+      return true;
+    }
     if (!cloudTripId) {
       updateURLWithTrip(newTripData);
     }
+    return true;
   };
 
   const handleOpenCloudTrip = async (id) => {
@@ -94,8 +117,9 @@ export default function useTripNavigationActions({
     setMode("builder");
   };
 
-  const handleSaveAndPreview = (newTripData) => {
-    handleSaveTrip(newTripData);
+  const handleSaveAndPreview = async (newTripData) => {
+    const ok = await handleSaveTrip(newTripData);
+    if (!ok) return;
     setBuilderStartTab("basic");
     setMode("view");
     pushToast("Trip saved.", "success");

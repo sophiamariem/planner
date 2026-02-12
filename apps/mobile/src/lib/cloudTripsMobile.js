@@ -129,7 +129,7 @@ export async function loadCloudTripById(id) {
     method: 'GET',
   });
 
-  const rows = await parseJson(response, 'Could not load cloud trip.');
+  const rows = await parseJson(response, 'Could not load saved trip.');
   if (!rows.length) throw new Error('Trip not found.');
   return rows[0];
 }
