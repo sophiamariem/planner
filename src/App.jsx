@@ -495,7 +495,7 @@ export default function TripPlannerApp() {
       await signInWithMagicLink(signInEmail.trim());
       setShowSignInModal(false);
       setSignInEmail("");
-      pushToast("Magic link sent. Check your email.", "success");
+      pushToast("Check your inbox for your PLNR sign-in link.", "success");
     } catch (error) {
       console.error("Sign in error:", error);
       pushToast(error.message || "Could not send sign-in link.", "error");

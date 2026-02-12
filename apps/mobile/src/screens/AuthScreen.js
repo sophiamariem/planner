@@ -18,7 +18,7 @@ export default function AuthScreen({ onAuthStarted, onToast }) {
     try {
       await signInWithMagicLink(email.trim());
       onAuthStarted();
-      onToast('Magic link sent. Check your inbox.');
+      onToast('Check your inbox for your PLNR sign-in link.');
     } catch (error) {
       onToast(error.message || 'Could not send magic link.');
     } finally {
