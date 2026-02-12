@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { ensureTailwindCDN } from "../utils/tailwind";
 import { getTripFromURL, loadTripFromLocalStorage, validateTripData, getSourceFromURL, getCloudFromURL, isViewOnlyFromURL } from "../utils/tripData";
 import { isSupabaseConfigured, setSessionFromUrl } from "../lib/supabaseClient";
@@ -27,8 +27,12 @@ export default function useCloudTripLoader({
   setMyTrips,
   setUser,
 }) {
-  const refreshMyTrips = useCallback(async (activeUser = user) => {
-    if (!isSupabaseConfigured || !activeUser) return;
+  const initializedRef = useRef(false);
+
+  const refreshMyTrips = useCallback(async (activeUser = null) => {
+    if (!isSupabaseConfigured) return;
+    const resolvedUser = activeUser || await getCurrentUser();
+    if (!resolvedUser) return;
     setMyTripsLoading(true);
     try {
       const rows = await listMyTrips();
@@ -39,7 +43,7 @@ export default function useCloudTripLoader({
     } finally {
       setMyTripsLoading(false);
     }
-  }, [user, setMyTripsLoading, setMyTrips, pushToast]);
+  }, [setMyTripsLoading, setMyTrips, pushToast]);
 
   const refreshCollaborators = useCallback(async (tripId = cloudTripId) => {
     if (!tripId || !isCloudOwnedByCurrentUser) return;
@@ -82,7 +86,8 @@ export default function useCloudTripLoader({
     setMode("view");
 
     try {
-      if (user?.id && row.owner_id && user.id !== row.owner_id) {
+      const currentUser = await getCurrentUser();
+      if (currentUser?.id && row.owner_id && currentUser.id !== row.owner_id) {
         const role = await getMyCollaboratorRole(row.id);
         setCloudCollaboratorRole(role);
       }
@@ -91,7 +96,6 @@ export default function useCloudTripLoader({
       setCloudCollaboratorRole(null);
     }
   }, [
-    user,
     setTripData,
     setCloudTripId,
     setCloudSlug,
@@ -105,6 +109,9 @@ export default function useCloudTripLoader({
   ]);
 
   useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
     ensureTailwindCDN();
 
     const viewOnly = isViewOnlyFromURL();
