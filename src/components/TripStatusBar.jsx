@@ -1,0 +1,20 @@
+import React from "react";
+
+export default function TripStatusBar({ cloudTripId, cloudSlug, user, isSupabaseConfigured }) {
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white/80 px-4 py-3 text-sm text-zinc-700 flex flex-wrap items-center gap-2">
+      <span className="font-medium text-zinc-900">Status:</span>
+      {cloudTripId ? (
+        <>
+          <span className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-800">Saved & synced</span>
+          {cloudSlug && <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-800">slug: {cloudSlug}</span>}
+        </>
+      ) : (
+        <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-800">Local draft</span>
+      )}
+      {!user && isSupabaseConfigured && (
+        <span className="text-zinc-500">Sign in to sync and reopen on any device.</span>
+      )}
+    </div>
+  );
+}

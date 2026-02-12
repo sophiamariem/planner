@@ -10,6 +10,8 @@ import FlightCard from "./components/FlightCard";
 import DayCard from "./components/DayCard";
 import CalendarView from "./components/CalendarView";
 import TripBuilder from "./components/TripBuilder";
+import TripViewHeader from "./components/TripViewHeader";
+import TripStatusBar from "./components/TripStatusBar";
 import SignInDrawer from "./components/drawers/SignInDrawer";
 import ShareDrawer from "./components/drawers/ShareDrawer";
 import ResetDrawer from "./components/drawers/ResetDrawer";
@@ -1407,77 +1409,27 @@ export default function TripPlannerApp() {
   // View mode
   return (
     <div className={`min-h-screen bg-gradient-to-b ${activePalette.bg}`}>
-      <header className="sticky top-0 z-50 backdrop-blur bg-white/80 border-b border-zinc-200">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <img src="/favicon.png" alt="PLNR" className="w-6 h-6 rounded-md border border-zinc-200 bg-white object-cover" />
-              <span className="text-xs font-semibold tracking-wide text-blue-700">PLNR</span>
-              {isSharedCloudTrip && (
-                <span
-                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
-                    canCollaborateOnSharedTrip
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      : "bg-amber-50 text-amber-700 border-amber-200"
-                  }`}
-                >
-                  {canCollaborateOnSharedTrip ? "Shared (collaborative)" : "Shared (read-only)"}
-                </span>
-              )}
-              {!isSharedCloudTrip && copiedFrom?.ownerId && (
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-violet-50 text-violet-700 border-violet-200">
-                  Copied from shared trip
-                </span>
-              )}
-            </div>
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-zinc-900">{tripConfig.title}</h1>
-          </div>
-          <div className="flex gap-2 items-center flex-wrap">
-            <button
-              type="button"
-              onClick={handleGoHome}
-              aria-label="Go home"
-              title="Go home"
-              className="w-12 h-12 rounded-xl border border-zinc-300 bg-white hover:bg-zinc-50 flex items-center justify-center shadow-sm"
-            >
-              <img src="/favicon.png" alt="Home" className="w-12 h-12 rounded-xl object-cover" />
-            </button>
-            <div className="inline-flex rounded-2xl overflow-hidden border border-zinc-300">
-              <button type="button" onClick={()=>setView('cards')} className={`px-3 py-2 text-sm ${view==='cards' ? 'bg-zinc-900 text-white' : 'bg-white'}`}>Cards</button>
-              <button type="button" onClick={()=>setView('calendar')} className={`px-3 py-2 text-sm border-l border-zinc-300 ${view==='calendar' ? 'bg-zinc-900 text-white' : 'bg-white'}`}>Calendar</button>
-            </div>
-            <input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Filter days, places, notes" className="px-3 py-2 rounded-2xl border border-zinc-300 bg-white text-sm outline-none focus:ring-2 focus:ring-pink-400"/>
-            <button type="button" onClick={handleShare} className="px-3 py-2 rounded-2xl bg-blue-600 text-white text-sm hover:bg-blue-700">Share</button>
-            {canSaveSharedCopy && (
-              <button
-                type="button"
-                onClick={handleSaveSharedCopy}
-                disabled={cloudSaving}
-                className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-white disabled:opacity-50"
-              >
-                {cloudSaving ? "Saving..." : "Save to My Trips"}
-              </button>
-            )}
-            {canEditCurrentTrip && (
-              <button type="button" onClick={handleEditTrip} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-white">Edit</button>
-            )}
-            <details className="relative">
-              <summary className="list-none cursor-pointer px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50">More</summary>
-              <div className="absolute right-0 mt-2 w-48 rounded-xl border border-zinc-200 bg-white shadow-lg p-2 flex flex-col gap-1 z-20">
-                <button type="button" onClick={()=>window.print()} className="text-left px-3 py-2 rounded-lg text-sm hover:bg-zinc-50">Print</button>
-                {canEditCurrentTrip && (
-                  <button type="button" onClick={handleReset} className="text-left px-3 py-2 rounded-lg text-sm hover:bg-red-50 text-red-600">Reset</button>
-                )}
-                {!user ? (
-                  <button type="button" onClick={handleSignIn} className="text-left px-3 py-2 rounded-lg text-sm hover:bg-zinc-50">Sign In</button>
-                ) : (
-                  <button type="button" onClick={handleSignOut} className="text-left px-3 py-2 rounded-lg text-sm hover:bg-zinc-50">Sign Out</button>
-                )}
-              </div>
-            </details>
-          </div>
-        </div>
-      </header>
+      <TripViewHeader
+        tripTitle={tripConfig.title}
+        isSharedCloudTrip={isSharedCloudTrip}
+        canCollaborateOnSharedTrip={canCollaborateOnSharedTrip}
+        copiedFromOwnerId={copiedFrom?.ownerId}
+        onGoHome={handleGoHome}
+        view={view}
+        onChangeView={setView}
+        filter={filter}
+        onChangeFilter={setFilter}
+        onShare={handleShare}
+        canSaveSharedCopy={canSaveSharedCopy}
+        onSaveSharedCopy={handleSaveSharedCopy}
+        cloudSaving={cloudSaving}
+        canEditCurrentTrip={canEditCurrentTrip}
+        onEditTrip={handleEditTrip}
+        onReset={handleReset}
+        user={user}
+        onSignIn={handleSignIn}
+        onSignOut={handleSignOut}
+      />
 
       <ToastLayer toasts={toasts} />
 
@@ -1546,20 +1498,12 @@ export default function TripPlannerApp() {
             <img src={tripConfig.cover} alt="" className="w-full h-48 md:h-72 object-cover" loading="lazy" />
           </div>
         )}
-        <div className="rounded-2xl border border-zinc-200 bg-white/80 px-4 py-3 text-sm text-zinc-700 flex flex-wrap items-center gap-2">
-          <span className="font-medium text-zinc-900">Status:</span>
-          {cloudTripId ? (
-            <>
-              <span className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-800">Saved & synced</span>
-              {cloudSlug && <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-800">slug: {cloudSlug}</span>}
-            </>
-          ) : (
-            <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-800">Local draft</span>
-          )}
-          {!user && isSupabaseConfigured && (
-            <span className="text-zinc-500">Sign in to sync and reopen on any device.</span>
-          )}
-        </div>
+        <TripStatusBar
+          cloudTripId={cloudTripId}
+          cloudSlug={cloudSlug}
+          user={user}
+          isSupabaseConfigured={isSupabaseConfigured}
+        />
 
         {flights.length > 0 && (
           <div className="grid md:grid-cols-2 gap-4" id="flights">
