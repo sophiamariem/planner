@@ -484,18 +484,18 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                 <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6 }}>
+                    <View style={{ borderRadius: 999, backgroundColor: '#2563eb', paddingHorizontal: 9, paddingVertical: 4 }}>
+                      <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>{day.dow || 'Day'}</Text>
+                    </View>
+                    <View style={{ borderRadius: 999, backgroundColor: '#7c3aed', paddingHorizontal: 9, paddingVertical: 4 }}>
+                      <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>{day.date || day.isoDate || ''}</Text>
+                    </View>
+                  </View>
                   <Text style={{ color: '#111827', fontWeight: '800', fontSize: 16 }}>
                     {normalizeDayTitle(day.title, index, days.length)}
                   </Text>
-                  <Text style={{ color: '#6b7280', fontSize: 12 }}>
-                    {day.dow || ''} {day.date || day.isoDate || ''}
-                  </Text>
                 </View>
-                {day.isoDate ? (
-                  <View style={{ borderWidth: 1, borderColor: '#dbeafe', backgroundColor: '#eff6ff', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
-                    <Text style={{ color: '#1d4ed8', fontSize: 11, fontWeight: '700' }}>Day {index + 1}</Text>
-                  </View>
-                ) : null}
               </View>
 
               <DayPhotoLayout photos={day.photos || []} query={day.photoQ || day.title} />
