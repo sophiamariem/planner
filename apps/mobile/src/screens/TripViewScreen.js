@@ -251,7 +251,7 @@ function DayPhotoLayout({ photos = [], query = '' }) {
 
   if (list.length === 1) {
     return (
-      <View style={{ width: '100%', height: 240, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
+      <View style={{ width: '100%', height: 280, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
         <RemoteImage uri={list[0]} fallbackUri={fallbackPhotoUri(query, 0)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
       </View>
     );
@@ -261,7 +261,7 @@ function DayPhotoLayout({ photos = [], query = '' }) {
     return (
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {list.map((uri, i) => (
-          <View key={`${uri}-${i}`} style={{ flex: 1, height: 190, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
+          <View key={`${uri}-${i}`} style={{ flex: 1, height: 220, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
             <RemoteImage uri={uri} fallbackUri={fallbackPhotoUri(query, i)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           </View>
         ))}
@@ -272,7 +272,7 @@ function DayPhotoLayout({ photos = [], query = '' }) {
   const extra = list.length - 3;
   return (
     <View style={{ flexDirection: 'row', gap: 8 }}>
-      <View style={{ flex: 1.7, height: 240, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
+      <View style={{ flex: 1.7, height: 280, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
         <RemoteImage uri={list[0]} fallbackUri={fallbackPhotoUri(query, 0)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
       </View>
       <View style={{ flex: 1, gap: 8 }}>
@@ -283,7 +283,7 @@ function DayPhotoLayout({ photos = [], query = '' }) {
           <RemoteImage uri={list[2]} fallbackUri={fallbackPhotoUri(query, 2)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           {extra > 0 ? (
             <View style={{ position: 'absolute', right: 8, bottom: 8, borderRadius: 999, backgroundColor: 'rgba(17,24,39,0.82)', paddingHorizontal: 8, paddingVertical: 3 }}>
-              <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>+{extra}</Text>
+              <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>+{extra}</Text>
             </View>
           ) : null}
         </View>
@@ -393,13 +393,13 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
       >
         <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, backgroundColor: '#ffffff', overflow: 'hidden' }}>
           {cover ? (
-            <View style={{ width: '100%', height: 200 }}>
+            <View style={{ width: '100%', height: 240 }}>
               <RemoteImage uri={cover} fallbackUri={fallbackPhotoUri(title)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
             </View>
           ) : null}
-          <View style={{ padding: 14, gap: 6 }}>
+          <View style={{ padding: 16, gap: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-              <Text style={{ flex: 1, fontSize: 26, fontWeight: '800', color: '#111827' }}>{title}</Text>
+              <Text style={{ flex: 1, fontSize: 31, fontWeight: '800', color: '#111827' }}>{title}</Text>
               <IconActionButton
                 iconName={hasOfflineCopy ? 'checkmark-done-outline' : 'download-outline'}
                 onPress={handleToggleOffline}
@@ -408,26 +408,26 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
                 accessibilityLabel={hasOfflineCopy ? 'Offline saved' : 'Save for offline'}
               />
             </View>
-            <Text style={{ color: '#6b7280' }}>
+            <Text style={{ color: '#6b7280', fontSize: 14 }}>
               {startDate ? `Starts ${startDate}` : 'Add dates in edit mode'} • {days.length} day(s)
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
               {startDate ? (
-                <View style={{ borderWidth: 1, borderColor: '#fde68a', backgroundColor: '#fef3c7', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
-                  <Text style={{ color: '#92400e', fontSize: 11, fontWeight: '700' }}>{startDate}</Text>
+                <View style={{ borderWidth: 1, borderColor: '#fde68a', backgroundColor: '#fef3c7', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 }}>
+                  <Text style={{ color: '#92400e', fontSize: 12, fontWeight: '700' }}>{startDate}</Text>
                 </View>
               ) : null}
-              <View style={{ borderWidth: 1, borderColor: '#dbeafe', backgroundColor: '#eff6ff', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
-                <Text style={{ color: '#1d4ed8', fontSize: 11, fontWeight: '700' }}>{days.length} days</Text>
+              <View style={{ borderWidth: 1, borderColor: '#dbeafe', backgroundColor: '#eff6ff', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 }}>
+                <Text style={{ color: '#1d4ed8', fontSize: 12, fontWeight: '700' }}>{days.length} days</Text>
               </View>
             </View>
             {tripFooter ? (
-              <Text style={{ color: '#6b7280', fontSize: 12, marginTop: 2 }}>{tripFooter}</Text>
+              <Text style={{ color: '#6b7280', fontSize: 13, marginTop: 2 }}>{tripFooter}</Text>
             ) : null}
           </View>
         </View>
 
-        <View style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 14, backgroundColor: '#ffffff', padding: 10, gap: 8 }}>
+        <View style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 16, backgroundColor: '#ffffff', padding: 12, gap: 8 }}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {days.map((day, index) => (
               <Pressable
@@ -438,11 +438,11 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
                   borderColor: activeDayIndex === index ? '#111827' : '#d1d5db',
                   backgroundColor: activeDayIndex === index ? '#111827' : '#ffffff',
                   borderRadius: 999,
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
                 }}
               >
-                <Text style={{ color: activeDayIndex === index ? '#ffffff' : '#374151', fontSize: 11, fontWeight: '700' }}>
+                <Text style={{ color: activeDayIndex === index ? '#ffffff' : '#374151', fontSize: 12, fontWeight: '700' }}>
                   {getDayNavLabel(day, index)}
                 </Text>
               </Pressable>
@@ -451,28 +451,28 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
         </View>
 
         {flights.length > 0 ? (
-          <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 16, backgroundColor: '#ffffff', padding: 12, gap: 8 }}>
-            <Text style={{ color: '#111827', fontWeight: '800', fontSize: 16 }}>Flights</Text>
+          <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, backgroundColor: '#ffffff', padding: 14, gap: 10 }}>
+            <Text style={{ color: '#111827', fontWeight: '800', fontSize: 18 }}>Flights</Text>
             {flights.map((f, i) => (
-              <View key={`flight-${i}`} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 10, backgroundColor: '#f8fafc', gap: 6 }}>
+              <View key={`flight-${i}`} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 14, padding: 12, backgroundColor: '#f8fafc', gap: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="airplane-outline" size={14} color="#111827" />
-                    <Text style={{ color: '#111827', fontWeight: '800' }}>{flightDisplayTitle(f, i, flights.length)}</Text>
+                    <Ionicons name="airplane-outline" size={16} color="#111827" />
+                    <Text style={{ color: '#111827', fontWeight: '800', fontSize: 16 }}>{flightDisplayTitle(f, i, flights.length)}</Text>
                   </View>
-                  <Text style={{ color: '#6b7280', fontSize: 12, fontWeight: '700' }}>{normalizeArrowText(f.num || '')}</Text>
+                  <Text style={{ color: '#6b7280', fontSize: 13, fontWeight: '700' }}>{normalizeArrowText(f.num || '')}</Text>
                 </View>
-                <Text style={{ color: '#374151', fontSize: 13, fontWeight: '600' }}>{normalizeArrowText(f.route || `${f.flightFrom || ''} → ${f.flightTo || ''}`)}</Text>
-                {f.date ? <Text style={{ color: '#6b7280', fontSize: 12 }}>{f.date}</Text> : null}
+                <Text style={{ color: '#374151', fontSize: 15, fontWeight: '600' }}>{normalizeArrowText(f.route || `${f.flightFrom || ''} → ${f.flightTo || ''}`)}</Text>
+                {f.date ? <Text style={{ color: '#6b7280', fontSize: 13 }}>{f.date}</Text> : null}
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                   {f.times ? (
-                    <View style={{ borderWidth: 1, borderColor: '#2563eb', borderRadius: 999, backgroundColor: '#2563eb', paddingHorizontal: 9, paddingVertical: 4 }}>
-                      <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>{normalizeArrowText(f.times)}</Text>
+                    <View style={{ borderWidth: 1, borderColor: '#2563eb', borderRadius: 999, backgroundColor: '#2563eb', paddingHorizontal: 11, paddingVertical: 5 }}>
+                      <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>{normalizeArrowText(f.times)}</Text>
                     </View>
                   ) : null}
                   {f.codes ? (
-                    <View style={{ borderWidth: 1, borderColor: '#111827', borderRadius: 999, backgroundColor: '#111827', paddingHorizontal: 9, paddingVertical: 4 }}>
-                      <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>{normalizeArrowText(f.codes)}</Text>
+                    <View style={{ borderWidth: 1, borderColor: '#111827', borderRadius: 999, backgroundColor: '#111827', paddingHorizontal: 11, paddingVertical: 5 }}>
+                      <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>{normalizeArrowText(f.codes)}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -481,7 +481,7 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
           </View>
         ) : null}
 
-        <View style={{ gap: 10 }}>
+        <View style={{ gap: 12 }}>
           {days.map((day, index) => (
             <View
               key={`${day.id || index}-${index}`}
@@ -491,23 +491,25 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
               style={{
                 borderWidth: 1,
                 borderColor: activeDayIndex === index ? '#bfdbfe' : '#e5e7eb',
-                borderRadius: 16,
+                borderRadius: 18,
                 backgroundColor: activeDayIndex === index ? '#f8fbff' : '#ffffff',
-                padding: 12,
-                gap: 8,
+                padding: 16,
+                gap: 10,
               }}
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                 <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6 }}>
-                    <View style={{ borderRadius: 999, backgroundColor: '#2563eb', paddingHorizontal: 9, paddingVertical: 4 }}>
-                      <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>{day.dow || 'Day'}</Text>
+                  <View style={{ alignItems: 'center', marginBottom: 8 }}>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <View style={{ borderRadius: 999, backgroundColor: '#2563eb', paddingHorizontal: 11, paddingVertical: 5 }}>
+                      <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>{day.dow || 'Day'}</Text>
                     </View>
-                    <View style={{ borderRadius: 999, backgroundColor: '#7c3aed', paddingHorizontal: 9, paddingVertical: 4 }}>
-                      <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>{day.date || day.isoDate || ''}</Text>
+                    <View style={{ borderRadius: 999, backgroundColor: '#c026d3', paddingHorizontal: 11, paddingVertical: 5 }}>
+                      <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>{day.date || day.isoDate || ''}</Text>
+                    </View>
                     </View>
                   </View>
-                  <Text style={{ color: '#111827', fontWeight: '800', fontSize: 16 }}>
+                  <Text style={{ color: '#111827', fontWeight: '800', fontSize: 28, lineHeight: 34 }}>
                     {normalizeArrowText(normalizeDayTitle(day.title, index, days.length))}
                   </Text>
                 </View>
@@ -516,8 +518,8 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
               <DayPhotoLayout photos={day.photos || []} query={day.photoQ || day.title} />
 
               {day.route ? (
-                <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, backgroundColor: '#fafafa', paddingHorizontal: 10, paddingVertical: 7 }}>
-                  <Text style={{ color: '#374151', fontSize: 12, fontWeight: '600' }}>Route: {normalizeArrowText(day.route)}</Text>
+                <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, backgroundColor: '#fafafa', paddingHorizontal: 12, paddingVertical: 8 }}>
+                  <Text style={{ color: '#374151', fontSize: 13, fontWeight: '600' }}>Route: {normalizeArrowText(day.route)}</Text>
                 </View>
               ) : null}
 
@@ -526,20 +528,20 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
                   colors={['#fef3c7', '#fce7f3']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  style={{ borderRadius: 12, paddingHorizontal: 10, paddingVertical: 9, gap: 6 }}
+                  style={{ borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10, gap: 8 }}
                 >
-                  <Text style={{ color: '#7c2d12', fontWeight: '700', fontSize: 12 }}>Plan</Text>
+                  <Text style={{ color: '#7c2d12', fontWeight: '700', fontSize: 13 }}>Plan</Text>
                   {(day.notes || []).map((note, i) => (
                     <View key={`note-${i}`} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-                      <View style={{ width: 20, height: 20, borderRadius: 999, backgroundColor: '#111827', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
-                        <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>{i + 1}</Text>
+                      <View style={{ width: 22, height: 22, borderRadius: 999, backgroundColor: '#111827', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
+                        <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>{i + 1}</Text>
                       </View>
-                      <Text style={{ color: '#374151', fontSize: 13, flex: 1 }}>{normalizeArrowText(note)}</Text>
+                      <Text style={{ color: '#374151', fontSize: 14, flex: 1, lineHeight: 20 }}>{normalizeArrowText(note)}</Text>
                     </View>
                   ))}
                 </LinearGradient>
               ) : (
-                <Text style={{ color: '#9ca3af', fontSize: 12 }}>No notes for this day.</Text>
+                <Text style={{ color: '#9ca3af', fontSize: 13 }}>No notes for this day.</Text>
               )}
 
               {Array.isArray(day.pins) && day.pins.length > 0 ? (
@@ -550,16 +552,19 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
                         uri={getMapPreviewUrls(day.pins)[0]}
                         fallbackUris={getMapPreviewUrls(day.pins).slice(1)}
                         fallbackUri=""
-                        style={{ width: '100%', height: 132, backgroundColor: '#f1f5f9' }}
+                        style={{ width: '100%', height: 156, backgroundColor: '#f1f5f9' }}
                         resizeMode="cover"
                       />
                     </Pressable>
                   ) : null}
-                  <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Locations</Text>
+                  <Text style={{ color: '#111827', fontWeight: '700', fontSize: 13 }}>Locations</Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                     {day.pins.map((pin, pinIndex) => (
-                      <Pressable key={`${pin?.name || 'pin'}-${pinIndex}`} onPress={() => openPinInMaps(pin)} style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 999, backgroundColor: '#eff6ff', paddingHorizontal: 9, paddingVertical: 4 }}>
-                        <Text style={{ color: '#1e3a8a', fontSize: 12 }}>{pin?.name || 'Location'}</Text>
+                      <Pressable key={`${pin?.name || 'pin'}-${pinIndex}`} onPress={() => openPinInMaps(pin)} style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 999, backgroundColor: '#eff6ff', paddingHorizontal: 11, paddingVertical: 5 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                          <Ionicons name="location-sharp" size={13} color="#1e3a8a" />
+                          <Text style={{ color: '#1e3a8a', fontSize: 13 }}>{pin?.name || 'Location'}</Text>
+                        </View>
                       </Pressable>
                     ))}
                   </View>

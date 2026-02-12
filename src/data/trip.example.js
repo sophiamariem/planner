@@ -22,7 +22,7 @@ export const tripConfig = {
 // ============================================================================
 export const palette = {
     bg: "from-blue-100 via-cyan-50 to-teal-50",
-    date: "bg-blue-600 text-white",
+    date: "bg-fuchsia-600 text-white",
     day: "bg-teal-600 text-white",
     note: "bg-blue-50 text-blue-800 border border-blue-200",
     card: "bg-white/90 border border-zinc-200 shadow-sm",
