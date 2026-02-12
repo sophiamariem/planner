@@ -1553,32 +1553,35 @@ export default function TripPlannerApp() {
                   </div>
                 </div>
               )}
-              {canCopyShareLink ? (
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={currentShareURL || ""}
-                    readOnly
-                    className="flex-1 px-3 py-2 border border-zinc-300 rounded-lg bg-zinc-50 text-sm font-mono"
-                  />
-                  <button
-                    onClick={copyShareLink}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
-                  >
-                    Copy
-                  </button>
-                </div>
-              ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={currentShareURL || ""}
+                  readOnly
+                  placeholder={
+                    !isSupabaseConfigured
+                      ? "Sharing is unavailable right now"
+                      : !user
+                        ? "Sign in to generate a short share link"
+                        : "Preparing short link..."
+                  }
+                  className="flex-1 px-3 py-2 border border-zinc-300 rounded-lg bg-zinc-50 text-sm font-mono placeholder:font-sans placeholder:text-zinc-500"
+                />
+                <button
+                  onClick={copyShareLink}
+                  disabled={!canCopyShareLink}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Copy
+                </button>
+              </div>
+              {!canCopyShareLink && (
                 <div className="p-3 rounded-xl border border-zinc-200 bg-zinc-50">
                   {!isSupabaseConfigured ? (
-                    <p className="text-sm text-zinc-700">
-                      Sharing is unavailable right now.
-                    </p>
+                    <p className="text-sm text-zinc-700">Sharing is unavailable right now.</p>
                   ) : !user ? (
                     <div className="space-y-2">
-                      <p className="text-sm text-zinc-700">
-                        Sign in to generate a short share link.
-                      </p>
+                      <p className="text-sm text-zinc-700">Sign in to generate a short share link.</p>
                       <button
                         type="button"
                         onClick={() => {
@@ -1591,9 +1594,7 @@ export default function TripPlannerApp() {
                       </button>
                     </div>
                   ) : (
-                    <p className="text-sm text-zinc-700">
-                      Preparing short link...
-                    </p>
+                    <p className="text-sm text-zinc-700">Preparing short link...</p>
                   )}
                 </div>
               )}
