@@ -140,6 +140,21 @@ export default function App() {
     }
   };
 
+  const handleSaveSharedCopy = async () => {
+    if (!selectedTrip?.trip_data) return;
+    setCreateSaving(true);
+    try {
+      const row = await saveTripToCloud(selectedTrip.trip_data, 'private');
+      setSelectedTrip(row);
+      await refreshSessionAndData();
+      pushToast('Saved to your trips.', 'success');
+    } catch (error) {
+      pushToast(error.message || 'Could not save this trip.', 'error');
+    } finally {
+      setCreateSaving(false);
+    }
+  };
+
   const handleDeleteTrip = () => {
     if (!selectedTrip?.id) return;
     Alert.alert(
@@ -209,6 +224,9 @@ export default function App() {
             selectedTrip ? (
               <TripViewScreen
                 tripRow={selectedTrip}
+                currentUserId={user?.id}
+                savingSharedCopy={createSaving}
+                onSaveSharedCopy={handleSaveSharedCopy}
                 onBack={() => setSelectedTrip(null)}
                 onEdit={() => setEditingTrip(true)}
                 onDelete={handleDeleteTrip}

@@ -324,7 +324,7 @@ function DayPhotoLayout({ photos = [], query = '' }) {
   );
 }
 
-export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onToast }) {
+export default function TripViewScreen({ tripRow, currentUserId, savingSharedCopy = false, onSaveSharedCopy, onBack, onEdit, onDelete, onToast }) {
   const scrollRef = useRef(null);
   const dayOffsetsRef = useRef({});
   const tripData = tripRow?.trip_data || {};
@@ -342,6 +342,7 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
   const [hasOfflineCopy, setHasOfflineCopy] = useState(false);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const shareUrl = buildShareUrl(tripRow);
+  const isSharedNotOwned = Boolean(tripRow?.owner_id && currentUserId && tripRow.owner_id !== currentUserId);
 
   useEffect(() => {
     let mounted = true;
@@ -440,6 +441,30 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
                 accessibilityLabel={hasOfflineCopy ? 'Offline saved' : 'Save for offline'}
               />
             </View>
+            {isSharedNotOwned ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <View style={{ borderWidth: 1, borderColor: '#fde68a', backgroundColor: '#fffbeb', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+                  <Text style={{ color: '#92400e', fontSize: 12, fontWeight: '700' }}>Shared (not yours)</Text>
+                </View>
+                <Pressable
+                  onPress={onSaveSharedCopy}
+                  disabled={savingSharedCopy}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: '#d1d5db',
+                    backgroundColor: '#ffffff',
+                    borderRadius: 999,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    opacity: savingSharedCopy ? 0.55 : 1,
+                  }}
+                >
+                  <Text style={{ color: '#111827', fontSize: 12, fontWeight: '700' }}>
+                    {savingSharedCopy ? 'Saving...' : 'Save to My Trips'}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
             <Text style={{ color: '#6b7280', fontSize: 14 }}>
               {startDate ? `Starts ${startDate}` : 'Add dates in edit mode'} • {days.length} day(s)
             </Text>
