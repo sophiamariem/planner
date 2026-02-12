@@ -21,20 +21,26 @@ export default function OnboardingShell({
             </div>
           </a>
           <div className="inline-flex rounded-xl overflow-hidden border border-zinc-300">
-            <button
-              type="button"
-              onClick={() => onSwitchPage("trips")}
+            <a
+              href="/app"
+              onClick={(e) => {
+                e.preventDefault();
+                onSwitchPage("trips");
+              }}
               className={`px-4 py-2 text-sm font-medium ${onboardingPage === "trips" ? "bg-zinc-900 text-white" : "bg-white text-zinc-700"}`}
             >
               Trips
-            </button>
-            <button
-              type="button"
-              onClick={() => onSwitchPage("create")}
+            </a>
+            <a
+              href="/new"
+              onClick={(e) => {
+                e.preventDefault();
+                onSwitchPage("create");
+              }}
               className={`px-4 py-2 text-sm font-medium border-l border-zinc-300 ${onboardingPage === "create" ? "bg-zinc-900 text-white" : "bg-white text-zinc-700"}`}
             >
               New Trip
-            </button>
+            </a>
           </div>
         </header>
         {children}

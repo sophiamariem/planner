@@ -170,7 +170,7 @@ export default function useCloudTripLoader({
 
       const currentPath = window.location.pathname;
       if (currentPath === "/app" || currentPath === "/new") {
-        setOnboardingPage(currentPath === "/new" ? "create" : (currentUser ? "trips" : "create"));
+        setOnboardingPage(currentPath === "/new" ? "create" : "trips");
         setMode("onboarding");
         return;
       }
