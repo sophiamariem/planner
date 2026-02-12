@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Image, Text, TextInput, View } from 'react-native';
+import { Image, Linking, Pressable, Text, TextInput, View } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
 import { signInWithGoogle, signInWithMagicLink } from '../lib/cloudTripsMobile';
 import { isSupabaseConfigured } from '../lib/supabaseMobile';
 
 export default function AuthScreen({ onAuthStarted, onToast }) {
+  const webHomeUrl = String(process.env.EXPO_PUBLIC_WEB_APP_URL || 'https://plnr.guide').replace(/\/+$/, '');
   const [email, setEmail] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -43,7 +44,9 @@ export default function AuthScreen({ onAuthStarted, onToast }) {
         <View style={{ width: 56, height: 56, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: '#dbe0ff', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
           <Image source={require('../../assets/icon.png')} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
         </View>
-        <Text style={{ fontSize: 30, fontWeight: '800', color: '#111827' }}>PLNR</Text>
+        <Pressable onPress={() => Linking.openURL(webHomeUrl)} accessibilityRole="link" accessibilityLabel="Open PLNR homepage">
+          <Text style={{ fontSize: 30, fontWeight: '800', color: '#111827' }}>PLNR</Text>
+        </Pressable>
         <Text style={{ color: '#6b7280', textAlign: 'center' }}>Sign in to access your saved trips and keep plans synced.</Text>
       </View>
 

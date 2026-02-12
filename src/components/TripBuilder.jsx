@@ -921,10 +921,16 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
                 <div className="max-w-5xl mx-auto px-4 py-4">
                     <div className="flex items-center justify-between">
                         <div>
-                            <div className="flex items-center gap-2 mb-1">
+                            <button
+                                type="button"
+                                onClick={onHome}
+                                className="inline-flex items-center gap-2 mb-1 hover:opacity-90 transition-opacity"
+                                aria-label="Go to homepage"
+                                title="Go to homepage"
+                            >
                                 <img src="/favicon.png" alt="PLNR" className="w-6 h-6 rounded-md border border-zinc-200 bg-white object-cover" />
                                 <span className="text-xs font-semibold tracking-wide text-blue-700">PLNR</span>
-                            </div>
+                            </button>
                             <h1 className="text-2xl font-bold text-zinc-900">Trip Builder</h1>
                             <p className="text-xs text-zinc-500 mt-1">
                                 {autosaveState === "saving" ? "Saving draft..." : `Saved${lastSavedAt ? ` ${lastSavedAt.toLocaleTimeString()}` : ""}`}

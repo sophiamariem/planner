@@ -6,15 +6,17 @@ export default function PrivacyPage() {
       <div className="max-w-3xl mx-auto px-4 py-10">
         <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-6 sm:p-8">
           <div className="flex items-center gap-3 mb-6">
-            <img
-              src="/favicon.png"
-              alt="PLNR logo"
-              className="w-10 h-10 rounded-xl border border-zinc-200 bg-white object-cover"
-            />
-            <div>
-              <h1 className="text-2xl font-black text-zinc-900">PLNR Privacy Policy</h1>
-              <p className="text-xs text-zinc-500">Last updated: February 12, 2026</p>
-            </div>
+            <a href="/app" className="flex items-center gap-3 hover:opacity-90 transition-opacity" aria-label="Go to homepage">
+              <img
+                src="/favicon.png"
+                alt="PLNR logo"
+                className="w-10 h-10 rounded-xl border border-zinc-200 bg-white object-cover"
+              />
+              <div>
+                <h1 className="text-2xl font-black text-zinc-900">PLNR Privacy Policy</h1>
+                <p className="text-xs text-zinc-500">Last updated: February 12, 2026</p>
+              </div>
+            </a>
           </div>
 
           <div className="space-y-4 text-sm text-zinc-700 leading-6">
@@ -73,7 +75,7 @@ export default function PrivacyPage() {
             <a href="/" className="text-sm font-medium text-blue-700 hover:underline">
               Back to PLNR
             </a>
-            <span className="text-xs text-zinc-500">PLNR</span>
+            <a href="/app" className="text-xs text-zinc-500 hover:underline">PLNR</a>
           </div>
         </div>
       </div>

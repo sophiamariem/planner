@@ -26,8 +26,16 @@ export default function TripViewHeader({
       <div className="max-w-5xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <img src="/favicon.png" alt="PLNR" className="w-6 h-6 rounded-md border border-zinc-200 bg-white object-cover" />
-            <span className="text-xs font-semibold tracking-wide text-blue-700">PLNR</span>
+            <button
+              type="button"
+              onClick={onGoHome}
+              className="inline-flex items-center gap-2 hover:opacity-90 transition-opacity"
+              aria-label="Go to homepage"
+              title="Go to homepage"
+            >
+              <img src="/favicon.png" alt="PLNR" className="w-6 h-6 rounded-md border border-zinc-200 bg-white object-cover" />
+              <span className="text-xs font-semibold tracking-wide text-blue-700">PLNR</span>
+            </button>
             {isSharedCloudTrip && (
               <span
                 className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
