@@ -1,0 +1,12 @@
+Welcome{{recipient_name}}!
+
+Your planner is ready.
+Build trips, keep everything in one place, and share with friends when you want.
+
+Open {{app_name}}:
+https://plnr.guide
+
+Have an amazing trip,
+The PLNR team
+
+© {{year}} PLNR

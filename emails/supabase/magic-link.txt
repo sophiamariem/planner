@@ -1,0 +1,11 @@
+Sign in to PLNR
+
+Use this secure sign-in link:
+{{magic_link}}
+
+If the link did not open, copy and paste it into your browser.
+
+If you did not request this email, you can ignore it.
+
+https://plnr.guide
+© {{year}} PLNR

@@ -1,0 +1,9 @@
+{{owner_name}} shared a trip with you on {{app_name}}.
+
+Trip:
+{{trip_title}}
+
+Open it:
+{{trip_url}}
+
+© {{year}} {{app_name}}

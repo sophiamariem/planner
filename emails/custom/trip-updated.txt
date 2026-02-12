@@ -1,0 +1,8 @@
+{{trip_title}} was updated.
+
+{{editor_name}} made changes.
+
+View latest version:
+{{trip_url}}
+
+© {{year}} {{app_name}}
