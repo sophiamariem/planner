@@ -47,7 +47,39 @@ export async function setSessionFromUrl(urlString) {
   const accessToken = fragmentParams.get('access_token') || queryParams.get('access_token');
   const refreshToken = fragmentParams.get('refresh_token') || queryParams.get('refresh_token');
 
+  if (accessToken) {
+    await saveSession({ accessToken, refreshToken });
+    return true;
+  }
+
+  const tokenHash = fragmentParams.get('token_hash') || queryParams.get('token_hash');
+  const verifyType = fragmentParams.get('type') || queryParams.get('type') || 'magiclink';
+  if (!tokenHash) return false;
+
+  return verifyTokenHash(tokenHash, verifyType);
+}
+
+async function verifyTokenHash(tokenHash, verifyType) {
+  const { url, anonKey } = getSupabaseConfig();
+  const response = await fetch(`${url}/auth/v1/verify`, {
+    method: 'POST',
+    headers: {
+      apikey: anonKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      token_hash: tokenHash,
+      type: verifyType,
+    }),
+  });
+
+  if (!response.ok) return false;
+
+  const body = await response.json().catch(() => null);
+  const accessToken = body?.access_token;
+  const refreshToken = body?.refresh_token;
   if (!accessToken) return false;
+
   await saveSession({ accessToken, refreshToken });
   return true;
 }

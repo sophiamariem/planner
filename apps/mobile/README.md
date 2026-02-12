@@ -18,6 +18,7 @@ cp .env.example .env
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
 - `EXPO_PUBLIC_UNSPLASH_ACCESS_KEY` (for visual photo search in trip editor)
+- `EXPO_PUBLIC_AUTH_REDIRECT_URL` (recommended: `https://plnr.guide/auth-callback`)
 
 4. Start Expo:
 ```bash
@@ -33,8 +34,20 @@ npm run web
 
 ## Supabase Auth Redirect
 
-Add this redirect URL in Supabase Auth settings:
-- `plnr://auth-callback`
+Add these redirect URLs in Supabase Auth settings:
+- `https://plnr.guide/auth-callback`
+- `https://www.plnr.guide/auth-callback`
+- `plnr://auth-callback` (fallback for non-universal-link flows)
+
+## App / Universal Link Files
+
+Host these files on your web domain:
+- `https://plnr.guide/.well-known/assetlinks.json`
+- `https://plnr.guide/.well-known/apple-app-site-association`
+
+Before production, replace placeholders in those files:
+- Android SHA256 cert fingerprint in `public/.well-known/assetlinks.json`
+- Apple Team ID in `public/.well-known/apple-app-site-association`
 
 ## Local Android Build (No EAS Cloud Usage)
 

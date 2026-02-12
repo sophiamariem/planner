@@ -15,10 +15,37 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.soru.events.tripplannermobile",
+      "associatedDomains": [
+        "applinks:plnr.guide",
+        "applinks:www.plnr.guide"
+      ]
     },
     "android": {
       "package": "com.soru.events.tripplannermobile",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "plnr.guide",
+              "pathPrefix": "/auth-callback"
+            },
+            {
+              "scheme": "https",
+              "host": "www.plnr.guide",
+              "pathPrefix": "/auth-callback"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-foreground.png",
         "backgroundColor": "#5f6a6a",

@@ -6,6 +6,7 @@ WebBrowser.maybeCompleteAuthSession();
 const SLUG_SUFFIX_LEN = 4;
 const MAX_SLUG_LEN = 28;
 const DEFAULT_MEDIA_BUCKET = process.env.EXPO_PUBLIC_SUPABASE_STORAGE_BUCKET || 'trip-media';
+const DEFAULT_AUTH_REDIRECT_URL = process.env.EXPO_PUBLIC_AUTH_REDIRECT_URL || 'https://plnr.guide/auth-callback';
 
 async function parseJson(response, fallback = 'Request failed.') {
   let body = null;
@@ -69,7 +70,7 @@ export async function signInWithMagicLink(email) {
   if (!isSupabaseConfigured) throw new Error('Sign in is unavailable right now.');
 
   const { url, anonKey } = getSupabaseConfig();
-  const redirectTo = Linking.createURL('auth-callback');
+  const redirectTo = DEFAULT_AUTH_REDIRECT_URL;
 
   const response = await fetch(`${url}/auth/v1/otp`, {
     method: 'POST',
