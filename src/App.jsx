@@ -574,62 +574,6 @@ export default function TripPlannerApp() {
     }
   };
 
-  const handleSaveToCloud = async () => {
-    if (!isSupabaseConfigured) {
-      pushToast("Saved trips are unavailable right now.", "error");
-      return;
-    }
-    if (!user) {
-      pushToast("Sign in first to save this trip.", "error");
-      return;
-    }
-    if (!tripData) {
-      pushToast("No trip loaded.", "error");
-      return;
-    }
-
-    setCloudSaving(true);
-    try {
-      let row;
-      if (cloudTripId) {
-        if (isCloudOwnedByCurrentUser || canCollaborateOnSharedTrip) {
-          row = await updateCloudTrip(cloudTripId, tripData, cloudVisibility, cloudSlug, cloudShareAccess);
-        } else {
-          const copiedTripData = attachCopyAttribution(tripData, {
-            ownerId: cloudOwnerId,
-            tripId: cloudTripId,
-            slug: cloudSlug,
-          });
-          row = await saveTripToCloud(copiedTripData, "private", "view");
-        }
-      } else {
-        row = await saveTripToCloud(tripData, cloudVisibility, cloudShareAccess);
-      }
-
-      setCloudTripId(row.id);
-      setCloudSlug(row.slug || null);
-      setCloudVisibility(row.visibility || "private");
-      setCloudShareAccess(row.share_access || "view");
-      setCloudOwnerId(row.owner_id || user?.id || null);
-      setCloudCollaboratorRole(null);
-      const cloudHash = row.slug ? `#t=${encodeURIComponent(row.slug)}` : `#cloud=${encodeURIComponent(row.id)}`;
-      window.history.pushState(null, '', cloudHash);
-      await refreshMyTrips();
-      if (cloudTripId && !isCloudOwnedByCurrentUser && !canCollaborateOnSharedTrip) {
-        pushToast("Saved a copy to your trips.", "success");
-      } else if (canCollaborateOnSharedTrip) {
-        pushToast("Shared trip updated.", "success");
-      } else {
-        pushToast("Trip saved.", "success");
-      }
-    } catch (error) {
-      console.error("Save failed:", error);
-      pushToast(error.message || "Could not save trip.", "error");
-    } finally {
-      setCloudSaving(false);
-    }
-  };
-
   const handleSaveSharedCopy = async () => {
     if (!isSupabaseConfigured) {
       pushToast("Saved trips are unavailable right now.", "error");
@@ -944,13 +888,36 @@ export default function TripPlannerApp() {
     }
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     setShowShareModal(true);
+
+    // Auto-create a short link for signed-in users so sharing starts ready.
+    if (!cloudTripId && user && isSupabaseConfigured && tripData) {
+      setCloudSaving(true);
+      try {
+        const row = await saveTripToCloud(tripData, "unlisted", "view");
+        setCloudTripId(row.id);
+        setCloudSlug(row.slug || null);
+        setShareToken(row.share_token || null);
+        setCloudVisibility(row.visibility || "unlisted");
+        setCloudShareAccess(row.share_access || "view");
+        setCloudOwnerId(row.owner_id || user.id);
+        setCloudCollaboratorRole(null);
+        const cloudHash = row.slug ? `#t=${encodeURIComponent(row.slug)}` : `#cloud=${encodeURIComponent(row.id)}`;
+        window.history.pushState(null, "", cloudHash);
+        await refreshMyTrips();
+      } catch (error) {
+        console.error("Auto-create share link failed:", error);
+        pushToast(error.message || "Could not prepare share link.", "error");
+      } finally {
+        setCloudSaving(false);
+      }
+    }
   };
 
   const copyShareLink = async () => {
     if (!canCopyShareLink || !currentShareURL) {
-      pushToast("Save this trip first to get a short share link.", "error");
+      pushToast("Short link is not ready yet.", "error");
       return;
     }
     let shareURL = currentShareURL;
@@ -1586,30 +1553,46 @@ export default function TripPlannerApp() {
                   </div>
                 </div>
               )}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={currentShareURL || ""}
-                  readOnly
-                  className="flex-1 px-3 py-2 border border-zinc-300 rounded-lg bg-zinc-50 text-sm font-mono"
-                />
-                <button
-                  onClick={copyShareLink}
-                  disabled={!canCopyShareLink}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Copy
-                </button>
-              </div>
-              {!canCopyShareLink && (
-                <button
-                  type="button"
-                  onClick={handleSaveToCloud}
-                  disabled={!isSupabaseConfigured || !user || cloudSaving}
-                  className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50 self-start"
-                >
-                  {!isSupabaseConfigured ? "Sharing unavailable" : !user ? "Sign in to share" : (cloudSaving ? "Creating short link..." : "Create short link")}
-                </button>
+              {canCopyShareLink ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={currentShareURL || ""}
+                    readOnly
+                    className="flex-1 px-3 py-2 border border-zinc-300 rounded-lg bg-zinc-50 text-sm font-mono"
+                  />
+                  <button
+                    onClick={copyShareLink}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                  >
+                    Copy
+                  </button>
+                </div>
+              ) : (
+                <div className="p-3 rounded-xl border border-zinc-200 bg-zinc-50">
+                  {!isSupabaseConfigured ? (
+                    <p className="text-sm text-zinc-700">
+                      Sharing is unavailable right now.
+                    </p>
+                  ) : !user ? (
+                    <div className="space-y-2">
+                      <p className="text-sm text-zinc-700">
+                        Sign in to generate a short share link.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleSignIn}
+                        className="px-3 py-1.5 rounded-lg bg-zinc-900 text-white text-xs font-medium hover:bg-black"
+                      >
+                        Create Account / Sign In
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-zinc-700">
+                      Preparing short link...
+                    </p>
+                  )}
+                </div>
               )}
 
               {cloudTripId ? (
@@ -1677,7 +1660,7 @@ export default function TripPlannerApp() {
                     </p>
                   )}
                 </div>
-              ) : (
+              ) : user ? (
                 <div className="flex flex-col gap-2 p-3 border border-zinc-200 rounded-xl bg-zinc-50">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -1692,7 +1675,7 @@ export default function TripPlannerApp() {
                     Prevents others from seeing "Edit" or "Reset" buttons.
                   </p>
                 </div>
-              )}
+              ) : null}
 
             </div>
             <button
