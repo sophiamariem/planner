@@ -15,6 +15,7 @@ export default function OnboardingScreen({
   showPastSavedTrips,
   onTogglePast,
   onOpenTrip,
+  onDeleteTrip,
   extractCoverImage,
   formatVisibilityLabel,
   onStartFromTemplate,
@@ -37,6 +38,7 @@ export default function OnboardingScreen({
           showPastSavedTrips={showPastSavedTrips}
           onTogglePast={onTogglePast}
           onOpenTrip={onOpenTrip}
+          onDeleteTrip={onDeleteTrip}
           extractCoverImage={extractCoverImage}
           formatVisibilityLabel={formatVisibilityLabel}
         />

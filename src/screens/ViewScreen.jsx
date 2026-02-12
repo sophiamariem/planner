@@ -20,6 +20,7 @@ export default function ViewScreen(props) {
     cloudSaving,
     canEditCurrentTrip,
     onEditTrip,
+    onDeleteTrip,
     onReset,
     user,
     onSignIn,
@@ -58,6 +59,7 @@ export default function ViewScreen(props) {
         cloudSaving={cloudSaving}
         canEditCurrentTrip={canEditCurrentTrip}
         onEditTrip={onEditTrip}
+        onDeleteTrip={onDeleteTrip}
         onReset={onReset}
         user={user}
         onSignIn={onSignIn}

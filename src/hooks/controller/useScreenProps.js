@@ -16,6 +16,7 @@ export default function useScreenProps({
   showPastSavedTrips,
   setShowPastSavedTrips,
   handleOpenCloudTrip,
+  handleDeleteCloudTrip,
   extractCoverImage,
   formatVisibilityLabel,
   handleStartFromTemplate,
@@ -90,6 +91,7 @@ export default function useScreenProps({
     showPastSavedTrips,
     onTogglePast: () => setShowPastSavedTrips((prev) => !prev),
     onOpenTrip: handleOpenCloudTrip,
+    onDeleteTrip: handleDeleteCloudTrip,
     extractCoverImage,
     formatVisibilityLabel,
     onStartFromTemplate: handleStartFromTemplate,
@@ -127,6 +129,10 @@ export default function useScreenProps({
     cloudSaving,
     canEditCurrentTrip,
     onEditTrip: handleEditTrip,
+    onDeleteTrip: () => {
+      if (!cloudTripId) return;
+      handleDeleteCloudTrip(cloudTripId);
+    },
     onReset: handleReset,
     user,
     onSignIn: handleSignIn,

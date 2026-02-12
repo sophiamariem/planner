@@ -16,6 +16,7 @@ export default function TripViewHeader({
   cloudSaving,
   canEditCurrentTrip,
   onEditTrip,
+  onDeleteTrip,
   onReset,
   user,
   onSignIn,
@@ -88,6 +89,9 @@ export default function TripViewHeader({
             <summary className="list-none cursor-pointer px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50">More</summary>
             <div className="absolute right-0 mt-2 w-48 rounded-xl border border-zinc-200 bg-white shadow-lg p-2 flex flex-col gap-1 z-20">
               <button type="button" onClick={() => window.print()} className="text-left px-3 py-2 rounded-lg text-sm hover:bg-zinc-50">Print</button>
+              {canEditCurrentTrip && (
+                <button type="button" onClick={onDeleteTrip} className="text-left px-3 py-2 rounded-lg text-sm hover:bg-red-50 text-red-600">Delete</button>
+              )}
               {canEditCurrentTrip && (
                 <button type="button" onClick={onReset} className="text-left px-3 py-2 rounded-lg text-sm hover:bg-red-50 text-red-600">Reset</button>
               )}

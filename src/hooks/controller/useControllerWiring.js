@@ -177,6 +177,7 @@ export default function useControllerWiring({
     showPastSavedTrips,
     setShowPastSavedTrips,
     handleOpenCloudTrip,
+    handleDeleteCloudTrip,
     extractCoverImage,
     formatVisibilityLabel,
     handleStartFromTemplate,

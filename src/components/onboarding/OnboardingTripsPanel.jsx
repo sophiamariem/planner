@@ -10,6 +10,7 @@ export default function OnboardingTripsPanel({
   showPastSavedTrips,
   onTogglePast,
   onOpenTrip,
+  onDeleteTrip,
   extractCoverImage,
   formatVisibilityLabel,
 }) {
@@ -68,7 +69,26 @@ export default function OnboardingTripsPanel({
                 {savedUpcomingTrips.map((trip) => {
                   const cover = extractCoverImage(trip);
                   return (
-                    <div key={trip.id} className="rounded-xl border border-zinc-200 overflow-hidden bg-white">
+                    <div key={trip.id} className="rounded-xl border border-zinc-200 overflow-hidden bg-white relative">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onDeleteTrip(trip.id);
+                        }}
+                        className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full border border-red-200 bg-white/95 text-red-600 hover:bg-red-50 flex items-center justify-center"
+                        aria-label={`Delete ${trip.title || "trip"}`}
+                        title="Delete trip"
+                      >
+                        <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M3 6h18" />
+                          <path d="M8 6V4h8v2" />
+                          <path d="M19 6l-1 14H6L5 6" />
+                          <path d="M10 11v6" />
+                          <path d="M14 11v6" />
+                        </svg>
+                      </button>
                       <button
                         type="button"
                         onClick={() => onOpenTrip(trip.id)}
@@ -79,7 +99,7 @@ export default function OnboardingTripsPanel({
                         </div>
                         <div className="p-3">
                           <p className="font-medium text-zinc-900">{trip.title}</p>
-                          <p className="text-xs text-zinc-500 mt-1">{trip.slug || "no-slug"} • {formatVisibilityLabel(trip.visibility)}</p>
+                          <p className="text-xs text-zinc-500 mt-1">{formatVisibilityLabel(trip.visibility)}</p>
                         </div>
                       </button>
                     </div>
@@ -103,7 +123,26 @@ export default function OnboardingTripsPanel({
                 {savedPastTrips.map((trip) => {
                   const cover = extractCoverImage(trip);
                   return (
-                    <div key={trip.id} className="rounded-xl border border-zinc-200 overflow-hidden bg-white">
+                    <div key={trip.id} className="rounded-xl border border-zinc-200 overflow-hidden bg-white relative">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onDeleteTrip(trip.id);
+                        }}
+                        className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full border border-red-200 bg-white/95 text-red-600 hover:bg-red-50 flex items-center justify-center"
+                        aria-label={`Delete ${trip.title || "trip"}`}
+                        title="Delete trip"
+                      >
+                        <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M3 6h18" />
+                          <path d="M8 6V4h8v2" />
+                          <path d="M19 6l-1 14H6L5 6" />
+                          <path d="M10 11v6" />
+                          <path d="M14 11v6" />
+                        </svg>
+                      </button>
                       <button
                         type="button"
                         onClick={() => onOpenTrip(trip.id)}

@@ -7,7 +7,6 @@ export default function TripStatusBar({ cloudTripId, cloudSlug, user, isSupabase
       {cloudTripId ? (
         <>
           <span className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-800">Saved & synced</span>
-          {cloudSlug && <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-800">slug: {cloudSlug}</span>}
         </>
       ) : (
         <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-800">Local draft</span>
