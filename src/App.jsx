@@ -9,19 +9,12 @@ import { extractStartIsoFromTrip, extractEndIsoFromTrip, extractCoverImage, atta
 import { isSupabaseConfigured, setSessionFromUrl } from "./lib/supabaseClient";
 import { getCurrentUser, signInWithMagicLink, signInWithGoogle, signOut, saveTripToCloud, updateCloudTrip, listMyTrips, getMyCollaboratorRole, listTripCollaborators, addTripCollaboratorByEmail, removeTripCollaboratorByEmail, loadCloudTripById, loadCloudTripByShareToken, loadCloudTripBySlug, deleteCloudTripById } from "./lib/cloudTrips";
 
-import TripBuilder from "./components/TripBuilder";
-import TripViewHeader from "./components/TripViewHeader";
-import TripPreviewContent from "./components/TripPreviewContent";
-import SignInDrawer from "./components/drawers/SignInDrawer";
-import ShareDrawer from "./components/drawers/ShareDrawer";
-import ResetDrawer from "./components/drawers/ResetDrawer";
-import MyTripsDrawer from "./components/drawers/MyTripsDrawer";
-import ImportJsonDrawer from "./components/drawers/ImportJsonDrawer";
 import ToastLayer from "./components/ToastLayer";
-import OnboardingTripsPanel from "./components/onboarding/OnboardingTripsPanel";
-import OnboardingCreatePanel from "./components/onboarding/OnboardingCreatePanel";
-import OnboardingShell from "./components/onboarding/OnboardingShell";
 import AuthPage from "./components/AuthPage";
+import OnboardingScreen from "./screens/OnboardingScreen";
+import BuilderScreen from "./screens/BuilderScreen";
+import ViewScreen from "./screens/ViewScreen";
+import LoadingScreen from "./screens/LoadingScreen";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
 
@@ -871,210 +864,164 @@ export default function TripPlannerApp() {
   // Onboarding screen
   if (mode === 'onboarding') {
     return (
-      <>
-        <OnboardingShell
-          onboardingPage={onboardingPage}
-          onSwitchPage={(page) => {
-            setOnboardingPage(page);
-            window.history.pushState(null, "", page === "trips" ? "/app" : "/new");
-          }}
-        >
-          {onboardingPage === "trips" ? (
-            <OnboardingTripsPanel
-              user={user}
-              onGoCreate={() => { setOnboardingPage("create"); window.history.pushState(null, "", "/new"); }}
-              onSignOut={handleSignOut}
-              onSignIn={handleSignIn}
-              savedUpcomingTrips={savedUpcomingTrips}
-              savedPastTrips={savedPastTrips}
-              showPastSavedTrips={showPastSavedTrips}
-              onTogglePast={() => setShowPastSavedTrips((prev) => !prev)}
-              onOpenTrip={handleOpenCloudTrip}
-              extractCoverImage={extractCoverImage}
-              formatVisibilityLabel={formatVisibilityLabel}
-            />
-          ) : (
-            <OnboardingCreatePanel
-              onStartFromTemplate={handleStartFromTemplate}
-              onStartFromScratch={handleStartFromScratch}
-              quickTemplates={QUICK_TEMPLATES}
-              onStartFromQuickTemplate={handleStartFromQuickTemplate}
-              isAdminUser={isAdminUser}
-              onOpenImportModal={openImportModal}
-            />
-          )}
-
-          <ImportJsonDrawer
-            open={showImportModal}
-            isAdminUser={isAdminUser}
-            importJson={importJson}
-            onImportJsonChange={setImportJson}
-            importError={importError}
-            onClose={() => setShowImportModal(false)}
-            onImport={handleImportJson}
-          />
-        </OnboardingShell>
-        <SignInDrawer
-          open={showSignInModal}
-          onClose={() => setShowSignInModal(false)}
-          isSupabaseConfigured={isSupabaseConfigured}
-          signInEmail={signInEmail}
-          onEmailChange={setSignInEmail}
-          onGoogleSignIn={submitGoogleSignIn}
-          onSubmitSignIn={submitSignIn}
-          signInLoading={signInLoading}
-        />
-        <ToastLayer toasts={toasts} />
-      </>
-    );
-  }
-
-  // Loading state
-  if (mode === 'loading') {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-zinc-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-4xl mb-4">✈️</div>
-          <p className="text-zinc-600">Loading your trip...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Builder mode
-  if (mode === 'builder') {
-    return (
-      <>
-        <TripBuilder
-          tripData={tripData}
-          onSave={handleSaveAndPreview}
-          onCancel={handleCancelEdit}
-          onHome={handleGoHome}
-          onReset={handleReset}
-          initialTab={builderStartTab}
-          isAdmin={isAdminUser}
-        />
-        <SignInDrawer
-          open={showSignInModal}
-          onClose={() => setShowSignInModal(false)}
-          isSupabaseConfigured={isSupabaseConfigured}
-          signInEmail={signInEmail}
-          onEmailChange={setSignInEmail}
-          onGoogleSignIn={submitGoogleSignIn}
-          onSubmitSignIn={submitSignIn}
-          signInLoading={signInLoading}
-        />
-        <ToastLayer toasts={toasts} />
-        <ResetDrawer open={showResetModal} onClose={() => setShowResetModal(false)} onConfirm={confirmReset} />
-      </>
-    );
-  }
-
-  // View mode
-  return (
-    <div className={`min-h-screen bg-gradient-to-b ${activePalette.bg}`}>
-      <TripViewHeader
-        tripTitle={tripConfig.title}
-        isSharedCloudTrip={isSharedCloudTrip}
-        canCollaborateOnSharedTrip={canCollaborateOnSharedTrip}
-        copiedFromOwnerId={copiedFrom?.ownerId}
-        onGoHome={handleGoHome}
-        view={view}
-        onChangeView={setView}
-        filter={filter}
-        onChangeFilter={setFilter}
-        onShare={handleShare}
-        canSaveSharedCopy={canSaveSharedCopy}
-        onSaveSharedCopy={handleSaveSharedCopy}
-        cloudSaving={cloudSaving}
-        canEditCurrentTrip={canEditCurrentTrip}
-        onEditTrip={handleEditTrip}
-        onReset={handleReset}
-        user={user}
-        onSignIn={handleSignIn}
-        onSignOut={handleSignOut}
-      />
-
-      <ToastLayer toasts={toasts} />
-
-      <SignInDrawer
-        open={showSignInModal}
-        onClose={() => setShowSignInModal(false)}
-        isSupabaseConfigured={isSupabaseConfigured}
-        signInEmail={signInEmail}
-        onEmailChange={setSignInEmail}
-        onGoogleSignIn={submitGoogleSignIn}
-        onSubmitSignIn={submitSignIn}
-        signInLoading={signInLoading}
-      />
-
-      <ResetDrawer open={showResetModal} onClose={() => setShowResetModal(false)} onConfirm={confirmReset} />
-
-      <ShareDrawer
-        open={showShareModal}
-        onClose={() => setShowShareModal(false)}
-        publishIssues={publishIssues}
-        onFixIssue={handleFixIssue}
-        currentShareURL={currentShareURL}
-        canCopyShareLink={canCopyShareLink}
-        onCopyShareLink={copyShareLink}
-        isSupabaseConfigured={isSupabaseConfigured}
-        user={user}
-        cloudSaving={cloudSaving}
-        onOpenSignIn={() => {
-          setShowShareModal(false);
-          handleSignIn();
+      <OnboardingScreen
+        onboardingPage={onboardingPage}
+        onSwitchPage={(page) => {
+          setOnboardingPage(page);
+          window.history.pushState(null, "", page === "trips" ? "/app" : "/new");
         }}
-        cloudTripId={cloudTripId}
-        isCloudOwnedByCurrentUser={isCloudOwnedByCurrentUser}
-        cloudShareAccess={cloudShareAccess}
-        onShareAccessChange={handleShareAccessChange}
-        collaboratorEmail={collaboratorEmail}
-        onCollaboratorEmailChange={setCollaboratorEmail}
-        onAddCollaborator={handleAddCollaborator}
-        collaboratorsLoading={collaboratorsLoading}
-        collaborators={collaborators}
-        onRemoveCollaborator={handleRemoveCollaborator}
-        isViewOnly={isViewOnly}
-        onViewOnlyChange={setIsViewOnly}
-      />
-
-      <MyTripsDrawer
-        open={showMyTripsModal}
-        onClose={() => setShowMyTripsModal(false)}
-        myTripsLoading={myTripsLoading}
-        myTrips={myTrips}
+        user={user}
+        onGoCreate={() => { setOnboardingPage("create"); window.history.pushState(null, "", "/new"); }}
+        onSignOut={handleSignOut}
+        onSignIn={handleSignIn}
         savedUpcomingTrips={savedUpcomingTrips}
         savedPastTrips={savedPastTrips}
         showPastSavedTrips={showPastSavedTrips}
         onTogglePast={() => setShowPastSavedTrips((prev) => !prev)}
         onOpenTrip={handleOpenCloudTrip}
-        onDeleteTrip={handleDeleteCloudTrip}
         extractCoverImage={extractCoverImage}
         formatVisibilityLabel={formatVisibilityLabel}
-        cloudVisibility={cloudVisibility}
-        onChangeVisibility={setCloudVisibility}
-      />
-
-      <TripPreviewContent
-        tripConfig={tripConfig}
-        cloudTripId={cloudTripId}
-        cloudSlug={cloudSlug}
-        user={user}
+        onStartFromTemplate={handleStartFromTemplate}
+        onStartFromScratch={handleStartFromScratch}
+        quickTemplates={QUICK_TEMPLATES}
+        onStartFromQuickTemplate={handleStartFromQuickTemplate}
+        isAdminUser={isAdminUser}
+        onOpenImportModal={openImportModal}
+        showImportModal={showImportModal}
+        importJson={importJson}
+        onImportJsonChange={setImportJson}
+        importError={importError}
+        onCloseImportModal={() => setShowImportModal(false)}
+        onImportJson={handleImportJson}
+        showSignInModal={showSignInModal}
+        onCloseSignInModal={() => setShowSignInModal(false)}
         isSupabaseConfigured={isSupabaseConfigured}
-        flights={flights}
-        days={days}
-        onEditTrip={handleEditTrip}
-        view={view}
-        filtered={filtered}
-        showMaps={showMaps}
-        imgClass={imgClass}
-        selectedId={selectedId}
-        onSelectDay={setSelectedId}
-        dayBadges={dayBadges}
-        selectedDay={selectedDay}
-        activePaletteCard={activePalette.card}
+        signInEmail={signInEmail}
+        onSignInEmailChange={setSignInEmail}
+        onGoogleSignIn={submitGoogleSignIn}
+        onSubmitSignIn={submitSignIn}
+        signInLoading={signInLoading}
+        toasts={toasts}
       />
-    </div>
+    );
+  }
+
+  // Loading state
+  if (mode === 'loading') {
+    return <LoadingScreen />;
+  }
+
+  // Builder mode
+  if (mode === 'builder') {
+    return (
+      <BuilderScreen
+        tripData={tripData}
+        onSave={handleSaveAndPreview}
+        onCancel={handleCancelEdit}
+        onHome={handleGoHome}
+        onReset={handleReset}
+        initialTab={builderStartTab}
+        isAdmin={isAdminUser}
+        showSignInModal={showSignInModal}
+        onCloseSignInModal={() => setShowSignInModal(false)}
+        isSupabaseConfigured={isSupabaseConfigured}
+        signInEmail={signInEmail}
+        onSignInEmailChange={setSignInEmail}
+        onGoogleSignIn={submitGoogleSignIn}
+        onSubmitSignIn={submitSignIn}
+        signInLoading={signInLoading}
+        toasts={toasts}
+        showResetModal={showResetModal}
+        onCloseResetModal={() => setShowResetModal(false)}
+        onConfirmReset={confirmReset}
+      />
+    );
+  }
+
+  // View mode
+  return (
+    <ViewScreen
+      activePaletteBg={activePalette.bg}
+      tripTitle={tripConfig.title}
+      isSharedCloudTrip={isSharedCloudTrip}
+      canCollaborateOnSharedTrip={canCollaborateOnSharedTrip}
+      copiedFromOwnerId={copiedFrom?.ownerId}
+      onGoHome={handleGoHome}
+      view={view}
+      onChangeView={setView}
+      filter={filter}
+      onChangeFilter={setFilter}
+      onShare={handleShare}
+      canSaveSharedCopy={canSaveSharedCopy}
+      onSaveSharedCopy={handleSaveSharedCopy}
+      cloudSaving={cloudSaving}
+      canEditCurrentTrip={canEditCurrentTrip}
+      onEditTrip={handleEditTrip}
+      onReset={handleReset}
+      user={user}
+      onSignIn={handleSignIn}
+      onSignOut={handleSignOut}
+      toasts={toasts}
+      showSignInModal={showSignInModal}
+      onCloseSignInModal={() => setShowSignInModal(false)}
+      isSupabaseConfigured={isSupabaseConfigured}
+      signInEmail={signInEmail}
+      onSignInEmailChange={setSignInEmail}
+      onGoogleSignIn={submitGoogleSignIn}
+      onSubmitSignIn={submitSignIn}
+      signInLoading={signInLoading}
+      showResetModal={showResetModal}
+      onCloseResetModal={() => setShowResetModal(false)}
+      onConfirmReset={confirmReset}
+      showShareModal={showShareModal}
+      onCloseShareModal={() => setShowShareModal(false)}
+      publishIssues={publishIssues}
+      onFixIssue={handleFixIssue}
+      currentShareURL={currentShareURL}
+      canCopyShareLink={canCopyShareLink}
+      onCopyShareLink={copyShareLink}
+      onOpenSignInFromShare={() => {
+        setShowShareModal(false);
+        handleSignIn();
+      }}
+      cloudTripId={cloudTripId}
+      isCloudOwnedByCurrentUser={isCloudOwnedByCurrentUser}
+      cloudShareAccess={cloudShareAccess}
+      onShareAccessChange={handleShareAccessChange}
+      collaboratorEmail={collaboratorEmail}
+      onCollaboratorEmailChange={setCollaboratorEmail}
+      onAddCollaborator={handleAddCollaborator}
+      collaboratorsLoading={collaboratorsLoading}
+      collaborators={collaborators}
+      onRemoveCollaborator={handleRemoveCollaborator}
+      isViewOnly={isViewOnly}
+      onViewOnlyChange={setIsViewOnly}
+      showMyTripsModal={showMyTripsModal}
+      onCloseMyTripsModal={() => setShowMyTripsModal(false)}
+      myTripsLoading={myTripsLoading}
+      myTrips={myTrips}
+      savedUpcomingTrips={savedUpcomingTrips}
+      savedPastTrips={savedPastTrips}
+      showPastSavedTrips={showPastSavedTrips}
+      onTogglePast={() => setShowPastSavedTrips((prev) => !prev)}
+      onOpenTrip={handleOpenCloudTrip}
+      onDeleteTrip={handleDeleteCloudTrip}
+      extractCoverImage={extractCoverImage}
+      formatVisibilityLabel={formatVisibilityLabel}
+      cloudVisibility={cloudVisibility}
+      onChangeVisibility={setCloudVisibility}
+      tripConfig={tripConfig}
+      cloudSlug={cloudSlug}
+      flights={flights}
+      days={days}
+      filtered={filtered}
+      showMaps={showMaps}
+      imgClass={imgClass}
+      selectedId={selectedId}
+      onSelectDay={setSelectedId}
+      dayBadges={dayBadges}
+      selectedDay={selectedDay}
+      activePaletteCard={activePalette.card}
+    />
   );
 }
