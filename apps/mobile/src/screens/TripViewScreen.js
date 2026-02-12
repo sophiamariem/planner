@@ -16,6 +16,16 @@ function normalizeDayTitle(title, index, total) {
   return raw;
 }
 
+function getDayNavLabel(day, index) {
+  const dow = String(day?.dow || '').trim();
+  const date = String(day?.date || '').trim();
+  if (dow && date) return `${dow} ${date}`;
+  if (date) return date;
+  const iso = parseIsoDate(day?.isoDate);
+  if (iso) return `${shortDow(iso)} ${iso.getDate()} ${shortMonth(iso)}`;
+  return `Day ${index + 1}`;
+}
+
 function toIsoDate(date) {
   const d = date instanceof Date ? date : new Date(date);
   if (Number.isNaN(d.getTime())) return '';
@@ -433,7 +443,7 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
                 }}
               >
                 <Text style={{ color: activeDayIndex === index ? '#ffffff' : '#374151', fontSize: 11, fontWeight: '700' }}>
-                  Day {index + 1}
+                  {getDayNavLabel(day, index)}
                 </Text>
               </Pressable>
             ))}
