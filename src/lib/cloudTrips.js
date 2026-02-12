@@ -108,11 +108,26 @@ export async function signOut() {
   clearSession();
 }
 
-export async function saveTripToCloud(tripData, visibility = 'private', shareAccess = 'view') {
+export async function saveTripToCloud(tripData, visibility = 'private', shareAccess = 'view', options = {}) {
   if (!isSupabaseConfigured) throw new Error('Saved trips are unavailable right now.');
 
+  const forceNew = Boolean(options?.forceNew);
   const preparedTripData = await importTripMediaToStorage(tripData);
   const title = preparedTripData?.tripConfig?.title || 'Untitled Trip';
+
+  if (!forceNew) {
+    const existing = await findLatestOwnedTripByTitle(title);
+    if (existing?.id) {
+      return updateCloudTripPrepared(
+        existing.id,
+        preparedTripData,
+        visibility,
+        existing.slug || null,
+        shareAccess
+      );
+    }
+  }
+
   const baseSlug = slugifyTitle(title);
   const maxAttempts = 6;
 
@@ -149,6 +164,10 @@ export async function updateCloudTrip(id, tripData, visibility = 'private', curr
   if (!isSupabaseConfigured) throw new Error('Saved trips are unavailable right now.');
 
   const preparedTripData = await importTripMediaToStorage(tripData);
+  return updateCloudTripPrepared(id, preparedTripData, visibility, currentSlug, shareAccess);
+}
+
+async function updateCloudTripPrepared(id, preparedTripData, visibility = 'private', currentSlug = null, shareAccess = 'view') {
   const title = preparedTripData?.tripConfig?.title || 'Untitled Trip';
   const payload = {
     title,
@@ -168,6 +187,19 @@ export async function updateCloudTrip(id, tripData, visibility = 'private', curr
 
   const rows = await parseJson(response, 'Could not update trip.');
   return rows[0];
+}
+
+async function findLatestOwnedTripByTitle(title) {
+  if (!isSupabaseConfigured) return null;
+  const user = await getCurrentUser();
+  if (!user?.id) return null;
+
+  const response = await authedFetch(
+    `/rest/v1/trips?owner_id=eq.${encodeURIComponent(user.id)}&title=eq.${encodeURIComponent(title)}&select=id,slug,visibility,share_access,owner_id,updated_at&order=updated_at.desc&limit=1`,
+    { method: 'GET' }
+  );
+  const rows = await parseJson(response, 'Could not check existing trips.');
+  return rows?.[0] || null;
 }
 
 export async function listMyTrips() {

@@ -63,7 +63,7 @@ export default function useShareActions({
         tripId: cloudTripId,
         slug: cloudSlug,
       });
-      const row = await saveTripToCloud(copiedTripData, "private", "view");
+      const row = await saveTripToCloud(copiedTripData, "private", "view", { forceNew: true });
       setCloudTripId(row.id);
       setCloudSlug(row.slug || null);
       setShareToken(null);
