@@ -99,7 +99,7 @@ export async function signOut() {
   clearSession();
 }
 
-export async function saveTripToCloud(tripData, visibility = 'private') {
+export async function saveTripToCloud(tripData, visibility = 'private', shareAccess = 'view') {
   if (!isSupabaseConfigured) throw new Error('Saved trips are unavailable right now.');
 
   const title = tripData?.tripConfig?.title || 'Untitled Trip';
@@ -111,10 +111,11 @@ export async function saveTripToCloud(tripData, visibility = 'private') {
       title,
       trip_data: tripData,
       visibility,
+      share_access: shareAccess,
       slug: withShortSuffix(baseSlug),
     };
 
-    const response = await authedFetch('/rest/v1/trips?select=id,slug,title,visibility,created_at,updated_at', {
+    const response = await authedFetch('/rest/v1/trips?select=id,slug,title,visibility,share_access,owner_id,created_at,updated_at', {
       method: 'POST',
       headers: {
         Prefer: 'return=representation',
@@ -134,7 +135,7 @@ export async function saveTripToCloud(tripData, visibility = 'private') {
   throw new Error('Could not allocate a unique slug. Try saving again.');
 }
 
-export async function updateCloudTrip(id, tripData, visibility = 'private', currentSlug = null) {
+export async function updateCloudTrip(id, tripData, visibility = 'private', currentSlug = null, shareAccess = 'view') {
   if (!isSupabaseConfigured) throw new Error('Saved trips are unavailable right now.');
 
   const title = tripData?.tripConfig?.title || 'Untitled Trip';
@@ -142,10 +143,11 @@ export async function updateCloudTrip(id, tripData, visibility = 'private', curr
     title,
     trip_data: tripData,
     visibility,
+    share_access: shareAccess,
     slug: currentSlug || withShortSuffix(slugifyTitle(title)),
   };
 
-  const response = await authedFetch(`/rest/v1/trips?id=eq.${encodeURIComponent(id)}&select=id,slug,title,visibility,created_at,updated_at`, {
+  const response = await authedFetch(`/rest/v1/trips?id=eq.${encodeURIComponent(id)}&select=id,slug,title,visibility,share_access,owner_id,created_at,updated_at`, {
     method: 'PATCH',
     headers: {
       Prefer: 'return=representation',
@@ -160,7 +162,7 @@ export async function updateCloudTrip(id, tripData, visibility = 'private', curr
 export async function listMyTrips() {
   if (!isSupabaseConfigured) return [];
 
-  const response = await authedFetch('/rest/v1/trips?select=id,slug,title,visibility,trip_data,created_at,updated_at&order=updated_at.desc&limit=100', {
+  const response = await authedFetch('/rest/v1/trips?select=id,slug,title,visibility,share_access,trip_data,owner_id,created_at,updated_at&order=updated_at.desc&limit=100', {
     method: 'GET',
   });
 
@@ -170,7 +172,7 @@ export async function listMyTrips() {
 export async function loadCloudTripById(id) {
   if (!isSupabaseConfigured) throw new Error('Saved trips are unavailable right now.');
 
-  const response = await authedFetch(`/rest/v1/trips?id=eq.${encodeURIComponent(id)}&select=id,slug,title,visibility,share_token,trip_data,owner_id,created_at,updated_at&limit=1`, {
+  const response = await authedFetch(`/rest/v1/trips?id=eq.${encodeURIComponent(id)}&select=id,slug,title,visibility,share_access,share_token,trip_data,owner_id,created_at,updated_at&limit=1`, {
     method: 'GET',
   });
 
@@ -182,7 +184,7 @@ export async function loadCloudTripById(id) {
 export async function loadCloudTripByShareToken(shareToken) {
   if (!isSupabaseConfigured) throw new Error('Shared trips are unavailable right now.');
 
-  const response = await authedFetch(`/rest/v1/trips?share_token=eq.${encodeURIComponent(shareToken)}&select=id,slug,title,visibility,share_token,trip_data,owner_id,created_at,updated_at&limit=1`, {
+  const response = await authedFetch(`/rest/v1/trips?share_token=eq.${encodeURIComponent(shareToken)}&select=id,slug,title,visibility,share_access,share_token,trip_data,owner_id,created_at,updated_at&limit=1`, {
     method: 'GET',
   });
 
@@ -194,7 +196,7 @@ export async function loadCloudTripByShareToken(shareToken) {
 export async function loadCloudTripBySlug(slug) {
   if (!isSupabaseConfigured) throw new Error('Shared trips are unavailable right now.');
 
-  const response = await authedFetch(`/rest/v1/trips?slug=eq.${encodeURIComponent(slug)}&select=id,slug,title,visibility,share_token,trip_data,owner_id,created_at,updated_at&limit=1`, {
+  const response = await authedFetch(`/rest/v1/trips?slug=eq.${encodeURIComponent(slug)}&select=id,slug,title,visibility,share_access,share_token,trip_data,owner_id,created_at,updated_at&limit=1`, {
     method: 'GET',
   });
 

@@ -173,6 +173,8 @@ export default function TripPlannerApp() {
   const [cloudSlug, setCloudSlug] = useState(null);
   const [shareToken, setShareToken] = useState(null);
   const [cloudVisibility, setCloudVisibility] = useState("private");
+  const [cloudShareAccess, setCloudShareAccess] = useState("view");
+  const [cloudOwnerId, setCloudOwnerId] = useState(null);
   const [cloudSaving, setCloudSaving] = useState(false);
   const [myTrips, setMyTrips] = useState([]);
   const [myTripsLoading, setMyTripsLoading] = useState(false);
@@ -289,10 +291,9 @@ export default function TripPlannerApp() {
     setCloudSlug(row.slug || null);
     setShareToken(row.share_token || null);
     setCloudVisibility(row.visibility || "private");
+    setCloudShareAccess(row.share_access || "view");
+    setCloudOwnerId(row.owner_id || null);
     setSourceUrl(null);
-    if (cloudRef.type === "share") {
-      setIsViewOnly(true);
-    }
     setMode('view');
   };
 
@@ -427,6 +428,20 @@ export default function TripPlannerApp() {
     return { savedUpcomingTrips: upcoming, savedPastTrips: past };
   }, [myTrips]);
 
+  const isCloudOwnedByCurrentUser = Boolean(user && cloudOwnerId && user.id === cloudOwnerId);
+  const isSharedCloudTrip = Boolean(cloudTripId && cloudOwnerId && (!user || user.id !== cloudOwnerId));
+  const canCollaborateOnSharedTrip = Boolean(
+    user &&
+    isSharedCloudTrip &&
+    cloudVisibility !== "private" &&
+    cloudShareAccess === "collaborate"
+  );
+  const canEditCurrentTrip = Boolean(
+    !sourceUrl &&
+    !isViewOnly &&
+    (!cloudTripId || isCloudOwnedByCurrentUser || canCollaborateOnSharedTrip)
+  );
+
   useFavicon(tripConfig.favicon);
 
   const handleSaveTrip = (newTripData) => {
@@ -494,19 +509,70 @@ export default function TripPlannerApp() {
 
     setCloudSaving(true);
     try {
-      const row = cloudTripId
-        ? await updateCloudTrip(cloudTripId, tripData, cloudVisibility, cloudSlug)
-        : await saveTripToCloud(tripData, cloudVisibility);
+      let row;
+      if (cloudTripId) {
+        if (isCloudOwnedByCurrentUser || canCollaborateOnSharedTrip) {
+          row = await updateCloudTrip(cloudTripId, tripData, cloudVisibility, cloudSlug, cloudShareAccess);
+        } else {
+          row = await saveTripToCloud(tripData, "private", "view");
+        }
+      } else {
+        row = await saveTripToCloud(tripData, cloudVisibility, cloudShareAccess);
+      }
 
       setCloudTripId(row.id);
       setCloudSlug(row.slug || null);
+      setCloudVisibility(row.visibility || "private");
+      setCloudShareAccess(row.share_access || "view");
+      setCloudOwnerId(row.owner_id || user?.id || null);
       const cloudHash = row.slug ? `#t=${encodeURIComponent(row.slug)}` : `#cloud=${encodeURIComponent(row.id)}`;
       window.history.pushState(null, '', cloudHash);
       await refreshMyTrips();
-      pushToast("Trip saved.", "success");
+      if (cloudTripId && !isCloudOwnedByCurrentUser && !canCollaborateOnSharedTrip) {
+        pushToast("Saved a private copy to your trips.", "success");
+      } else if (canCollaborateOnSharedTrip) {
+        pushToast("Shared trip updated.", "success");
+      } else {
+        pushToast("Trip saved.", "success");
+      }
     } catch (error) {
       console.error("Save failed:", error);
       pushToast(error.message || "Could not save trip.", "error");
+    } finally {
+      setCloudSaving(false);
+    }
+  };
+
+  const handleSaveCopyToCloud = async () => {
+    if (!isSupabaseConfigured) {
+      pushToast("Saved trips are unavailable right now.", "error");
+      return;
+    }
+    if (!user) {
+      pushToast("Sign in first to save this trip.", "error");
+      return;
+    }
+    if (!tripData) {
+      pushToast("No trip loaded.", "error");
+      return;
+    }
+
+    setCloudSaving(true);
+    try {
+      const row = await saveTripToCloud(tripData, "private", "view");
+      setCloudTripId(row.id);
+      setCloudSlug(row.slug || null);
+      setCloudVisibility(row.visibility || "private");
+      setCloudShareAccess(row.share_access || "view");
+      setCloudOwnerId(row.owner_id || user?.id || null);
+      setShareToken(null);
+      const cloudHash = row.slug ? `#t=${encodeURIComponent(row.slug)}` : `#cloud=${encodeURIComponent(row.id)}`;
+      window.history.pushState(null, '', cloudHash);
+      await refreshMyTrips();
+      pushToast("Saved a private copy to your trips.", "success");
+    } catch (error) {
+      console.error("Save copy failed:", error);
+      pushToast(error.message || "Could not save copy.", "error");
     } finally {
       setCloudSaving(false);
     }
@@ -554,6 +620,8 @@ export default function TripPlannerApp() {
         setCloudTripId(null);
         setCloudSlug(null);
         setShareToken(null);
+        setCloudShareAccess("view");
+        setCloudOwnerId(null);
         setSourceUrl(null);
         setMode('onboarding');
       }
@@ -617,6 +685,8 @@ export default function TripPlannerApp() {
     setCloudTripId(null);
     setCloudSlug(null);
     setShareToken(null);
+    setCloudShareAccess("view");
+    setCloudOwnerId(null);
     setSourceUrl(null);
     setShowResetModal(false);
     setMode('onboarding');
@@ -628,6 +698,8 @@ export default function TripPlannerApp() {
     setCloudTripId(null);
     setCloudSlug(null);
     setShareToken(null);
+    setCloudShareAccess("view");
+    setCloudOwnerId(null);
     setSourceUrl(null);
     setMode('builder');
   };
@@ -735,6 +807,8 @@ export default function TripPlannerApp() {
         setCloudTripId(null);
         setCloudSlug(null);
         setShareToken(null);
+        setCloudShareAccess("view");
+        setCloudOwnerId(null);
         setSourceUrl(null);
         setMode('view');
         setShowImportModal(false);
@@ -760,7 +834,7 @@ export default function TripPlannerApp() {
       pushToast("Save to cloud first for a shareable link.", "error");
       return;
     }
-    const shareURL = generateShareURL(tripData, { viewOnly: isViewOnly, source: sourceUrl, cloudId: cloudTripId, cloudSlug, shareToken });
+    const shareURL = generateShareURL(tripData, { viewOnly: isViewOnly && !cloudTripId, source: sourceUrl, cloudId: cloudTripId, cloudSlug, shareToken });
     if (shareURL) {
       navigator.clipboard.writeText(shareURL)
         .then(() => {
@@ -772,7 +846,7 @@ export default function TripPlannerApp() {
     }
   };
 
-  const currentShareURL = generateShareURL(tripData, { viewOnly: isViewOnly, source: sourceUrl, cloudId: cloudTripId, cloudSlug, shareToken });
+  const currentShareURL = generateShareURL(tripData, { viewOnly: isViewOnly && !cloudTripId, source: sourceUrl, cloudId: cloudTripId, cloudSlug, shareToken });
   const isLocalDraftShare = !cloudTripId && !sourceUrl;
   const canCopyShareLink = Boolean(cloudTripId || sourceUrl);
 
@@ -1248,8 +1322,21 @@ export default function TripPlannerApp() {
                       My Saved Trips
                     </button>
                     <button type="button" onClick={handleSaveToCloud} disabled={cloudSaving} className="px-3 py-2 rounded-2xl bg-emerald-600 text-white text-sm hover:bg-emerald-700 disabled:opacity-50">
-                      {cloudSaving ? "Saving..." : cloudTripId ? "Update Saved" : "Save Trip"}
+                      {cloudSaving
+                        ? "Saving..."
+                        : canCollaborateOnSharedTrip
+                          ? "Save Changes"
+                          : cloudTripId
+                            ? isCloudOwnedByCurrentUser
+                              ? "Update Saved"
+                              : "Save Copy"
+                            : "Save Trip"}
                     </button>
+                    {isSharedCloudTrip && (
+                      <button type="button" onClick={handleSaveCopyToCloud} disabled={cloudSaving} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50 disabled:opacity-50">
+                        Save Copy
+                      </button>
+                    )}
                   </>
                 )}
                 <button type="button" onClick={handleSignOut} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50">
@@ -1260,7 +1347,7 @@ export default function TripPlannerApp() {
             <button type="button" onClick={handleGoHome} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50 flex items-center gap-1 text-zinc-700 font-medium" title="Go Home">
               <span>Home</span>
             </button>
-            {!isViewOnly && !sourceUrl && (
+            {canEditCurrentTrip && (
               <button type="button" onClick={handleReset} className="px-3 py-2 rounded-2xl border border-red-200 text-red-600 text-sm hover:bg-red-50 flex items-center gap-1 font-medium" title="Reset Trip">
                 <span>Reset Trip</span>
               </button>
@@ -1272,7 +1359,7 @@ export default function TripPlannerApp() {
             <input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Filter days, places, notes" className="px-3 py-2 rounded-2xl border border-zinc-300 bg-white text-sm outline-none focus:ring-2 focus:ring-pink-400"/>
             {filter && (<button type="button" onClick={()=>setFilter("")} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-white">Clear</button>)}
             <button type="button" onClick={handleShare} className="px-3 py-2 rounded-2xl bg-blue-600 text-white text-sm hover:bg-blue-700">Share</button>
-            {!isViewOnly && !sourceUrl && (
+            {canEditCurrentTrip && (
               <button type="button" onClick={handleEditTrip} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-white">Edit</button>
             )}
             <button type="button" onClick={()=>window.print()} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-white">Print</button>
@@ -1369,22 +1456,47 @@ export default function TripPlannerApp() {
                 </p>
               )}
 
-              <div className="flex flex-col gap-2 p-3 border border-zinc-200 rounded-xl bg-zinc-50">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isViewOnly}
-                    onChange={(e) => setIsViewOnly(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                  />
-                  <span className="text-sm font-medium text-zinc-900">View Only Mode</span>
-                </label>
-                <p className="text-xs text-zinc-500 ml-6">
-                  Prevents others from seeing "Edit" or "Reset" buttons.
-                </p>
-              </div>
+              {cloudTripId ? (
+                <div className="flex flex-col gap-2 p-3 border border-zinc-200 rounded-xl bg-zinc-50">
+                  {isCloudOwnedByCurrentUser ? (
+                    <>
+                      <label className="text-sm font-medium text-zinc-900">Shared access</label>
+                      <select
+                        value={cloudShareAccess}
+                        onChange={(e) => setCloudShareAccess(e.target.value)}
+                        className="px-3 py-2 rounded-lg border border-zinc-300 text-sm bg-white"
+                      >
+                        <option value="view">View only</option>
+                        <option value="collaborate">Collaborate (signed-in users can edit)</option>
+                      </select>
+                      <p className="text-xs text-zinc-500">
+                        Save the trip after changing this setting so the shared link updates.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-zinc-600">
+                      This shared trip is currently <strong>{cloudShareAccess === "collaborate" ? "collaborative" : "view only"}</strong>.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2 p-3 border border-zinc-200 rounded-xl bg-zinc-50">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isViewOnly}
+                      onChange={(e) => setIsViewOnly(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-zinc-900">View Only Mode</span>
+                  </label>
+                  <p className="text-xs text-zinc-500 ml-6">
+                    Prevents others from seeing "Edit" or "Reset" buttons.
+                  </p>
+                </div>
+              )}
 
-              {cloudTripId && !shareToken && (
+              {cloudTripId && isCloudOwnedByCurrentUser && !shareToken && (
                 <button
                   onClick={handleGenerateShareToken}
                   className="w-full px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium"
@@ -1427,7 +1539,7 @@ export default function TripPlannerApp() {
 
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl">
                 <p className="text-xs text-blue-800">
-                  Share this link with friends so they can open your itinerary instantly. Turn on "View Only Mode" if you only want them to browse.
+                  Share this link with friends so they can open your itinerary instantly. People can always save a copy to their own account.
                 </p>
               </div>
             </div>

@@ -8,12 +8,23 @@ create table if not exists public.trips (
   slug text unique,
   trip_data jsonb not null,
   visibility text not null default 'private' check (visibility in ('private', 'unlisted', 'public')),
+  share_access text not null default 'view' check (share_access in ('view', 'collaborate')),
   share_token text unique,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create unique index if not exists trips_slug_key on public.trips (slug);
+
+alter table public.trips
+  add column if not exists share_access text not null default 'view';
+
+alter table public.trips
+  drop constraint if exists trips_share_access_check;
+
+alter table public.trips
+  add constraint trips_share_access_check
+  check (share_access in ('view', 'collaborate'));
 
 update public.trips
 set slug = left(
@@ -65,10 +76,34 @@ begin
 end;
 $$;
 
+create or replace function public.enforce_shared_edit_limits()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- Non-owners can edit itinerary content, but cannot change sharing/ownership fields.
+  if auth.uid() is distinct from old.owner_id then
+    new.owner_id := old.owner_id;
+    new.slug := old.slug;
+    new.visibility := old.visibility;
+    new.share_access := old.share_access;
+    new.share_token := old.share_token;
+  end if;
+  return new;
+end;
+$$;
+
 drop trigger if exists trg_touch_trips on public.trips;
 create trigger trg_touch_trips
 before update on public.trips
 for each row execute function public.touch_updated_at();
+
+drop trigger if exists trg_enforce_shared_edit_limits on public.trips;
+create trigger trg_enforce_shared_edit_limits
+before update on public.trips
+for each row execute function public.enforce_shared_edit_limits();
 
 alter table public.trips enable row level security;
 alter table public.trip_collaborators enable row level security;
@@ -89,6 +124,22 @@ create policy "Owners can update their trips"
 on public.trips for update
 using (owner_id = auth.uid())
 with check (owner_id = auth.uid());
+
+drop policy if exists "Collaborators can update shared trips" on public.trips;
+create policy "Collaborators can update shared trips"
+on public.trips for update
+using (
+  auth.uid() is not null
+  and owner_id <> auth.uid()
+  and visibility in ('unlisted', 'public')
+  and share_access = 'collaborate'
+)
+with check (
+  auth.uid() is not null
+  and owner_id <> auth.uid()
+  and visibility in ('unlisted', 'public')
+  and share_access = 'collaborate'
+);
 
 drop policy if exists "Owners can delete their trips" on public.trips;
 create policy "Owners can delete their trips"
