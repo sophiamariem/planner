@@ -16,6 +16,9 @@ export default function useTripNavigationActions({
   setShowSignInModal,
   setShowImportModal,
   setShowResetModal,
+  setShowDeleteModal,
+  pendingDeleteTripId,
+  setPendingDeleteTripId,
   setIsViewOnly,
   setSourceUrl,
   setTripData,
@@ -51,8 +54,13 @@ export default function useTripNavigationActions({
 
   const handleDeleteCloudTrip = async (id) => {
     if (!id) return;
-    const confirmed = window.confirm("Delete this trip permanently?");
-    if (!confirmed) return;
+    setPendingDeleteTripId(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteCloudTrip = async () => {
+    const id = pendingDeleteTripId;
+    if (!id) return;
     try {
       await deleteCloudTripById(id);
       if (cloudTripId === id) {
@@ -66,12 +74,19 @@ export default function useTripNavigationActions({
         setSourceUrl(null);
         setMode("onboarding");
       }
+      setShowDeleteModal(false);
+      setPendingDeleteTripId(null);
       await refreshMyTrips();
       pushToast("Trip deleted.", "success");
     } catch (error) {
       console.error("Delete trip error:", error);
       pushToast(error.message || "Could not delete trip.", "error");
     }
+  };
+
+  const cancelDeleteCloudTrip = () => {
+    setShowDeleteModal(false);
+    setPendingDeleteTripId(null);
   };
 
   const handleEditTrip = () => {
@@ -99,6 +114,8 @@ export default function useTripNavigationActions({
     setShowSignInModal(false);
     setShowImportModal(false);
     setShowResetModal(false);
+    setShowDeleteModal(false);
+    setPendingDeleteTripId(null);
   };
 
   const handleReset = () => {
@@ -136,6 +153,8 @@ export default function useTripNavigationActions({
     handleSaveTrip,
     handleOpenCloudTrip,
     handleDeleteCloudTrip,
+    confirmDeleteCloudTrip,
+    cancelDeleteCloudTrip,
     handleEditTrip,
     handleSaveAndPreview,
     handleCancelEdit,

@@ -17,6 +17,8 @@ export default function useTripPlannerUiState() {
   const [showMyTripsModal, setShowMyTripsModal] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [pendingDeleteTripId, setPendingDeleteTripId] = useState(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [builderStartTab, setBuilderStartTab] = useState("basic");
   const [importJson, setImportJson] = useState("");
@@ -116,6 +118,8 @@ export default function useTripPlannerUiState() {
     showMyTripsModal, setShowMyTripsModal,
     showSignInModal, setShowSignInModal,
     showResetModal, setShowResetModal,
+    showDeleteModal, setShowDeleteModal,
+    pendingDeleteTripId, setPendingDeleteTripId,
     showImportModal, setShowImportModal,
     builderStartTab, setBuilderStartTab,
     importJson, setImportJson,

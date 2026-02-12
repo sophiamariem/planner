@@ -2,6 +2,7 @@ import React from "react";
 import ToastLayer from "./ToastLayer";
 import SignInDrawer from "./drawers/SignInDrawer";
 import ResetDrawer from "./drawers/ResetDrawer";
+import DeleteTripDrawer from "./drawers/DeleteTripDrawer";
 import ShareDrawer from "./drawers/ShareDrawer";
 import MyTripsDrawer from "./drawers/MyTripsDrawer";
 import ImportJsonDrawer from "./drawers/ImportJsonDrawer";
@@ -19,6 +20,9 @@ export default function AppOverlays({
   showResetModal,
   onCloseResetModal,
   onConfirmReset,
+  showDeleteModal,
+  onCloseDeleteModal,
+  onConfirmDeleteModal,
   showShareModal,
   onCloseShareModal,
   publishIssues,
@@ -79,6 +83,7 @@ export default function AppOverlays({
       />
 
       <ResetDrawer open={showResetModal} onClose={onCloseResetModal} onConfirm={onConfirmReset} />
+      <DeleteTripDrawer open={showDeleteModal} onClose={onCloseDeleteModal} onConfirm={onConfirmDeleteModal} />
 
       <ShareDrawer
         open={showShareModal}
