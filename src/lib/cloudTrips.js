@@ -176,8 +176,10 @@ export async function listMyTrips() {
 
 export async function loadCloudTripById(id) {
   if (!isSupabaseConfigured) throw new Error('Saved trips are unavailable right now.');
+  const user = await getCurrentUser();
+  if (!user?.id) throw new Error('Sign in first to open saved trips.');
 
-  const response = await authedFetch(`/rest/v1/trips?id=eq.${encodeURIComponent(id)}&select=id,slug,title,visibility,share_access,share_token,trip_data,owner_id,created_at,updated_at&limit=1`, {
+  const response = await authedFetch(`/rest/v1/trips?id=eq.${encodeURIComponent(id)}&owner_id=eq.${encodeURIComponent(user.id)}&select=id,slug,title,visibility,share_access,share_token,trip_data,owner_id,created_at,updated_at&limit=1`, {
     method: 'GET',
   });
 
