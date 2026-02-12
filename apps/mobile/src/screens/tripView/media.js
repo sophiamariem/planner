@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Text, View } from 'react-native';
 
+const DEBUG_MEDIA = String(process.env.EXPO_PUBLIC_DEBUG_MEDIA || '').trim() === '1';
+
 function coerceImageUri(value) {
   if (typeof value === 'string') return value.trim();
   if (!value || typeof value !== 'object') return '';
@@ -139,7 +141,15 @@ export function RemoteImage({ uri, fallbackUri, fallbackUris = [], style, resize
       style={style}
       resizeMode={resizeMode}
       onLoad={() => setLoaded(true)}
-      onError={() => {
+      onError={(event) => {
+        if (DEBUG_MEDIA) {
+          console.warn('[RemoteImage] load failed', {
+            uri: sourceUri,
+            index: sourceIndex,
+            candidates: candidates.length,
+            error: event?.nativeEvent,
+          });
+        }
         setSourceIndex((prev) => Math.min(prev + 1, candidates.length - 1));
       }}
     />

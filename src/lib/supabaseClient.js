@@ -57,6 +57,43 @@ export function setSessionFromUrl() {
   return true;
 }
 
+async function refreshAccessToken() {
+  const { url, anonKey } = getSupabaseConfig();
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+
+  const response = await fetch(`${url}/auth/v1/token?grant_type=refresh_token`, {
+    method: 'POST',
+    headers: {
+      apikey: anonKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+
+  let body = null;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+
+  if (!response.ok) {
+    clearSession();
+    return null;
+  }
+
+  const accessToken = body?.access_token;
+  const nextRefresh = body?.refresh_token || refreshToken;
+  if (!accessToken) {
+    clearSession();
+    return null;
+  }
+
+  saveSession({ accessToken, refreshToken: nextRefresh });
+  return accessToken;
+}
+
 export async function authedFetch(path, options = {}) {
   const { url, anonKey } = getSupabaseConfig();
   const accessToken = getAccessToken();
@@ -71,10 +108,28 @@ export async function authedFetch(path, options = {}) {
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
-  const response = await fetch(`${url}${path}`, {
-    ...options,
-    headers,
-  });
+  const doFetch = async (bearer) => {
+    const nextHeaders = { ...headers };
+    if (bearer) {
+      nextHeaders.Authorization = `Bearer ${bearer}`;
+    } else {
+      delete nextHeaders.Authorization;
+    }
+    return fetch(`${url}${path}`, {
+      ...options,
+      headers: nextHeaders,
+    });
+  };
+
+  let response = await doFetch(accessToken);
+
+  // If token expired, attempt a refresh+retry once.
+  if ((response.status === 401 || response.status === 403) && getRefreshToken()) {
+    const nextAccessToken = await refreshAccessToken();
+    if (nextAccessToken) {
+      response = await doFetch(nextAccessToken);
+    }
+  }
 
   return response;
 }

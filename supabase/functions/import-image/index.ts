@@ -37,6 +37,17 @@ function getExtFromUrl(url: string) {
   return "jpg";
 }
 
+function proxyImageSourceUrls(url: string) {
+  const clean = String(url || "").trim();
+  if (!clean) return [];
+  const stripped = clean.replace(/^https?:\/\//i, "");
+  const encoded = encodeURIComponent(stripped);
+  return [
+    `https://images.weserv.nl/?url=${encoded}&w=1800&output=jpg`,
+    `https://wsrv.nl/?url=${encoded}&w=1800&output=jpg`,
+  ];
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: CORS_HEADERS });
@@ -66,32 +77,49 @@ Deno.serve(async (req) => {
 
   const bucket = String(payload.bucket || "trip-media").trim() || "trip-media";
 
-  let remoteResponse: Response;
-  try {
-    remoteResponse = await fetch(sourceUrl, {
-      headers: {
-        // Helps with hosts that reject empty/default agents.
-        "User-Agent": "plnr-import-image/1.0",
-        "Accept": "image/*,*/*;q=0.8",
-      },
-      redirect: "follow",
-    });
-  } catch {
-    return json({ error: "Could not fetch source URL." }, 400);
+  let remoteResponse: Response | null = null;
+  let contentType = "";
+  let blob: Blob | null = null;
+  const fetchCandidates = [sourceUrl, ...proxyImageSourceUrls(sourceUrl)];
+
+  for (const candidate of fetchCandidates) {
+    try {
+      const response = await fetch(candidate, {
+        headers: {
+          // Helps with hosts that reject empty/default agents.
+          "User-Agent": "plnr-import-image/1.0",
+          "Accept": "image/*,*/*;q=0.8",
+          "Referer": sourceUrl,
+        },
+        redirect: "follow",
+      });
+      if (!response.ok) {
+        console.log("[import-image] fetch not ok", { candidate, status: response.status });
+        continue;
+      }
+      const nextType = String(response.headers.get("content-type") || "");
+      if (!nextType.toLowerCase().startsWith("image/")) {
+        console.log("[import-image] non-image response", { candidate, contentType: nextType });
+        continue;
+      }
+      const nextBlob = await response.blob();
+      if (!nextBlob || !nextBlob.size) {
+        console.log("[import-image] empty body", { candidate });
+        continue;
+      }
+      remoteResponse = response;
+      contentType = nextType;
+      blob = nextBlob;
+      break;
+    } catch {
+      console.log("[import-image] fetch threw", { candidate });
+      // try next candidate
+    }
   }
 
-  if (!remoteResponse.ok) {
-    return json({ error: "Source URL returned an error.", status: remoteResponse.status }, 400);
-  }
-
-  const contentType = String(remoteResponse.headers.get("content-type") || "");
-  if (!contentType.toLowerCase().startsWith("image/")) {
-    return json({ error: "Source URL did not return an image." }, 400);
-  }
-
-  const blob = await remoteResponse.blob();
-  if (!blob || !blob.size) {
-    return json({ error: "Image body was empty." }, 400);
+  if (!remoteResponse || !blob) {
+    console.log("[import-image] no usable candidate", { sourceUrl });
+    return json({ error: "Could not fetch a usable image from source URL." }, 400);
   }
 
   const maxBytes = 15 * 1024 * 1024;

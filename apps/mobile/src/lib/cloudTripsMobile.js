@@ -7,6 +7,7 @@ const SLUG_SUFFIX_LEN = 4;
 const MAX_SLUG_LEN = 28;
 const DEFAULT_MEDIA_BUCKET = process.env.EXPO_PUBLIC_SUPABASE_STORAGE_BUCKET || 'trip-media';
 const DEFAULT_AUTH_REDIRECT_URL = process.env.EXPO_PUBLIC_AUTH_REDIRECT_URL || 'https://plnr.guide/auth-callback';
+const DEBUG_MEDIA_IMPORT = String(process.env.EXPO_PUBLIC_DEBUG_MEDIA_IMPORT || '').trim() === '1';
 
 async function parseJson(response, fallback = 'Request failed.') {
   let body = null;
@@ -331,23 +332,33 @@ function isImageMime(type) {
 async function tryImportImageViaEdgeFunction(sourceUrl, cache = new Map()) {
   const clean = String(sourceUrl || '').trim();
   if (!clean || cache.has(clean)) return cache.get(clean) || '';
-  try {
-    const response = await authedFetch('/functions/v1/import-image', {
-      method: 'POST',
-      body: JSON.stringify({
-        sourceUrl: clean,
-        bucket: DEFAULT_MEDIA_BUCKET,
-      }),
-    });
-    if (!response.ok) return '';
-    const data = await response.json().catch(() => null);
-    const imported = String(data?.publicUrl || '').trim();
-    if (!isHttpUrl(imported)) return '';
-    cache.set(clean, imported);
-    return imported;
-  } catch {
-    return '';
+  const candidates = [clean, ...proxyImageSourceUrls(clean)];
+  for (const candidate of candidates) {
+    try {
+      const response = await authedFetch('/functions/v1/import-image', {
+        method: 'POST',
+        body: JSON.stringify({
+          sourceUrl: candidate,
+          bucket: DEFAULT_MEDIA_BUCKET,
+        }),
+      });
+      if (!response.ok) {
+        if (DEBUG_MEDIA_IMPORT) {
+          const text = await response.text().catch(() => '');
+          console.warn('[import-image] failed', { status: response.status, candidate, body: text.slice(0, 500) });
+        }
+        continue;
+      }
+      const data = await response.json().catch(() => null);
+      const imported = String(data?.publicUrl || '').trim();
+      if (!isHttpUrl(imported)) continue;
+      cache.set(clean, imported);
+      return imported;
+    } catch {
+      // try next source candidate
+    }
   }
+  return '';
 }
 
 async function uploadUrlToStorage(sourceUrl, cache = new Map()) {

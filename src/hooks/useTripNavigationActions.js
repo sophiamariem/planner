@@ -40,6 +40,12 @@ export default function useTripNavigationActions({
     if (cloudTripId && canEditCurrentTrip) {
       try {
         const row = await updateCloudTrip(cloudTripId, newTripData, cloudVisibility, cloudSlug, cloudShareAccess);
+        // Cloud save may rewrite media URLs (e.g. importing to storage). Keep local state in sync
+        // with what was actually persisted.
+        if (row?.trip_data) {
+          setTripData(row.trip_data);
+          saveTripToLocalStorage(row.trip_data);
+        }
         setCloudSlug(row.slug || cloudSlug || null);
         setCloudVisibility(row.visibility || cloudVisibility || "private");
         setCloudShareAccess(row.share_access || cloudShareAccess || "view");
