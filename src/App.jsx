@@ -1,11 +1,11 @@
-import React, { useMemo, useState, useEffect } from "react";
-import { tripConfig as defaultTripConfig, flights as defaultFlights, days as defaultDays, dayBadges as defaultDayBadges, palette, ll as defaultLocations } from "./data/trip";
+import React, { useMemo, useEffect } from "react";
 import useFavicon from "./hooks/useFavicon";
+import useTripPlannerUiState from "./hooks/useTripPlannerUiState";
+import useTripCreationActions from "./hooks/useTripCreationActions";
 import { ensureTailwindCDN } from "./utils/tailwind";
 import { getTripFromURL, updateURLWithTrip, saveTripToLocalStorage, loadTripFromLocalStorage, generateShareURL, clearLocalStorageTrip, validateTripData, getSourceFromURL, getCloudFromURL, isViewOnlyFromURL } from "./utils/tripData";
-import { QUICK_TEMPLATES, buildTemplateTrip, getTemplateJson } from "./utils/tripTemplates";
-import { ADMIN_EMAILS } from "./utils/admin";
-import { extractStartIsoFromTrip, extractEndIsoFromTrip, extractCoverImage, attachCopyAttribution, formatVisibilityLabel } from "./utils/tripMeta";
+import { QUICK_TEMPLATES } from "./utils/tripTemplates";
+import { extractCoverImage, attachCopyAttribution, formatVisibilityLabel } from "./utils/tripMeta";
 import { isSupabaseConfigured, setSessionFromUrl } from "./lib/supabaseClient";
 import { getCurrentUser, signInWithMagicLink, signInWithGoogle, signOut, saveTripToCloud, updateCloudTrip, listMyTrips, getMyCollaboratorRole, listTripCollaborators, addTripCollaboratorByEmail, removeTripCollaboratorByEmail, loadCloudTripById, loadCloudTripByShareToken, loadCloudTripBySlug, deleteCloudTripById } from "./lib/cloudTrips";
 
@@ -22,59 +22,65 @@ export default function TripPlannerApp() {
   const isAuthRoute = typeof window !== "undefined" && window.location.pathname === "/auth";
   const isPrivacyRoute = typeof window !== "undefined" && window.location.pathname === "/privacy";
   const isTermsRoute = typeof window !== "undefined" && window.location.pathname === "/terms";
-  const [mode, setMode] = useState('loading'); // 'loading', 'onboarding', 'builder', 'view'
-  const [onboardingPage, setOnboardingPage] = useState("create"); // 'trips' | 'create'
-  const [tripData, setTripData] = useState(null);
-  const [isViewOnly, setIsViewOnly] = useState(false);
-  const [sourceUrl, setSourceUrl] = useState(null);
-  const [filter, setFilter] = useState("");
-  const [showMaps] = useState(true);
-  const [dense] = useState(false);
-  const [view, setView] = useState("cards");
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [showMyTripsModal, setShowMyTripsModal] = useState(false);
-  const [showSignInModal, setShowSignInModal] = useState(false);
-  const [showResetModal, setShowResetModal] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [builderStartTab, setBuilderStartTab] = useState("basic");
-  const [importJson, setImportJson] = useState("");
-  const [importError, setImportError] = useState("");
-  const [toasts, setToasts] = useState([]);
-  const [signInEmail, setSignInEmail] = useState("");
-  const [signInLoading, setSignInLoading] = useState(false);
-  const [cloudTripId, setCloudTripId] = useState(null);
-  const [cloudSlug, setCloudSlug] = useState(null);
-  const [shareToken, setShareToken] = useState(null);
-  const [cloudVisibility, setCloudVisibility] = useState("private");
-  const [cloudShareAccess, setCloudShareAccess] = useState("view");
-  const [cloudOwnerId, setCloudOwnerId] = useState(null);
-  const [cloudCollaboratorRole, setCloudCollaboratorRole] = useState(null);
-  const [collaboratorEmail, setCollaboratorEmail] = useState("");
-  const [collaborators, setCollaborators] = useState([]);
-  const [collaboratorsLoading, setCollaboratorsLoading] = useState(false);
-  const [cloudSaving, setCloudSaving] = useState(false);
-  const [myTrips, setMyTrips] = useState([]);
-  const [myTripsLoading, setMyTripsLoading] = useState(false);
-  const [showPastSavedTrips, setShowPastSavedTrips] = useState(false);
-  const [user, setUser] = useState(null);
-  const isAdminUser = Boolean(user?.email && ADMIN_EMAILS.includes(String(user.email).toLowerCase()));
+  const {
+    mode, setMode,
+    onboardingPage, setOnboardingPage,
+    tripData, setTripData,
+    isViewOnly, setIsViewOnly,
+    setSourceUrl,
+    filter, setFilter,
+    showMaps,
+    view, setView,
+    showShareModal, setShowShareModal,
+    showMyTripsModal, setShowMyTripsModal,
+    showSignInModal, setShowSignInModal,
+    showResetModal, setShowResetModal,
+    showImportModal, setShowImportModal,
+    builderStartTab, setBuilderStartTab,
+    importJson, setImportJson,
+    importError, setImportError,
+    toasts, setToasts,
+    signInEmail, setSignInEmail,
+    signInLoading, setSignInLoading,
+    cloudTripId, setCloudTripId,
+    cloudSlug, setCloudSlug,
+    shareToken, setShareToken,
+    cloudVisibility, setCloudVisibility,
+    cloudShareAccess, setCloudShareAccess,
+    cloudOwnerId, setCloudOwnerId,
+    setCloudCollaboratorRole,
+    collaboratorEmail, setCollaboratorEmail,
+    collaborators, setCollaborators,
+    collaboratorsLoading, setCollaboratorsLoading,
+    cloudSaving, setCloudSaving,
+    myTrips, setMyTrips,
+    myTripsLoading, setMyTripsLoading,
+    showPastSavedTrips, setShowPastSavedTrips,
+    user, setUser,
+    isAdminUser,
+    tripConfig,
+    flights,
+    days,
+    dayBadges,
+    activePalette,
+    selectedId, setSelectedId,
+    selectedDay,
+    imgClass,
+    filtered,
+    savedUpcomingTrips,
+    savedPastTrips,
+    isCloudOwnedByCurrentUser,
+    isSharedCloudTrip,
+    canCollaborateOnSharedTrip,
+    canEditCurrentTrip,
+    canSaveSharedCopy,
+    copiedFrom,
+  } = useTripPlannerUiState();
 
   useEffect(() => {
     if (mode !== "onboarding") return;
     setOnboardingPage(user ? "trips" : "create");
-  }, [user, mode]);
-
-  const templateJSON = getTemplateJson(palette);
-
-  const openImportModal = () => {
-    if (!isAdminUser) {
-      pushToast("This import tool is only available to admins.", "error");
-      return;
-    }
-    setImportJson(templateJSON);
-    setShowImportModal(true);
-    setImportError("");
-  };
+  }, [user, mode, setOnboardingPage]);
 
   const toSafeUserMessage = (message, fallback) => {
     const raw = String(message || "").trim();
@@ -112,6 +118,31 @@ export default function TripPlannerApp() {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 2800);
   };
+
+  const {
+    openImportModal,
+    handleStartFromTemplate,
+    handleStartFromQuickTemplate,
+    handleStartFromScratch,
+    handleImportJson,
+  } = useTripCreationActions({
+    isAdminUser,
+    pushToast,
+    importJson,
+    setTripData,
+    setBuilderStartTab,
+    setCloudTripId,
+    setCloudSlug,
+    setShareToken,
+    setCloudShareAccess,
+    setCloudOwnerId,
+    setCloudCollaboratorRole,
+    setSourceUrl,
+    setMode,
+    setShowImportModal,
+    setImportJson,
+    setImportError,
+  });
 
   const refreshMyTrips = async (activeUser = user) => {
     if (!isSupabaseConfigured || !activeUser) return;
@@ -270,69 +301,6 @@ export default function TripPlannerApp() {
     return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount, never again
-
-  // Get active trip config and data
-  const tripConfig = tripData?.tripConfig || defaultTripConfig;
-  const flights = tripData?.flights || [];
-  const days = useMemo(() => tripData?.days || [], [tripData?.days]);
-  const dayBadges = tripData?.dayBadges || {};
-  const activePalette = tripData?.palette || palette;
-
-  const eventIds = useMemo(() => (days || []).map(d => Number(d.id)).sort((a,b)=>a-b), [days]);
-  const [selectedId, setSelectedId] = useState(eventIds[0] || null);
-  const selectedDay = useMemo(() => days.find(d => Number(d.id) === selectedId) || null, [selectedId, days]);
-
-  const imgClass = dense ? "h-44 md:h-56" : "h-56 md:h-72";
-  const filtered = useMemo(() => {
-    if (!filter) return days;
-    return days.filter(d => `${d.dow} ${d.date} ${d.title} ${d.notes?.join(" ")}`.toLowerCase().includes(filter.toLowerCase()));
-  }, [filter, days]);
-
-  const { savedUpcomingTrips, savedPastTrips } = useMemo(() => {
-    const todayIso = new Date().toISOString().slice(0, 10);
-    const upcoming = [];
-    const past = [];
-
-    for (const trip of myTrips) {
-      const endIso = extractEndIsoFromTrip(trip);
-      if (endIso && endIso < todayIso) {
-        past.push(trip);
-      } else {
-        upcoming.push(trip);
-      }
-    }
-
-    upcoming.sort((a, b) => {
-      const aStart = extractStartIsoFromTrip(a) || "9999-12-31";
-      const bStart = extractStartIsoFromTrip(b) || "9999-12-31";
-      return aStart.localeCompare(bStart);
-    });
-
-    past.sort((a, b) => {
-      const aEnd = extractEndIsoFromTrip(a) || "0000-01-01";
-      const bEnd = extractEndIsoFromTrip(b) || "0000-01-01";
-      return bEnd.localeCompare(aEnd);
-    });
-
-    return { savedUpcomingTrips: upcoming, savedPastTrips: past };
-  }, [myTrips]);
-
-  const isCloudOwnedByCurrentUser = Boolean(user && cloudOwnerId && user.id === cloudOwnerId);
-  const isSharedCloudTrip = Boolean(cloudTripId && cloudOwnerId && (!user || user.id !== cloudOwnerId));
-  const canCollaborateOnSharedTrip = Boolean(
-    user &&
-    isSharedCloudTrip &&
-    cloudVisibility !== "private" &&
-    cloudShareAccess === "collaborate" &&
-    cloudCollaboratorRole === "editor"
-  );
-  const canEditCurrentTrip = Boolean(
-    !sourceUrl &&
-    !isViewOnly &&
-    (!cloudTripId || isCloudOwnedByCurrentUser || canCollaborateOnSharedTrip)
-  );
-  const canSaveSharedCopy = Boolean(user && isSharedCloudTrip && tripData);
-  const copiedFrom = tripData?.tripConfig?.copiedFrom || null;
 
   useFavicon(tripConfig.favicon);
 
@@ -558,145 +526,6 @@ export default function TripPlannerApp() {
     setShowResetModal(false);
     setMode('onboarding');
     setOnboardingPage(user ? "trips" : "create");
-  };
-
-  const openBuilderWithTrip = (nextTripData) => {
-    setTripData(nextTripData);
-    setBuilderStartTab("basic");
-    setCloudTripId(null);
-    setCloudSlug(null);
-    setShareToken(null);
-    setCloudShareAccess("view");
-    setCloudOwnerId(null);
-    setCloudCollaboratorRole(null);
-    setSourceUrl(null);
-    setMode('builder');
-  };
-
-  const handleStartFromTemplate = () => {
-    const templateData = {
-      tripConfig: defaultTripConfig,
-      flights: defaultFlights,
-      days: defaultDays,
-      dayBadges: defaultDayBadges,
-      ll: defaultLocations,
-      palette
-    };
-    openBuilderWithTrip(templateData);
-  };
-
-  const handleStartFromQuickTemplate = (templateId) => {
-    const templateData = buildTemplateTrip(templateId, palette);
-    if (!templateData) return;
-    openBuilderWithTrip(templateData);
-  };
-
-  const handleStartFromScratch = () => {
-    const emptyData = {
-      tripConfig: {
-        title: "My Trip",
-        footer: "My Adventure",
-        favicon: null,
-        cover: null,
-        calendar: { year: new Date().getFullYear(), month: new Date().getMonth() },
-        badgeLegend: []
-      },
-      flights: [],
-      days: [],
-      dayBadges: {},
-      ll: {},
-      palette
-    };
-    openBuilderWithTrip(emptyData);
-  };
-
-  const handleImportJson = () => {
-    if (!isAdminUser) {
-      pushToast("This import tool is only available to admins.", "error");
-      return;
-    }
-    try {
-      if (!importJson.trim()) {
-        setImportError("Please paste some JSON data first.");
-        return;
-      }
-      const parsed = JSON.parse(importJson);
-      const validation = validateTripData(parsed);
-      
-      if (validation.valid) {
-        // Automatically extract locations (ll) from pins if they are missing from top-level ll
-        const importedLl = parsed.ll || {};
-        const extractedLl = { ...importedLl };
-        
-        if (parsed.days && Array.isArray(parsed.days)) {
-          parsed.days.forEach(day => {
-            if (day.pins && Array.isArray(day.pins)) {
-              day.pins.forEach(pin => {
-                if (pin.name && pin.ll && !extractedLl[pin.name]) {
-                  extractedLl[pin.name] = pin.ll;
-                }
-              });
-            }
-          });
-        }
-
-        // Automatically extract badges from notes if dayBadges is empty
-        const importedBadges = parsed.dayBadges || {};
-        const extractedBadges = { ...importedBadges };
-
-        if (Object.keys(extractedBadges).length === 0 && parsed.days && Array.isArray(parsed.days)) {
-          parsed.days.forEach(day => {
-            const dayId = Number(day.id);
-            if (isNaN(dayId)) return;
-            
-            const emojis = [];
-            (day.notes || []).forEach(note => {
-              // Extract common emojis used for badges
-              const found = note.match(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu);
-              if (found) emojis.push(...found);
-            });
-            
-            if (emojis.length > 0) {
-              extractedBadges[dayId] = [...new Set(emojis)]; // Unique emojis
-            }
-          });
-        }
-
-        // Ensure optional fields exist for the app state
-        const sanitizedData = {
-          ...parsed,
-          flights: parsed.flights || [],
-          days: (parsed.days || []).map(day => ({
-            ...day,
-            pins: day.pins || [],
-            notes: day.notes || []
-          })),
-          ll: extractedLl,
-          dayBadges: extractedBadges,
-          palette: parsed.palette || palette
-        };
-        
-        setTripData(sanitizedData);
-        setCloudTripId(null);
-        setCloudSlug(null);
-        setShareToken(null);
-        setCloudShareAccess("view");
-        setCloudOwnerId(null);
-        setCloudCollaboratorRole(null);
-        setSourceUrl(null);
-        setMode('view');
-        setShowImportModal(false);
-        setImportJson("");
-        setImportError("");
-        // Save it so it persists
-        saveTripToLocalStorage(sanitizedData);
-        updateURLWithTrip(sanitizedData);
-      } else {
-        setImportError(`Invalid trip data: ${validation.error}`);
-      }
-    } catch (e) {
-      setImportError("Invalid JSON format. Please check your syntax.");
-    }
   };
 
   const handleShare = async () => {
