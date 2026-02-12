@@ -6,6 +6,8 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const DEFAULT_BUCKET = "trip-media";
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -14,6 +16,34 @@ function json(body: unknown, status = 200) {
       "Content-Type": "application/json",
     },
   });
+}
+
+function isPrivateOrLocalHost(hostname: string) {
+  const host = String(hostname || "").trim().toLowerCase();
+  if (!host) return true;
+  if (host === "localhost" || host.endsWith(".localhost")) return true;
+  if (host === "0.0.0.0" || host === "127.0.0.1") return true;
+  if (host === "::1") return true;
+  if (host === "metadata.google.internal") return true;
+  if (host === "169.254.169.254") return true; // AWS/GCP/Azure metadata IP
+
+  // Block literal IPv4 private/link-local ranges.
+  const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4) {
+    const a = Number(ipv4[1]);
+    const b = Number(ipv4[2]);
+    if (a === 10) return true;
+    if (a === 127) return true;
+    if (a === 0) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+  }
+
+  // Block obvious IPv6 local ranges when provided as a literal.
+  if (host.startsWith("fe80:") || host.startsWith("fc") || host.startsWith("fd")) return true;
+
+  return false;
 }
 
 function getExtFromMime(type: string) {
@@ -85,7 +115,23 @@ Deno.serve(async (req) => {
     return json({ error: "sourceUrl must be an absolute http(s) URL." }, 400);
   }
 
-  const bucket = String(payload.bucket || "trip-media").trim() || "trip-media";
+  // Production: do not allow arbitrary buckets from client input.
+  // Bucket must exist ahead of time (no auto-create).
+  const configuredBucket = String(Deno.env.get("MEDIA_BUCKET") || DEFAULT_BUCKET).trim() || DEFAULT_BUCKET;
+  const requestedBucket = String(payload.bucket || configuredBucket).trim() || configuredBucket;
+  if (requestedBucket !== configuredBucket) {
+    return json({ error: "Invalid bucket." }, 400);
+  }
+  const bucket = configuredBucket;
+
+  try {
+    const parsed = new URL(sourceUrl);
+    if (isPrivateOrLocalHost(parsed.hostname)) {
+      return json({ error: "Blocked source host." }, 400);
+    }
+  } catch {
+    return json({ error: "Invalid sourceUrl." }, 400);
+  }
 
   let remoteResponse: Response | null = null;
   let contentType = "";
@@ -149,46 +195,12 @@ Deno.serve(async (req) => {
     return json({ error: "Invalid user session." }, 401);
   }
 
-  // Ensure bucket exists (common gotcha across environments).
-  try {
-    const { data: buckets, error: listError } = await admin.storage.listBuckets();
-    if (!listError) {
-      const exists = Array.isArray(buckets) && buckets.some((b) => b?.name === bucket);
-      if (!exists) {
-        const { error: createError } = await admin.storage.createBucket(bucket, { public: true });
-        if (createError) {
-          console.log("[import-image] createBucket failed", { bucket, error: createError.message });
-        } else {
-          console.log("[import-image] bucket created", { bucket });
-        }
-      }
-    } else {
-      console.log("[import-image] listBuckets failed", { error: listError.message });
-    }
-  } catch {
-    console.log("[import-image] bucket ensure threw", { bucket });
-  }
-
   const { error: uploadError } = await admin.storage
     .from(bucket)
     .upload(path, blob, { upsert: true, contentType: contentType || `image/${ext}` });
 
   if (uploadError) {
-    // Retry once after trying to create bucket (handles first-run races).
-    try {
-      const { error: createError } = await admin.storage.createBucket(bucket, { public: true });
-      if (createError) {
-        return json({ error: "Storage upload failed.", details: uploadError.message }, 502);
-      }
-      const { error: retryError } = await admin.storage
-        .from(bucket)
-        .upload(path, blob, { upsert: true, contentType: contentType || `image/${ext}` });
-      if (retryError) {
-        return json({ error: "Storage upload failed.", details: retryError.message }, 502);
-      }
-    } catch {
-      return json({ error: "Storage upload failed.", details: uploadError.message }, 502);
-    }
+    return json({ error: "Storage upload failed.", details: uploadError.message }, 502);
   }
 
   const { data } = admin.storage.from(bucket).getPublicUrl(path);
