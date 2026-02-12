@@ -175,7 +175,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
             setRangeStart(isoDates[0]);
             setRangeEnd(isoDates[isoDates.length - 1]);
         }
-    }, [days.length]);
+    }, [days]);
 
     useEffect(() => {
         if (!hasMountedRef.current) {
