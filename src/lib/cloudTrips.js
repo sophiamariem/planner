@@ -395,7 +395,20 @@ function isUnsplashUrl(value) {
 function coerceImageUrl(value) {
   if (typeof value === 'string') return value.trim();
   if (!value || typeof value !== 'object') return '';
-  const candidates = [value.url, value.uri, value.src, value.publicUrl, value.image];
+  const nestedUrls = value.urls && typeof value.urls === 'object'
+    ? [value.urls.raw, value.urls.full, value.urls.regular, value.urls.small, value.urls.thumb]
+    : [];
+  const candidates = [
+    value.url,
+    value.uri,
+    value.src,
+    value.publicUrl,
+    value.image,
+    value.path,
+    value.downloadURL,
+    value.downloadUrl,
+    ...nestedUrls,
+  ];
   for (const candidate of candidates) {
     if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
   }

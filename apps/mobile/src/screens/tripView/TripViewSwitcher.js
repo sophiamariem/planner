@@ -68,6 +68,7 @@ export default function TripViewSwitcher({
       ) : (
         <TripCalendarPanel
           calendarMonths={calendarMonths}
+          days={days}
           activeDayIndex={activeDayIndex}
           dayBadges={dayBadges}
           onSelectDayIndex={onSelectDayIndex}
