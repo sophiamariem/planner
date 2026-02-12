@@ -10,15 +10,7 @@ import { QUICK_TEMPLATES } from "./utils/tripTemplates";
 import { extractCoverImage, formatVisibilityLabel } from "./utils/tripMeta";
 import { isSupabaseConfigured } from "./lib/supabaseClient";
 
-import ToastLayer from "./components/ToastLayer";
-import AppOverlays from "./components/AppOverlays";
-import AuthPage from "./components/AuthPage";
-import OnboardingScreen from "./screens/OnboardingScreen";
-import BuilderScreen from "./screens/BuilderScreen";
-import ViewScreen from "./screens/ViewScreen";
-import LoadingScreen from "./screens/LoadingScreen";
-import PrivacyPage from "./pages/PrivacyPage";
-import TermsPage from "./pages/TermsPage";
+import AppModeRouter from "./components/AppModeRouter";
 
 export default function TripPlannerApp() {
   const isAuthRoute = typeof window !== "undefined" && window.location.pathname === "/auth";
@@ -345,131 +337,106 @@ export default function TripPlannerApp() {
     onImportJson: handleImportJson,
   };
 
-  if (isPrivacyRoute) {
-    return <PrivacyPage />;
-  }
+  const authProps = {
+    user,
+    isSupabaseConfigured,
+    signInEmail,
+    onEmailChange: setSignInEmail,
+    onGoogleSignIn: submitGoogleSignIn,
+    onSubmitSignIn: submitSignIn,
+    signInLoading,
+    onContinueToApp: () => {
+      window.history.replaceState(null, "", "/");
+      setMode("onboarding");
+    },
+  };
 
-  if (isTermsRoute) {
-    return <TermsPage />;
-  }
+  const onboardingProps = {
+    onboardingPage,
+    onSwitchPage: (page) => {
+      setOnboardingPage(page);
+      window.history.pushState(null, "", page === "trips" ? "/app" : "/new");
+    },
+    user,
+    onGoCreate: () => {
+      setOnboardingPage("create");
+      window.history.pushState(null, "", "/new");
+    },
+    onSignOut: handleSignOut,
+    onSignIn: handleSignIn,
+    savedUpcomingTrips,
+    savedPastTrips,
+    showPastSavedTrips,
+    onTogglePast: () => setShowPastSavedTrips((prev) => !prev),
+    onOpenTrip: handleOpenCloudTrip,
+    extractCoverImage,
+    formatVisibilityLabel,
+    onStartFromTemplate: handleStartFromTemplate,
+    onStartFromScratch: handleStartFromScratch,
+    quickTemplates: QUICK_TEMPLATES,
+    onStartFromQuickTemplate: handleStartFromQuickTemplate,
+    isAdminUser,
+    onOpenImportModal: openImportModal,
+  };
 
-  if (isAuthRoute) {
-    return (
-      <>
-        <AuthPage
-          user={user}
-          isSupabaseConfigured={isSupabaseConfigured}
-          signInEmail={signInEmail}
-          onEmailChange={setSignInEmail}
-          onGoogleSignIn={submitGoogleSignIn}
-          onSubmitSignIn={submitSignIn}
-          signInLoading={signInLoading}
-          onContinueToApp={() => {
-            window.history.replaceState(null, "", "/");
-            setMode("onboarding");
-          }}
-        />
-        <ToastLayer toasts={toasts} />
-      </>
-    );
-  }
+  const builderProps = {
+    tripData,
+    onSave: handleSaveAndPreview,
+    onCancel: handleCancelEdit,
+    onHome: handleGoHome,
+    onReset: handleReset,
+    initialTab: builderStartTab,
+    isAdmin: isAdminUser,
+  };
 
-  // Onboarding screen
-  if (mode === 'onboarding') {
-    return (
-      <>
-        <OnboardingScreen
-          onboardingPage={onboardingPage}
-          onSwitchPage={(page) => {
-            setOnboardingPage(page);
-            window.history.pushState(null, "", page === "trips" ? "/app" : "/new");
-          }}
-          user={user}
-          onGoCreate={() => { setOnboardingPage("create"); window.history.pushState(null, "", "/new"); }}
-          onSignOut={handleSignOut}
-          onSignIn={handleSignIn}
-          savedUpcomingTrips={savedUpcomingTrips}
-          savedPastTrips={savedPastTrips}
-          showPastSavedTrips={showPastSavedTrips}
-          onTogglePast={() => setShowPastSavedTrips((prev) => !prev)}
-          onOpenTrip={handleOpenCloudTrip}
-          extractCoverImage={extractCoverImage}
-          formatVisibilityLabel={formatVisibilityLabel}
-          onStartFromTemplate={handleStartFromTemplate}
-          onStartFromScratch={handleStartFromScratch}
-          quickTemplates={QUICK_TEMPLATES}
-          onStartFromQuickTemplate={handleStartFromQuickTemplate}
-          isAdminUser={isAdminUser}
-          onOpenImportModal={openImportModal}
-        />
-        <AppOverlays {...overlayProps} />
-      </>
-    );
-  }
+  const viewProps = {
+    activePaletteBg: activePalette.bg,
+    tripTitle: tripConfig.title,
+    isSharedCloudTrip,
+    canCollaborateOnSharedTrip,
+    copiedFromOwnerId: copiedFrom?.ownerId,
+    onGoHome: handleGoHome,
+    view,
+    onChangeView: setView,
+    filter,
+    onChangeFilter: setFilter,
+    onShare: () => handleShare(setShowShareModal),
+    canSaveSharedCopy,
+    onSaveSharedCopy: handleSaveSharedCopy,
+    cloudSaving,
+    canEditCurrentTrip,
+    onEditTrip: handleEditTrip,
+    onReset: handleReset,
+    user,
+    onSignIn: handleSignIn,
+    onSignOut: handleSignOut,
+    tripConfig,
+    cloudSlug,
+    cloudTripId,
+    isSupabaseConfigured,
+    flights,
+    days,
+    filtered,
+    showMaps,
+    imgClass,
+    selectedId,
+    onSelectDay: setSelectedId,
+    dayBadges,
+    selectedDay,
+    activePaletteCard: activePalette.card,
+  };
 
-  // Loading state
-  if (mode === 'loading') {
-    return <LoadingScreen />;
-  }
-
-  // Builder mode
-  if (mode === 'builder') {
-    return (
-      <>
-        <BuilderScreen
-          tripData={tripData}
-          onSave={handleSaveAndPreview}
-          onCancel={handleCancelEdit}
-          onHome={handleGoHome}
-          onReset={handleReset}
-          initialTab={builderStartTab}
-          isAdmin={isAdminUser}
-        />
-        <AppOverlays {...overlayProps} />
-      </>
-    );
-  }
-
-  // View mode
   return (
-    <>
-      <ViewScreen
-        activePaletteBg={activePalette.bg}
-        tripTitle={tripConfig.title}
-        isSharedCloudTrip={isSharedCloudTrip}
-        canCollaborateOnSharedTrip={canCollaborateOnSharedTrip}
-        copiedFromOwnerId={copiedFrom?.ownerId}
-        onGoHome={handleGoHome}
-        view={view}
-        onChangeView={setView}
-        filter={filter}
-        onChangeFilter={setFilter}
-        onShare={() => handleShare(setShowShareModal)}
-        canSaveSharedCopy={canSaveSharedCopy}
-        onSaveSharedCopy={handleSaveSharedCopy}
-        cloudSaving={cloudSaving}
-        canEditCurrentTrip={canEditCurrentTrip}
-        onEditTrip={handleEditTrip}
-        onReset={handleReset}
-        user={user}
-        onSignIn={handleSignIn}
-        onSignOut={handleSignOut}
-        tripConfig={tripConfig}
-        cloudSlug={cloudSlug}
-        cloudTripId={cloudTripId}
-        isSupabaseConfigured={isSupabaseConfigured}
-        flights={flights}
-        days={days}
-        filtered={filtered}
-        showMaps={showMaps}
-        imgClass={imgClass}
-        selectedId={selectedId}
-        onSelectDay={setSelectedId}
-        dayBadges={dayBadges}
-        selectedDay={selectedDay}
-        activePaletteCard={activePalette.card}
-      />
-      <AppOverlays {...overlayProps} />
-    </>
+    <AppModeRouter
+      isAuthRoute={isAuthRoute}
+      isPrivacyRoute={isPrivacyRoute}
+      isTermsRoute={isTermsRoute}
+      mode={mode}
+      authProps={authProps}
+      onboardingProps={onboardingProps}
+      builderProps={builderProps}
+      viewProps={viewProps}
+      overlayProps={overlayProps}
+    />
   );
 }
