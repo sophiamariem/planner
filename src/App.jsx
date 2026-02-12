@@ -1581,7 +1581,10 @@ export default function TripPlannerApp() {
                       </p>
                       <button
                         type="button"
-                        onClick={handleSignIn}
+                        onClick={() => {
+                          setShowShareModal(false);
+                          handleSignIn();
+                        }}
                         className="px-3 py-1.5 rounded-lg bg-zinc-900 text-white text-xs font-medium hover:bg-black"
                       >
                         Create Account / Sign In
