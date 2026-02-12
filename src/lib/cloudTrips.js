@@ -5,6 +5,14 @@ const SLUG_SUFFIX_LEN = 4;
 const MAX_SLUG_LEN = 28;
 const DEFAULT_MEDIA_BUCKET = process.env.REACT_APP_SUPABASE_STORAGE_BUCKET || 'trip-media';
 
+function getAuthRedirectUrl() {
+  if (process.env.REACT_APP_AUTH_REDIRECT_URL) return process.env.REACT_APP_AUTH_REDIRECT_URL;
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return `${window.location.origin}/auth-callback`;
+  }
+  return 'http://localhost:3000/auth-callback';
+}
+
 async function parseJson(response, fallback = 'Request failed.') {
   let body = null;
   try {
@@ -63,7 +71,7 @@ export async function signInWithMagicLink(email) {
   if (!isSupabaseConfigured) throw new Error('Sign in is unavailable right now.');
 
   const { url, anonKey } = getSupabaseConfig();
-  const redirectTo = window.location.origin + window.location.pathname;
+  const redirectTo = getAuthRedirectUrl();
 
   const response = await fetch(`${url}/auth/v1/otp`, {
     method: 'POST',
@@ -85,7 +93,7 @@ export function signInWithGoogle() {
   if (!isSupabaseConfigured) throw new Error('Google sign-in is unavailable right now.');
 
   const { url } = getSupabaseConfig();
-  const redirectTo = window.location.origin + window.location.pathname;
+  const redirectTo = getAuthRedirectUrl();
   const authUrl = `${url}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}`;
   window.location.assign(authUrl);
 }
