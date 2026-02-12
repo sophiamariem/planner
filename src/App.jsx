@@ -1031,11 +1031,11 @@ export default function TripPlannerApp() {
             <div className="flex items-center gap-3">
               <img
                 src="/favicon.png"
-                alt="plnr.guide logo"
+                alt="PLNR logo"
                 className="w-10 h-10 rounded-xl border border-zinc-200 bg-white object-cover shadow-sm"
               />
               <div>
-                <h1 className="text-2xl font-black text-zinc-900">plnr.guide</h1>
+                <h1 className="text-2xl font-black text-zinc-900">PLNR</h1>
                 <p className="text-sm text-zinc-600">Plan, save, and share your trips</p>
               </div>
             </div>
@@ -1305,8 +1305,8 @@ export default function TripPlannerApp() {
         <div className="max-w-5xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <img src="/favicon.png" alt="plnr.guide" className="w-6 h-6 rounded-md border border-zinc-200 bg-white object-cover" />
-              <span className="text-xs font-semibold tracking-wide text-blue-700">plnr.guide</span>
+              <img src="/favicon.png" alt="PLNR" className="w-6 h-6 rounded-md border border-zinc-200 bg-white object-cover" />
+              <span className="text-xs font-semibold tracking-wide text-blue-700">PLNR</span>
             </div>
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-zinc-900">{tripConfig.title}</h1>
           </div>

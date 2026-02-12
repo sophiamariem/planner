@@ -41,7 +41,7 @@ export default function AuthScreen({ onAuthStarted, onToast }) {
         <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: '#111827', alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ color: '#fff', fontSize: 22 }}>✈︎</Text>
         </View>
-        <Text style={{ fontSize: 30, fontWeight: '800', color: '#111827' }}>plnr.guide</Text>
+        <Text style={{ fontSize: 30, fontWeight: '800', color: '#111827' }}>PLNR</Text>
         <Text style={{ color: '#6b7280', textAlign: 'center' }}>Sign in to access your saved trips and keep plans synced.</Text>
       </View>
 
