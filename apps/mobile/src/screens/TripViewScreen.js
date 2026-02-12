@@ -545,14 +545,6 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
                 </View>
               </View>
 
-              <DayPhotoLayout photos={day.photos || []} query={day.photoQ || day.title} />
-
-              {day.route ? (
-                <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, backgroundColor: '#fafafa', paddingHorizontal: 12, paddingVertical: 8 }}>
-                  <Text style={{ color: '#374151', fontSize: 13, fontWeight: '600' }}>Route: {normalizeArrowText(day.route)}</Text>
-                </View>
-              ) : null}
-
               {(day.notes || []).length > 0 ? (
                 <LinearGradient
                   colors={['#fef3c7', '#fce7f3']}
@@ -574,6 +566,14 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
                 <Text style={{ color: '#9ca3af', fontSize: 13 }}>No notes for this day.</Text>
               )}
 
+              <DayPhotoLayout photos={day.photos || []} query={day.photoQ || day.title} />
+
+              {day.route ? (
+                <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, backgroundColor: '#fafafa', paddingHorizontal: 12, paddingVertical: 8 }}>
+                  <Text style={{ color: '#374151', fontSize: 13, fontWeight: '600' }}>Route: {normalizeArrowText(day.route)}</Text>
+                </View>
+              ) : null}
+
               {Array.isArray(day.pins) && day.pins.length > 0 ? (
                 <View style={{ gap: 6 }}>
                   {String(day.route || '').trim() && getMapPreviewUrls(day.pins).length > 0 ? (
@@ -587,7 +587,6 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
                       />
                     </Pressable>
                   ) : null}
-                  <Text style={{ color: '#111827', fontWeight: '700', fontSize: 13 }}>Locations</Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                     {day.pins.map((pin, pinIndex) => (
                       <Pressable key={`${pin?.name || 'pin'}-${pinIndex}`} onPress={() => openPinInMaps(pin)} style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 999, backgroundColor: '#eff6ff', paddingHorizontal: 11, paddingVertical: 5 }}>
