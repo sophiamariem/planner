@@ -52,6 +52,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
     const [showValidationPanel, setShowValidationPanel] = useState(false);
     const [showPreviewConfirm, setShowPreviewConfirm] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [savingInProgress, setSavingInProgress] = useState(false);
     const [autosaveState, setAutosaveState] = useState("saved");
     const [lastSavedAt, setLastSavedAt] = useState(null);
     const hasMountedRef = useRef(false);
@@ -152,7 +153,8 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
         return Boolean(String(day?.dow || "").trim() && String(day?.date || "").trim() && String(day?.id || "").trim());
     }
 
-    const handleSaveClick = () => {
+    const handleSaveClick = async () => {
+        if (savingInProgress) return;
         if (validationIssues.length > 0) {
             setShowValidationPanel(true);
             pushToast("Fix required items before preview.", "error");
@@ -162,10 +164,18 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
         const normalizedConfig = hydrateConfig(config);
         const normalizedDays = hydrateDays(days, normalizedConfig);
         const normalizedFlights = flights.map(hydrateFlight);
-        onSave({ tripConfig: normalizedConfig, days: normalizedDays, flights: normalizedFlights, ll: locations, palette, dayBadges });
+        setSavingInProgress(true);
+        try {
+            await onSave({ tripConfig: normalizedConfig, days: normalizedDays, flights: normalizedFlights, ll: locations, palette, dayBadges });
+        } catch (error) {
+            pushToast(error?.message || "Could not save trip.", "error");
+        } finally {
+            setSavingInProgress(false);
+        }
     };
 
     const handlePreviewClick = () => {
+        if (savingInProgress) return;
         if (hasUnsavedChanges) {
             setShowPreviewConfirm(true);
             return;
@@ -1013,15 +1023,26 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
                             </button>
                             <button
                                 onClick={handlePreviewClick}
-                                className="px-4 py-2 rounded-lg border border-zinc-300 hover:bg-zinc-50 text-sm font-medium"
+                                disabled={savingInProgress}
+                                aria-disabled={savingInProgress}
+                                title={savingInProgress ? "Save in progress" : undefined}
+                                className={`px-4 py-2 rounded-lg border text-sm font-medium ${
+                                    savingInProgress
+                                        ? "border-zinc-200 text-zinc-400 bg-zinc-50 cursor-not-allowed"
+                                        : "border-zinc-300 hover:bg-zinc-50"
+                                }`}
                             >
                                 Preview
                             </button>
                             <button
                                 onClick={handleSaveClick}
-                                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium"
+                                disabled={savingInProgress}
+                                aria-disabled={savingInProgress}
+                                className={`px-4 py-2 rounded-lg text-white text-sm font-medium ${
+                                    savingInProgress ? "bg-blue-400 cursor-wait" : "bg-blue-600 hover:bg-blue-700"
+                                }`}
                             >
-                                Save
+                                {savingInProgress ? "Saving..." : "Save"}
                             </button>
                             <details className="relative">
                                 <summary className="list-none cursor-pointer px-3 py-2 rounded-lg border border-zinc-300 text-sm hover:bg-zinc-50">
@@ -1760,6 +1781,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setShowPreviewConfirm(false)}
+                                disabled={savingInProgress}
                                 className="flex-1 px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium"
                             >
                                 Cancel
@@ -1770,18 +1792,22 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
                                     setHasUnsavedChanges(false);
                                     onCancel();
                                 }}
+                                disabled={savingInProgress}
                                 className="flex-1 px-4 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 text-sm font-medium"
                             >
                                 Discard
                             </button>
                             <button
-                                onClick={() => {
+                                onClick={async () => {
                                     setShowPreviewConfirm(false);
-                                    handleSaveClick();
+                                    await handleSaveClick();
                                 }}
-                                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                                disabled={savingInProgress}
+                                className={`flex-1 px-4 py-2 text-white rounded-lg text-sm font-medium ${
+                                    savingInProgress ? "bg-blue-400 cursor-wait" : "bg-blue-600 hover:bg-blue-700"
+                                }`}
                             >
-                                Save & Preview
+                                {savingInProgress ? "Saving..." : "Save & Preview"}
                             </button>
                         </div>
                     </aside>
