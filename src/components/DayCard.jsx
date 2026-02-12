@@ -44,20 +44,18 @@ export default function DayCard({ d, showMaps = true, imgClass = "h-56 md:h-72" 
                                 </div>
                             </div>
                             <div className="order-1 md:order-2">
-                                <div className="flex flex-wrap gap-2">
-                                    {d.notes?.map((n, i) => (
-                                        <Chip key={i} className={`${palette.note}`}>{normalizeArrowText(n)}</Chip>
-                                    ))}
-                                </div>
                                 <div className="mt-3 rounded-2xl p-3 bg-gradient-to-br from-amber-100 to-pink-100">
                                     <div className="text-xs text-zinc-600">Plan</div>
                                     <ol className="mt-1 space-y-2">
-                                        {(d.pins || []).map((p, i) => (
-                                            <li key={i} className="flex items-center gap-2">
+                                        {(d.notes || []).map((note, i) => (
+                                            <li key={i} className="flex items-start gap-2">
                                                 <span className="w-6 h-6 rounded-full bg-zinc-900 text-white grid place-content-center text-xs font-bold">{i+1}</span>
-                                                <a className="text-sm font-medium underline decoration-dashed" href={mapSearch(p.q)} target="_blank" rel="noopener noreferrer">{p.name}</a>
+                                                <span className="text-sm font-medium text-zinc-800">{normalizeArrowText(note)}</span>
                                             </li>
                                         ))}
+                                        {(!d.notes || d.notes.length === 0) && (
+                                            <li className="text-sm text-zinc-500">No notes added for this day.</li>
+                                        )}
                                     </ol>
                                 </div>
                             </div>
