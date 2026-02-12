@@ -123,6 +123,17 @@ function fallbackPhotoUri(query, index = 0) {
   return `https://picsum.photos/seed/${seed}-${index}/1200/800`;
 }
 
+function proxyImageUris(uri) {
+  const raw = String(uri || '').trim();
+  if (!raw) return [];
+  const stripped = raw.replace(/^https?:\/\//i, '');
+  const encoded = encodeURIComponent(stripped);
+  return [
+    `https://images.weserv.nl/?url=${encoded}&w=1600&output=jpg`,
+    `https://wsrv.nl/?url=${encoded}&w=1600&output=jpg`,
+  ];
+}
+
 function getMapPreviewUrls(pins = []) {
   const valid = (pins || []).filter((p) => Array.isArray(p?.ll) && p.ll.length === 2).slice(0, 8);
   if (!valid.length) return [];
@@ -143,16 +154,34 @@ function getMapPreviewUrls(pins = []) {
 }
 
 function RemoteImage({ uri, fallbackUri, fallbackUris = [], style, resizeMode = 'cover' }) {
+  const fallbackList = Array.isArray(fallbackUris) ? fallbackUris : [];
+  const candidatesKey = useMemo(
+    () => [uri, ...fallbackList, fallbackUri].map((v) => String(v || '').trim()).filter(Boolean).join('|'),
+    [uri, fallbackUri, fallbackList.join('|')],
+  );
   const candidates = useMemo(() => {
-    const list = [uri, ...(Array.isArray(fallbackUris) ? fallbackUris : []), fallbackUri].filter((v) => String(v || '').trim());
+    const list = [uri, ...fallbackList, fallbackUri].filter((v) => String(v || '').trim());
     return [...new Set(list)];
-  }, [uri, fallbackUri, fallbackUris]);
+  }, [candidatesKey]);
   const [sourceIndex, setSourceIndex] = useState(0);
+  const [loaded, setLoaded] = useState(false);
   const sourceUri = candidates[sourceIndex] || '';
 
   useEffect(() => {
     setSourceIndex(0);
-  }, [candidates]);
+  }, [candidatesKey]);
+
+  useEffect(() => {
+    setLoaded(false);
+  }, [sourceUri]);
+
+  useEffect(() => {
+    if (!sourceUri || loaded) return undefined;
+    const timeout = setTimeout(() => {
+      setSourceIndex((prev) => Math.min(prev + 1, candidates.length - 1));
+    }, 2800);
+    return () => clearTimeout(timeout);
+  }, [sourceUri, loaded, candidates.length]);
 
   if (!sourceUri) {
     return <View style={[style, { backgroundColor: '#e5e7eb' }]} />;
@@ -162,6 +191,7 @@ function RemoteImage({ uri, fallbackUri, fallbackUris = [], style, resizeMode = 
       source={{ uri: sourceUri }}
       style={style}
       resizeMode={resizeMode}
+      onLoad={() => setLoaded(true)}
       onError={() => {
         setSourceIndex((prev) => Math.min(prev + 1, candidates.length - 1));
       }}
@@ -252,7 +282,7 @@ function DayPhotoLayout({ photos = [], query = '' }) {
   if (list.length === 1) {
     return (
       <View style={{ width: '100%', height: 280, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
-        <RemoteImage uri={list[0]} fallbackUri={fallbackPhotoUri(query, 0)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        <RemoteImage uri={list[0]} fallbackUris={proxyImageUris(list[0])} fallbackUri={fallbackPhotoUri(query, 0)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
       </View>
     );
   }
@@ -262,7 +292,7 @@ function DayPhotoLayout({ photos = [], query = '' }) {
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {list.map((uri, i) => (
           <View key={`${uri}-${i}`} style={{ flex: 1, height: 220, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
-            <RemoteImage uri={uri} fallbackUri={fallbackPhotoUri(query, i)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            <RemoteImage uri={uri} fallbackUris={proxyImageUris(uri)} fallbackUri={fallbackPhotoUri(query, i)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           </View>
         ))}
       </View>
@@ -273,14 +303,14 @@ function DayPhotoLayout({ photos = [], query = '' }) {
   return (
     <View style={{ flexDirection: 'row', gap: 8 }}>
       <View style={{ flex: 1.7, height: 280, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
-        <RemoteImage uri={list[0]} fallbackUri={fallbackPhotoUri(query, 0)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        <RemoteImage uri={list[0]} fallbackUris={proxyImageUris(list[0])} fallbackUri={fallbackPhotoUri(query, 0)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
       </View>
       <View style={{ flex: 1, gap: 8 }}>
         <View style={{ flex: 1, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
-          <RemoteImage uri={list[1]} fallbackUri={fallbackPhotoUri(query, 1)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          <RemoteImage uri={list[1]} fallbackUris={proxyImageUris(list[1])} fallbackUri={fallbackPhotoUri(query, 1)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
         </View>
         <View style={{ flex: 1, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#e5e7eb' }}>
-          <RemoteImage uri={list[2]} fallbackUri={fallbackPhotoUri(query, 2)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          <RemoteImage uri={list[2]} fallbackUris={proxyImageUris(list[2])} fallbackUri={fallbackPhotoUri(query, 2)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           {extra > 0 ? (
             <View style={{ position: 'absolute', right: 8, bottom: 8, borderRadius: 999, backgroundColor: 'rgba(17,24,39,0.82)', paddingHorizontal: 8, paddingVertical: 3 }}>
               <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>+{extra}</Text>
@@ -394,7 +424,7 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
         <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, backgroundColor: '#ffffff', overflow: 'hidden' }}>
           {cover ? (
             <View style={{ width: '100%', height: 240 }}>
-              <RemoteImage uri={cover} fallbackUri={fallbackPhotoUri(title)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              <RemoteImage uri={cover} fallbackUris={proxyImageUris(cover)} fallbackUri={fallbackPhotoUri(title)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
             </View>
           ) : null}
           <View style={{ padding: 16, gap: 8 }}>
