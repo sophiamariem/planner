@@ -403,6 +403,10 @@ function getExtFromMime(type) {
   return 'jpg';
 }
 
+function isImageMime(type) {
+  return /^image\//i.test(String(type || '').trim());
+}
+
 async function uploadUrlToStorage(sourceUrl, cache = new Map()) {
   const clean = String(sourceUrl || '').trim();
   if (!isHttpUrl(clean)) return clean;
@@ -425,8 +429,10 @@ async function uploadUrlToStorage(sourceUrl, cache = new Map()) {
       try {
         const input = await fetch(candidate);
         if (!input.ok) continue;
+        const contentType = input.headers.get('content-type') || '';
+        if (contentType && !isImageMime(contentType)) continue;
         const nextBlob = await input.blob();
-        if (nextBlob && nextBlob.size) {
+        if (nextBlob && nextBlob.size && (!nextBlob.type || isImageMime(nextBlob.type))) {
           blob = nextBlob;
           break;
         }
@@ -445,7 +451,7 @@ async function uploadUrlToStorage(sourceUrl, cache = new Map()) {
         apikey: anonKey,
         Authorization: `Bearer ${token}`,
         'x-upsert': 'true',
-        'Content-Type': blob.type || `image/${ext}`,
+        'Content-Type': isImageMime(blob.type) ? blob.type : `image/${ext}`,
       },
       body: blob,
     });
