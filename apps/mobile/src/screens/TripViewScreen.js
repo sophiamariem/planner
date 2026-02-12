@@ -341,9 +341,45 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
   const tripFooter = String(tripData?.tripConfig?.footer || '').trim();
   const [hasOfflineCopy, setHasOfflineCopy] = useState(false);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
+  const [viewMode, setViewMode] = useState('cards');
   const shareUrl = buildShareUrl(tripRow);
   const isSharedNotOwned = Boolean(tripRow?.owner_id && currentUserId && tripRow.owner_id !== currentUserId);
   const copiedFrom = tripData?.tripConfig?.copiedFrom || null;
+  const selectedDay = days[activeDayIndex] || null;
+
+  const calendarMonths = useMemo(() => {
+    const dated = (days || [])
+      .map((d, i) => ({ index: i, iso: String(d?.isoDate || '').trim() }))
+      .filter((v) => /^\d{4}-\d{2}-\d{2}$/.test(v.iso));
+    const byIso = new Map(dated.map((v) => [v.iso, v.index]));
+    if (!dated.length) {
+      const fallbackYear = Number.isFinite(calendarYear) ? calendarYear : new Date().getFullYear();
+      const fallbackMonth = Number.isFinite(Number(tripData?.tripConfig?.calendar?.month))
+        ? Number(tripData?.tripConfig?.calendar?.month)
+        : new Date().getMonth();
+      return {
+        byIso,
+        months: [{ year: fallbackYear, month: fallbackMonth }],
+      };
+    }
+
+    const firstIso = dated[0].iso;
+    const lastIso = dated[dated.length - 1].iso;
+    const start = parseIsoDate(firstIso);
+    const end = parseIsoDate(lastIso);
+    if (!start || !end) {
+      return { byIso, months: [] };
+    }
+
+    const months = [];
+    const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+    const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+    while (cursor <= endMonth) {
+      months.push({ year: cursor.getFullYear(), month: cursor.getMonth() });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    return { byIso, months };
+  }, [days, calendarYear, tripData?.tripConfig?.calendar?.month]);
 
   useEffect(() => {
     let mounted = true;
@@ -356,6 +392,14 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
       mounted = false;
     };
   }, [tripId]);
+
+  useEffect(() => {
+    if (!days.length) {
+      setActiveDayIndex(0);
+      return;
+    }
+    setActiveDayIndex((prev) => Math.min(Math.max(prev, 0), days.length - 1));
+  }, [days.length]);
 
   const handleToggleOffline = async () => {
     const key = getOfflineKey(tripId);
@@ -381,6 +425,94 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
       scrollRef.current.scrollTo({ y: Math.max(0, y - 140), animated: true });
     }
   };
+
+  const renderDayCard = (day, index, withLayout = false) => (
+    <View
+      key={`${day?.id || index}-${index}`}
+      onLayout={withLayout ? (event) => { dayOffsetsRef.current[index] = event.nativeEvent.layout.y; } : undefined}
+      style={{
+        borderWidth: 1,
+        borderColor: activeDayIndex === index ? '#bfdbfe' : '#e5e7eb',
+        borderRadius: 18,
+        backgroundColor: activeDayIndex === index ? '#f8fbff' : '#ffffff',
+        padding: 16,
+        gap: 10,
+      }}
+    >
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+        <View style={{ flex: 1 }}>
+          <View style={{ alignItems: 'center', marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ borderRadius: 999, backgroundColor: '#2563eb', paddingHorizontal: 11, paddingVertical: 5 }}>
+                <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>{day?.dow || 'Day'}</Text>
+              </View>
+              <View style={{ borderRadius: 999, backgroundColor: '#c026d3', paddingHorizontal: 11, paddingVertical: 5 }}>
+                <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>{day?.date || day?.isoDate || ''}</Text>
+              </View>
+            </View>
+          </View>
+          <Text style={{ color: '#111827', fontWeight: '800', fontSize: 28, lineHeight: 34 }}>
+            {normalizeArrowText(normalizeDayTitle(day?.title, index, days.length))}
+          </Text>
+        </View>
+      </View>
+
+      {(day?.notes || []).length > 0 ? (
+        <LinearGradient
+          colors={['#fef3c7', '#fce7f3']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10, gap: 8 }}
+        >
+          <Text style={{ color: '#7c2d12', fontWeight: '700', fontSize: 13 }}>Plan</Text>
+          {(day?.notes || []).map((note, i) => (
+            <View key={`note-${i}`} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+              <View style={{ width: 22, height: 22, borderRadius: 999, backgroundColor: '#111827', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
+                <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>{i + 1}</Text>
+              </View>
+              <Text style={{ color: '#374151', fontSize: 14, flex: 1, lineHeight: 20 }}>{normalizeArrowText(note)}</Text>
+            </View>
+          ))}
+        </LinearGradient>
+      ) : (
+        <Text style={{ color: '#9ca3af', fontSize: 13 }}>No notes for this day.</Text>
+      )}
+
+      <DayPhotoLayout photos={day?.photos || []} query={day?.photoQ || day?.title} />
+
+      {day?.route ? (
+        <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, backgroundColor: '#fafafa', paddingHorizontal: 12, paddingVertical: 8 }}>
+          <Text style={{ color: '#374151', fontSize: 13, fontWeight: '600' }}>Route: {normalizeArrowText(day.route)}</Text>
+        </View>
+      ) : null}
+
+      {Array.isArray(day?.pins) && day.pins.length > 0 ? (
+        <View style={{ gap: 6 }}>
+          {String(day.route || '').trim() && getMapPreviewUrls(day.pins).length > 0 ? (
+            <Pressable onPress={() => openPinInMaps(day.pins[0])} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, overflow: 'hidden', backgroundColor: '#f8fafc' }}>
+              <RemoteImage
+                uri={getMapPreviewUrls(day.pins)[0]}
+                fallbackUris={getMapPreviewUrls(day.pins).slice(1)}
+                fallbackUri=""
+                style={{ width: '100%', height: 156, backgroundColor: '#f1f5f9' }}
+                resizeMode="cover"
+              />
+            </Pressable>
+          ) : null}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {day.pins.map((pin, pinIndex) => (
+              <Pressable key={`${pin?.name || 'pin'}-${pinIndex}`} onPress={() => openPinInMaps(pin)} style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 999, backgroundColor: '#eff6ff', paddingHorizontal: 11, paddingVertical: 5 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <Ionicons name="location-sharp" size={13} color="#1e3a8a" />
+                  <Text style={{ color: '#1e3a8a', fontSize: 13 }}>{pin?.name || 'Location'}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
 
   const openPinInMaps = async (pin) => {
     const url = getMapQueryUrl(pin);
@@ -491,6 +623,36 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
         </View>
 
         <View style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 16, backgroundColor: '#ffffff', padding: 12, gap: 8 }}>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Pressable
+              onPress={() => setViewMode('cards')}
+              style={{
+                borderWidth: 1,
+                borderColor: viewMode === 'cards' ? '#111827' : '#d1d5db',
+                backgroundColor: viewMode === 'cards' ? '#111827' : '#ffffff',
+                borderRadius: 999,
+                paddingHorizontal: 12,
+                paddingVertical: 7,
+              }}
+            >
+              <Text style={{ color: viewMode === 'cards' ? '#ffffff' : '#374151', fontSize: 12, fontWeight: '700' }}>Cards</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setViewMode('calendar')}
+              style={{
+                borderWidth: 1,
+                borderColor: viewMode === 'calendar' ? '#111827' : '#d1d5db',
+                backgroundColor: viewMode === 'calendar' ? '#111827' : '#ffffff',
+                borderRadius: 999,
+                paddingHorizontal: 12,
+                paddingVertical: 7,
+              }}
+            >
+              <Text style={{ color: viewMode === 'calendar' ? '#ffffff' : '#374151', fontSize: 12, fontWeight: '700' }}>Calendar</Text>
+            </Pressable>
+          </View>
+
+          {viewMode === 'cards' ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {days.map((day, index) => (
               <Pressable
@@ -511,6 +673,62 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
               </Pressable>
             ))}
           </ScrollView>
+          ) : (
+            <View style={{ gap: 10 }}>
+              {calendarMonths.months.map(({ year: y, month: m }) => {
+                const monthName = new Date(y, m, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' });
+                const firstDay = new Date(y, m, 1).getDay();
+                const firstMon = (firstDay + 6) % 7;
+                const daysIn = new Date(y, m + 1, 0).getDate();
+                const cells = [];
+                for (let i = 0; i < firstMon; i += 1) cells.push(null);
+                for (let d = 1; d <= daysIn; d += 1) cells.push(d);
+                while (cells.length % 7 !== 0) cells.push(null);
+
+                return (
+                  <View key={`${y}-${m}`} style={{ gap: 8 }}>
+                    <Text style={{ color: '#111827', fontWeight: '700', fontSize: 14 }}>{monthName}</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
+                        <Text key={`${monthName}-${d}`} style={{ width: `${100 / 7}%`, textAlign: 'center', color: '#6b7280', fontSize: 10, fontWeight: '700' }}>{d}</Text>
+                      ))}
+                    </View>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+                      {cells.map((dayNum, idx) => {
+                        if (dayNum === null) {
+                          return <View key={`${y}-${m}-blank-${idx}`} style={{ width: '13.2%', aspectRatio: 1 }} />;
+                        }
+                        const iso = `${y}-${String(m + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                        const dayIndex = calendarMonths.byIso.get(iso);
+                        const isActive = typeof dayIndex === 'number';
+                        const isSelected = isActive && dayIndex === activeDayIndex;
+                        return (
+                          <Pressable
+                            key={`${y}-${m}-${dayNum}`}
+                            onPress={() => isActive && setActiveDayIndex(dayIndex)}
+                            disabled={!isActive}
+                            style={{
+                              width: '13.2%',
+                              aspectRatio: 1,
+                              borderRadius: 12,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderWidth: 1,
+                              borderColor: isActive ? '#fbcfe8' : '#e5e7eb',
+                              backgroundColor: isSelected ? '#c026d3' : (isActive ? '#fdf2f8' : '#ffffff'),
+                              opacity: isActive ? 1 : 0.5,
+                            }}
+                          >
+                            <Text style={{ color: isSelected ? '#ffffff' : (isActive ? '#111827' : '#9ca3af'), fontSize: 12, fontWeight: '700' }}>{dayNum}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </View>
 
         {flights.length > 0 ? (
@@ -545,95 +763,9 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
         ) : null}
 
         <View style={{ gap: 12 }}>
-          {days.map((day, index) => (
-            <View
-              key={`${day.id || index}-${index}`}
-              onLayout={(event) => {
-                dayOffsetsRef.current[index] = event.nativeEvent.layout.y;
-              }}
-              style={{
-                borderWidth: 1,
-                borderColor: activeDayIndex === index ? '#bfdbfe' : '#e5e7eb',
-                borderRadius: 18,
-                backgroundColor: activeDayIndex === index ? '#f8fbff' : '#ffffff',
-                padding: 16,
-                gap: 10,
-              }}
-            >
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                <View style={{ flex: 1 }}>
-                  <View style={{ alignItems: 'center', marginBottom: 8 }}>
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <View style={{ borderRadius: 999, backgroundColor: '#2563eb', paddingHorizontal: 11, paddingVertical: 5 }}>
-                      <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>{day.dow || 'Day'}</Text>
-                    </View>
-                    <View style={{ borderRadius: 999, backgroundColor: '#c026d3', paddingHorizontal: 11, paddingVertical: 5 }}>
-                      <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>{day.date || day.isoDate || ''}</Text>
-                    </View>
-                    </View>
-                  </View>
-                  <Text style={{ color: '#111827', fontWeight: '800', fontSize: 28, lineHeight: 34 }}>
-                    {normalizeArrowText(normalizeDayTitle(day.title, index, days.length))}
-                  </Text>
-                </View>
-              </View>
-
-              {(day.notes || []).length > 0 ? (
-                <LinearGradient
-                  colors={['#fef3c7', '#fce7f3']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{ borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10, gap: 8 }}
-                >
-                  <Text style={{ color: '#7c2d12', fontWeight: '700', fontSize: 13 }}>Plan</Text>
-                  {(day.notes || []).map((note, i) => (
-                    <View key={`note-${i}`} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-                      <View style={{ width: 22, height: 22, borderRadius: 999, backgroundColor: '#111827', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
-                        <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>{i + 1}</Text>
-                      </View>
-                      <Text style={{ color: '#374151', fontSize: 14, flex: 1, lineHeight: 20 }}>{normalizeArrowText(note)}</Text>
-                    </View>
-                  ))}
-                </LinearGradient>
-              ) : (
-                <Text style={{ color: '#9ca3af', fontSize: 13 }}>No notes for this day.</Text>
-              )}
-
-              <DayPhotoLayout photos={day.photos || []} query={day.photoQ || day.title} />
-
-              {day.route ? (
-                <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, backgroundColor: '#fafafa', paddingHorizontal: 12, paddingVertical: 8 }}>
-                  <Text style={{ color: '#374151', fontSize: 13, fontWeight: '600' }}>Route: {normalizeArrowText(day.route)}</Text>
-                </View>
-              ) : null}
-
-              {Array.isArray(day.pins) && day.pins.length > 0 ? (
-                <View style={{ gap: 6 }}>
-                  {String(day.route || '').trim() && getMapPreviewUrls(day.pins).length > 0 ? (
-                    <Pressable onPress={() => openPinInMaps(day.pins[0])} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, overflow: 'hidden', backgroundColor: '#f8fafc' }}>
-                      <RemoteImage
-                        uri={getMapPreviewUrls(day.pins)[0]}
-                        fallbackUris={getMapPreviewUrls(day.pins).slice(1)}
-                        fallbackUri=""
-                        style={{ width: '100%', height: 156, backgroundColor: '#f1f5f9' }}
-                        resizeMode="cover"
-                      />
-                    </Pressable>
-                  ) : null}
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                    {day.pins.map((pin, pinIndex) => (
-                      <Pressable key={`${pin?.name || 'pin'}-${pinIndex}`} onPress={() => openPinInMaps(pin)} style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 999, backgroundColor: '#eff6ff', paddingHorizontal: 11, paddingVertical: 5 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                          <Ionicons name="location-sharp" size={13} color="#1e3a8a" />
-                          <Text style={{ color: '#1e3a8a', fontSize: 13 }}>{pin?.name || 'Location'}</Text>
-                        </View>
-                      </Pressable>
-                    ))}
-                  </View>
-                </View>
-              ) : null}
-            </View>
-          ))}
+          {viewMode === 'cards'
+            ? days.map((day, index) => renderDayCard(day, index, true))
+            : (selectedDay ? renderDayCard(selectedDay, activeDayIndex, false) : null)}
         </View>
       </ScrollView>
     </View>
