@@ -2,10 +2,7 @@ import { useEffect } from "react";
 import useFavicon from "./useFavicon";
 import useTripPlannerUiState from "./useTripPlannerUiState";
 import useTripCreationActions from "./useTripCreationActions";
-import useAuthActions from "./useAuthActions";
-import useShareActions from "./useShareActions";
 import useCloudTripLoader from "./useCloudTripLoader";
-import useTripNavigationActions from "./useTripNavigationActions";
 import { QUICK_TEMPLATES } from "../utils/tripTemplates";
 import { extractCoverImage, formatVisibilityLabel } from "../utils/tripMeta";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
@@ -14,6 +11,9 @@ import useToastManager from "./controller/useToastManager";
 import usePublishIssues from "./controller/usePublishIssues";
 import useOverlayProps from "./controller/useOverlayProps";
 import useScreenProps from "./controller/useScreenProps";
+import useTripAuthDomain from "./controller/useTripAuthDomain";
+import useTripShareDomain from "./controller/useTripShareDomain";
+import useTripNavigationDomain from "./controller/useTripNavigationDomain";
 
 export default function useTripPlannerController() {
   const { isAuthRoute, isPrivacyRoute, isTermsRoute } = useRouteFlags();
@@ -110,7 +110,7 @@ export default function useTripPlannerController() {
     submitSignIn,
     submitGoogleSignIn,
     handleSignOut,
-  } = useAuthActions({
+  } = useTripAuthDomain({
     signInEmail,
     setSignInLoading,
     setShowSignInModal,
@@ -159,7 +159,7 @@ export default function useTripPlannerController() {
     handleShare,
     handleShareAccessChange,
     copyShareLink,
-  } = useShareActions({
+  } = useTripShareDomain({
     user,
     tripData,
     cloudTripId,
@@ -195,7 +195,7 @@ export default function useTripPlannerController() {
     handleReset,
     confirmReset,
     handleFixIssue,
-  } = useTripNavigationActions({
+  } = useTripNavigationDomain({
     user,
     myTrips,
     cloudTripId,
