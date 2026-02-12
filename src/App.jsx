@@ -465,6 +465,7 @@ export default function TripPlannerApp() {
     !isViewOnly &&
     (!cloudTripId || isCloudOwnedByCurrentUser || canCollaborateOnSharedTrip)
   );
+  const canSaveSharedCopy = Boolean(user && isSharedCloudTrip && tripData);
 
   useFavicon(tripConfig.favicon);
 
@@ -562,6 +563,41 @@ export default function TripPlannerApp() {
     } catch (error) {
       console.error("Save failed:", error);
       pushToast(error.message || "Could not save trip.", "error");
+    } finally {
+      setCloudSaving(false);
+    }
+  };
+
+  const handleSaveSharedCopy = async () => {
+    if (!isSupabaseConfigured) {
+      pushToast("Saved trips are unavailable right now.", "error");
+      return;
+    }
+    if (!user) {
+      pushToast("Sign in first to save this trip.", "error");
+      return;
+    }
+    if (!tripData) {
+      pushToast("No trip loaded.", "error");
+      return;
+    }
+
+    setCloudSaving(true);
+    try {
+      const row = await saveTripToCloud(tripData, "private", "view");
+      setCloudTripId(row.id);
+      setCloudSlug(row.slug || null);
+      setShareToken(null);
+      setCloudVisibility(row.visibility || "private");
+      setCloudShareAccess(row.share_access || "view");
+      setCloudOwnerId(row.owner_id || user.id);
+      const cloudHash = row.slug ? `#t=${encodeURIComponent(row.slug)}` : `#cloud=${encodeURIComponent(row.id)}`;
+      window.history.pushState(null, '', cloudHash);
+      await refreshMyTrips();
+      pushToast("Saved to your trips.", "success");
+    } catch (error) {
+      console.error("Save shared copy failed:", error);
+      pushToast(error.message || "Could not save this trip.", "error");
     } finally {
       setCloudSaving(false);
     }
@@ -1312,6 +1348,17 @@ export default function TripPlannerApp() {
             <div className="flex items-center gap-2 mb-1">
               <img src="/favicon.png" alt="PLNR" className="w-6 h-6 rounded-md border border-zinc-200 bg-white object-cover" />
               <span className="text-xs font-semibold tracking-wide text-blue-700">PLNR</span>
+              {isSharedCloudTrip && (
+                <span
+                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                    canCollaborateOnSharedTrip
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : "bg-amber-50 text-amber-700 border-amber-200"
+                  }`}
+                >
+                  {canCollaborateOnSharedTrip ? "Shared (collaborative)" : "Shared (not yours)"}
+                </span>
+              )}
             </div>
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-zinc-900">{tripConfig.title}</h1>
           </div>
@@ -1331,6 +1378,16 @@ export default function TripPlannerApp() {
             </div>
             <input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Filter days, places, notes" className="px-3 py-2 rounded-2xl border border-zinc-300 bg-white text-sm outline-none focus:ring-2 focus:ring-pink-400"/>
             <button type="button" onClick={handleShare} className="px-3 py-2 rounded-2xl bg-blue-600 text-white text-sm hover:bg-blue-700">Share</button>
+            {canSaveSharedCopy && (
+              <button
+                type="button"
+                onClick={handleSaveSharedCopy}
+                disabled={cloudSaving}
+                className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-white disabled:opacity-50"
+              >
+                {cloudSaving ? "Saving..." : "Save to My Trips"}
+              </button>
+            )}
             {canEditCurrentTrip && (
               <button type="button" onClick={handleEditTrip} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-white">Edit</button>
             )}
