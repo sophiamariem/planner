@@ -294,7 +294,7 @@ export default function HomeScreen({ user, trips, loading, onRefresh, onSelectTr
             <Text style={{ color: '#1d4ed8', fontSize: 12, fontWeight: '700' }}>{trips.length} total</Text>
           </View>
           <View style={{ borderWidth: 1, borderColor: '#dcfce7', backgroundColor: '#f0fdf4', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
-            <Text style={{ color: '#166534', fontSize: 12, fontWeight: '700' }}>Cloud synced</Text>
+            <Text style={{ color: '#166534', fontSize: 12, fontWeight: '700' }}>Synced</Text>
           </View>
         </View>
       </View>

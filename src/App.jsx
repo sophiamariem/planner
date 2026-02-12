@@ -645,7 +645,7 @@ export default function TripPlannerApp() {
 
   const handleGenerateShareToken = async () => {
     if (!cloudTripId) {
-      pushToast("Save to cloud first before creating a share link.", "error");
+      pushToast("Save this trip first before creating a share link.", "error");
       return;
     }
     try {
@@ -845,7 +845,7 @@ export default function TripPlannerApp() {
 
   const copyShareLink = () => {
     if (!canCopyShareLink) {
-      pushToast("Save to cloud first for a shareable link.", "error");
+      pushToast("Save this trip first for a shareable link.", "error");
       return;
     }
     const shareURL = generateShareURL(tripData, { viewOnly: isViewOnly && !cloudTripId, source: sourceUrl, cloudId: cloudTripId, cloudSlug, shareToken });
@@ -1291,7 +1291,7 @@ export default function TripPlannerApp() {
               {isSupabaseConfigured && (
                 <li className="flex items-center gap-2">
                   <span className="text-green-600">✓</span>
-                  Optional cloud account with saved trips
+                  Optional account with saved trips
                 </li>
               )}
             </ul>
@@ -1428,7 +1428,7 @@ export default function TripPlannerApp() {
             <h2 className="text-2xl font-bold text-zinc-900 mb-4">Share Your Trip</h2>
             <p className="text-zinc-600 mb-4">
               {isLocalDraftShare
-                ? "You're sharing a local draft link, so it will be long. Save to cloud for a short, clean link."
+                ? "You're sharing a local draft link, so it will be long. Save first for a short, clean link."
                 : "Copy this link to share your trip. Saved trips use short slug links when available."}
             </p>
             {isLocalDraftShare && (
@@ -1483,7 +1483,7 @@ export default function TripPlannerApp() {
               </div>
               {!canCopyShareLink && (
                 <p className="text-xs text-zinc-500">
-                  Save to cloud first to copy a clean share link.
+                  Save first to copy a clean share link.
                 </p>
               )}
 
@@ -1539,7 +1539,7 @@ export default function TripPlannerApp() {
               {sourceUrl && (
                 <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
                   <p className="text-xs text-green-800 font-medium">
-                    ✨ Live Link Active: This trip is synced with the cloud and will stay updated!
+                    ✨ Live Link Active: This trip stays synced and will stay updated.
                   </p>
                   <button
                     onClick={() => { setSourceUrl(null); }}
