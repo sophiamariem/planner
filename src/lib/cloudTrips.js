@@ -407,6 +407,28 @@ function isImageMime(type) {
   return /^image\//i.test(String(type || '').trim());
 }
 
+async function tryImportImageViaEdgeFunction(sourceUrl, cache = new Map()) {
+  const clean = String(sourceUrl || '').trim();
+  if (!clean || cache.has(clean)) return cache.get(clean) || '';
+  try {
+    const response = await authedFetch('/functions/v1/import-image', {
+      method: 'POST',
+      body: JSON.stringify({
+        sourceUrl: clean,
+        bucket: DEFAULT_MEDIA_BUCKET,
+      }),
+    });
+    if (!response.ok) return '';
+    const data = await response.json().catch(() => null);
+    const imported = String(data?.publicUrl || '').trim();
+    if (!isHttpUrl(imported)) return '';
+    cache.set(clean, imported);
+    return imported;
+  } catch {
+    return '';
+  }
+}
+
 async function uploadUrlToStorage(sourceUrl, cache = new Map()) {
   const clean = String(sourceUrl || '').trim();
   if (!isHttpUrl(clean)) return clean;
@@ -420,6 +442,9 @@ async function uploadUrlToStorage(sourceUrl, cache = new Map()) {
 
   const token = getAccessToken();
   if (!token) return clean;
+
+  const importedByFunction = await tryImportImageViaEdgeFunction(clean, cache);
+  if (importedByFunction) return importedByFunction;
 
   const candidateFetchUrls = [clean, ...proxyImageSourceUrls(clean)];
 
