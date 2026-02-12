@@ -953,6 +953,25 @@ export default function TripPlannerApp() {
     </div>
   );
 
+  const toastLayer = toasts.length > 0 && (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex flex-col gap-2 items-center">
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          className={`rounded-xl border px-4 py-3 text-sm shadow-lg max-w-[90vw] sm:max-w-md ${
+            toast.tone === "success"
+              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+              : toast.tone === "error"
+                ? "bg-red-50 border-red-200 text-red-700"
+                : "bg-white border-zinc-200 text-zinc-800"
+          }`}
+        >
+          {toast.message}
+        </div>
+      ))}
+    </div>
+  );
+
   if (isAuthRoute) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-zinc-100 flex items-center justify-center p-4">
@@ -1018,6 +1037,7 @@ export default function TripPlannerApp() {
             </div>
           )}
         </div>
+        {toastLayer}
       </div>
     );
   }
@@ -1263,6 +1283,7 @@ export default function TripPlannerApp() {
           )}
         </div>
         {signInDrawer}
+        {toastLayer}
       </div>
     );
   }
@@ -1294,6 +1315,7 @@ export default function TripPlannerApp() {
         />
         {signInDrawer}
         {resetDrawer}
+        {toastLayer}
       </>
     );
   }
@@ -1347,24 +1369,7 @@ export default function TripPlannerApp() {
         </div>
       </header>
 
-      {toasts.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex flex-col gap-2 items-center">
-          {toasts.map((toast) => (
-            <div
-              key={toast.id}
-              className={`rounded-xl border px-4 py-3 text-sm shadow-lg max-w-[90vw] sm:max-w-md ${
-                toast.tone === "success"
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                  : toast.tone === "error"
-                    ? "bg-red-50 border-red-200 text-red-700"
-                    : "bg-white border-zinc-200 text-zinc-800"
-              }`}
-            >
-              {toast.message}
-            </div>
-          ))}
-        </div>
-      )}
+      {toastLayer}
 
       {signInDrawer}
 
