@@ -2,6 +2,7 @@ import 'react-native-gesture-handler';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, SafeAreaView, StatusBar, Text, View } from 'react-native';
 import * as Linking from 'expo-linking';
+import { LinearGradient } from 'expo-linear-gradient';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AuthScreen from './src/screens/AuthScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -194,11 +195,14 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 260, backgroundColor: '#dbeafe' }} />
-        <View style={{ position: 'absolute', top: 180, left: -80, width: 240, height: 240, borderRadius: 999, backgroundColor: '#e0e7ff' }} />
-        <View style={{ position: 'absolute', top: 90, right: -70, width: 210, height: 210, borderRadius: 999, backgroundColor: '#dcfce7' }} />
+      <StatusBar barStyle="dark-content" backgroundColor="#eff6ff" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#eff6ff' }}>
+        <LinearGradient
+          colors={['#eff6ff', '#f3e8ff', '#fce7f3']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        />
 
         <View style={{ flex: 1, padding: 16 }}>
           {user ? (
