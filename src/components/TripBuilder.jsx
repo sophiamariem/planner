@@ -3,7 +3,7 @@ import { palette } from '../data/trip';
 import { validateTripData } from '../utils/tripData';
 import DayMap from './DayMap';
 
-export default function TripBuilder({ tripData, onSave, onCancel, onHome, onReset, initialTab = "basic" }) {
+export default function TripBuilder({ tripData, onSave, onCancel, onHome, onReset, initialTab = "basic", isAdmin = false }) {
     const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const UNSPLASH_ACCESS_KEY = process.env.REACT_APP_UNSPLASH_ACCESS_KEY;
@@ -20,7 +20,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
     const [flights, setFlights] = useState(() => (tripData?.flights || []).map(hydrateFlight));
     const [locations, setLocations] = useState(tripData?.ll || {});
     const [dayBadges, setDayBadges] = useState(tripData?.dayBadges || {});
-    const [currentTab, setCurrentTab] = useState(initialTab);
+    const [currentTab, setCurrentTab] = useState(isAdmin || initialTab !== "JSON (Advanced)" ? initialTab : "basic");
     const [jsonInput, setJsonInput] = useState(JSON.stringify(tripData || {}, null, 2));
     const [jsonError, setJsonError] = useState("");
     const [newPinByDay, setNewPinByDay] = useState({});
@@ -45,6 +45,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
         selected: [],
     });
     const [toast, setToast] = useState(null);
+    const tabs = isAdmin ? ['basic', 'flights', 'days', 'JSON (Advanced)'] : ['basic', 'flights', 'days'];
 
     const pushToast = (message, tone = "info") => {
         setToast({ message, tone });
@@ -61,6 +62,12 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
     ];
 
     const validationIssues = buildValidationIssues();
+
+    useEffect(() => {
+        if (!isAdmin && currentTab === "JSON (Advanced)") {
+            setCurrentTab("basic");
+        }
+    }, [isAdmin, currentTab]);
 
     const addBadgeToDay = (day, emoji) => {
         const clean = String(emoji || "").trim();
@@ -852,6 +859,10 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
                 <div className="max-w-5xl mx-auto px-4 py-4">
                     <div className="flex items-center justify-between">
                         <div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <img src="/favicon.png" alt="plnr.guide" className="w-6 h-6 rounded-md border border-zinc-200 bg-white object-cover" />
+                                <span className="text-xs font-semibold tracking-wide text-blue-700">plnr.guide</span>
+                            </div>
                             <h1 className="text-2xl font-bold text-zinc-900">Trip Builder</h1>
                             <p className="text-xs text-zinc-500 mt-1">
                                 {autosaveState === "saving" ? "Saving draft..." : `Saved${lastSavedAt ? ` ${lastSavedAt.toLocaleTimeString()}` : ""}`}
@@ -868,7 +879,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
                                 onClick={onReset}
                                 className="px-4 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium"
                             >
-                                Reset Trip
+                                Reset
                             </button>
                             <button
                                 onClick={onCancel}
@@ -887,7 +898,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
 
                     {/* Tab Navigation */}
                     <div className="flex gap-2 mt-4 overflow-x-auto">
-                        {['basic', 'flights', 'days', 'JSON (Advanced)'].map(tab => (
+                        {tabs.map(tab => (
                             <button
                                 key={tab}
                                 onClick={() => {
@@ -1529,7 +1540,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
                     </div>
                 )}
 
-                {currentTab === 'JSON (Advanced)' && (
+                {isAdmin && currentTab === 'JSON (Advanced)' && (
                     <div className="bg-white rounded-lg p-6 shadow-sm space-y-6">
                         <div className="flex items-center justify-between">
                             <h2 className="text-xl font-bold text-zinc-900">Direct JSON Edit</h2>

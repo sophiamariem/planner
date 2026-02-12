@@ -928,7 +928,7 @@ export default function TripPlannerApp() {
             onClick={confirmReset}
             className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
           >
-            Reset Trip
+            Reset
           </button>
         </div>
       </aside>
@@ -1331,6 +1331,7 @@ export default function TripPlannerApp() {
           onHome={handleGoHome}
           onReset={handleReset}
           initialTab={builderStartTab}
+          isAdmin={isAdminUser}
         />
         {signInDrawer}
         {resetDrawer}
@@ -1385,8 +1386,8 @@ export default function TripPlannerApp() {
               <span>Home</span>
             </button>
             {canEditCurrentTrip && (
-              <button type="button" onClick={handleReset} className="px-3 py-2 rounded-2xl border border-red-200 text-red-600 text-sm hover:bg-red-50 flex items-center gap-1 font-medium" title="Reset Trip">
-                <span>Reset Trip</span>
+              <button type="button" onClick={handleReset} className="px-3 py-2 rounded-2xl border border-red-200 text-red-600 text-sm hover:bg-red-50 flex items-center gap-1 font-medium" title="Reset">
+                <span>Reset</span>
               </button>
             )}
             <div className="inline-flex rounded-2xl overflow-hidden border border-zinc-300">
