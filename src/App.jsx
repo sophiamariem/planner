@@ -1304,11 +1304,21 @@ export default function TripPlannerApp() {
       <header className="sticky top-0 z-50 backdrop-blur bg-white/80 border-b border-zinc-200">
         <div className="max-w-5xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
+            <div className="flex items-center gap-2 mb-1">
+              <img src="/favicon.png" alt="plnr.guide" className="w-6 h-6 rounded-md border border-zinc-200 bg-white object-cover" />
+              <span className="text-xs font-semibold tracking-wide text-blue-700">plnr.guide</span>
+            </div>
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-zinc-900">{tripConfig.title}</h1>
           </div>
           <div className="flex gap-2 items-center flex-wrap">
-            <button type="button" onClick={handleGoHome} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50 flex items-center gap-1 text-zinc-700 font-medium" title="Back to trips">
-              <span>Trips</span>
+            <button
+              type="button"
+              onClick={handleGoHome}
+              aria-label="Go home"
+              title="Go home"
+              className="w-12 h-12 rounded-xl border border-zinc-300 bg-white hover:bg-zinc-50 flex items-center justify-center shadow-sm"
+            >
+              <img src="/favicon.png" alt="Home" className="w-12 h-12 rounded-xl object-cover" />
             </button>
             <div className="inline-flex rounded-2xl overflow-hidden border border-zinc-300">
               <button type="button" onClick={()=>setView('cards')} className={`px-3 py-2 text-sm ${view==='cards' ? 'bg-zinc-900 text-white' : 'bg-white'}`}>Cards</button>

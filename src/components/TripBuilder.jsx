@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { palette } from '../data/trip';
 import { validateTripData } from '../utils/tripData';
 import DayMap from './DayMap';
@@ -50,8 +50,11 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
     const [photoUrlDraftByDay, setPhotoUrlDraftByDay] = useState({});
     const [expandedDaysByIndex, setExpandedDaysByIndex] = useState({});
     const [showValidationPanel, setShowValidationPanel] = useState(false);
+    const [showPreviewConfirm, setShowPreviewConfirm] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [autosaveState, setAutosaveState] = useState("saved");
     const [lastSavedAt, setLastSavedAt] = useState(null);
+    const hasMountedRef = useRef(false);
     const [photoPicker, setPhotoPicker] = useState({
         open: false,
         dayIndex: null,
@@ -151,10 +154,19 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
             pushToast("Fix required items before preview.", "error");
             return;
         }
+        setHasUnsavedChanges(false);
         const normalizedConfig = hydrateConfig(config);
         const normalizedDays = hydrateDays(days, normalizedConfig);
         const normalizedFlights = flights.map(hydrateFlight);
         onSave({ tripConfig: normalizedConfig, days: normalizedDays, flights: normalizedFlights, ll: locations, palette, dayBadges });
+    };
+
+    const handlePreviewClick = () => {
+        if (hasUnsavedChanges) {
+            setShowPreviewConfirm(true);
+            return;
+        }
+        onCancel();
     };
 
     useEffect(() => {
@@ -164,6 +176,14 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
             setRangeEnd(isoDates[isoDates.length - 1]);
         }
     }, [days.length]);
+
+    useEffect(() => {
+        if (!hasMountedRef.current) {
+            hasMountedRef.current = true;
+            return;
+        }
+        setHasUnsavedChanges(true);
+    }, [config, days, flights, locations, dayBadges]);
 
     // Auto-save to localStorage (but don't trigger preview)
     useEffect(() => {
@@ -909,16 +929,21 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
                             <p className="text-xs text-zinc-500 mt-1">
                                 {autosaveState === "saving" ? "Saving draft..." : `Saved${lastSavedAt ? ` ${lastSavedAt.toLocaleTimeString()}` : ""}`}
                             </p>
+                            {hasUnsavedChanges && (
+                                <p className="text-xs text-amber-700 mt-1">Unsaved changes</p>
+                            )}
                         </div>
                         <div className="flex gap-2 items-center">
                             <button
                                 onClick={onHome}
-                                className="px-4 py-2 rounded-lg border border-zinc-300 hover:bg-zinc-50 text-sm font-medium"
+                                aria-label="Go home"
+                                title="Go home"
+                                className="w-12 h-12 rounded-xl border border-zinc-300 bg-white hover:bg-zinc-50 flex items-center justify-center shadow-sm"
                             >
-                                Trips
+                                <img src="/favicon.png" alt="Home" className="w-12 h-12 rounded-xl object-cover" />
                             </button>
                             <button
-                                onClick={onCancel}
+                                onClick={handlePreviewClick}
                                 className="px-4 py-2 rounded-lg border border-zinc-300 hover:bg-zinc-50 text-sm font-medium"
                             >
                                 Preview
@@ -1619,6 +1644,45 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
                     </div>
                 )}
             </main>
+
+            {showPreviewConfirm && (
+                <div className="fixed inset-0 z-[95]" onClick={() => setShowPreviewConfirm(false)}>
+                    <div className="absolute inset-0 bg-black/40" />
+                    <aside className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-2xl p-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                        <h2 className="text-xl font-bold text-zinc-900 mb-2">Unsaved changes</h2>
+                        <p className="text-sm text-zinc-600 mb-5">
+                            You have unsaved edits. Save before previewing, or discard these changes.
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setShowPreviewConfirm(false)}
+                                className="flex-1 px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowPreviewConfirm(false);
+                                    setHasUnsavedChanges(false);
+                                    onCancel();
+                                }}
+                                className="flex-1 px-4 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 text-sm font-medium"
+                            >
+                                Discard
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowPreviewConfirm(false);
+                                    handleSaveClick();
+                                }}
+                                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                            >
+                                Save & Preview
+                            </button>
+                        </div>
+                    </aside>
+                </div>
+            )}
         </div>
     );
 }
