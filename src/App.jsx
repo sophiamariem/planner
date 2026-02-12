@@ -156,6 +156,7 @@ function buildTemplateTrip(templateId, paletteValue) {
 export default function TripPlannerApp() {
   const isAuthRoute = typeof window !== "undefined" && window.location.pathname === "/auth";
   const [mode, setMode] = useState('loading'); // 'loading', 'onboarding', 'builder', 'view'
+  const [onboardingPage, setOnboardingPage] = useState("create"); // 'trips' | 'create'
   const [tripData, setTripData] = useState(null);
   const [isViewOnly, setIsViewOnly] = useState(false);
   const [sourceUrl, setSourceUrl] = useState(null);
@@ -186,6 +187,11 @@ export default function TripPlannerApp() {
   const [showPastSavedTrips, setShowPastSavedTrips] = useState(false);
   const [user, setUser] = useState(null);
   const isAdminUser = Boolean(user?.email && ADMIN_EMAILS.includes(String(user.email).toLowerCase()));
+
+  useEffect(() => {
+    if (mode !== "onboarding") return;
+    setOnboardingPage(user ? "trips" : "create");
+  }, [user, mode]);
 
   const templateJSON = JSON.stringify({
     tripConfig: {
@@ -315,10 +321,11 @@ export default function TripPlannerApp() {
     setIsViewOnly(viewOnly);
 
     const initialize = async () => {
+      let currentUser = null;
       if (isSupabaseConfigured) {
         try {
           setSessionFromUrl();
-          const currentUser = await getCurrentUser();
+          currentUser = await getCurrentUser();
           setUser(currentUser);
           if (currentUser) {
             await refreshMyTrips(currentUser);
@@ -326,6 +333,13 @@ export default function TripPlannerApp() {
         } catch (error) {
           console.error("Error initializing auth:", error);
         }
+      }
+
+      const currentPath = window.location.pathname;
+      if (currentPath === "/app" || currentPath === "/new") {
+        setOnboardingPage(currentPath === "/new" ? "create" : (currentUser ? "trips" : "create"));
+        setMode("onboarding");
+        return;
       }
 
       // Check for cloud URL first
@@ -553,41 +567,6 @@ export default function TripPlannerApp() {
     }
   };
 
-  const handleSaveCopyToCloud = async () => {
-    if (!isSupabaseConfigured) {
-      pushToast("Saved trips are unavailable right now.", "error");
-      return;
-    }
-    if (!user) {
-      pushToast("Sign in first to save this trip.", "error");
-      return;
-    }
-    if (!tripData) {
-      pushToast("No trip loaded.", "error");
-      return;
-    }
-
-    setCloudSaving(true);
-    try {
-      const row = await saveTripToCloud(tripData, "private", "view");
-      setCloudTripId(row.id);
-      setCloudSlug(row.slug || null);
-      setCloudVisibility(row.visibility || "private");
-      setCloudShareAccess(row.share_access || "view");
-      setCloudOwnerId(row.owner_id || user?.id || null);
-      setShareToken(null);
-      const cloudHash = row.slug ? `#t=${encodeURIComponent(row.slug)}` : `#cloud=${encodeURIComponent(row.id)}`;
-      window.history.pushState(null, '', cloudHash);
-      await refreshMyTrips();
-      pushToast("Saved a private copy to your trips.", "success");
-    } catch (error) {
-      console.error("Save copy failed:", error);
-      pushToast(error.message || "Could not save copy.", "error");
-    } finally {
-      setCloudSaving(false);
-    }
-  };
-
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -597,11 +576,6 @@ export default function TripPlannerApp() {
       setUser(null);
       setMyTrips([]);
     }
-  };
-
-  const handleOpenMyTrips = async () => {
-    setShowMyTripsModal(true);
-    await refreshMyTrips();
   };
 
   const handleOpenCloudTrip = async (id) => {
@@ -675,8 +649,9 @@ export default function TripPlannerApp() {
   };
 
   const handleGoHome = () => {
-    window.history.pushState(null, "", "/");
+    window.history.pushState(null, "", "/app");
     setMode("onboarding");
+    setOnboardingPage(user ? "trips" : "create");
     setShowShareModal(false);
     setShowMyTripsModal(false);
     setShowSignInModal(false);
@@ -700,6 +675,7 @@ export default function TripPlannerApp() {
     setSourceUrl(null);
     setShowResetModal(false);
     setMode('onboarding');
+    setOnboardingPage(user ? "trips" : "create");
   };
 
   const openBuilderWithTrip = (nextTripData) => {
@@ -881,23 +857,6 @@ export default function TripPlannerApp() {
     return issues;
   }, [tripData]);
 
-  const upcomingTrips = useMemo(() => {
-    if (!Array.isArray(myTrips)) return [];
-    const todayIso = new Date().toISOString().slice(0, 10);
-    return myTrips
-      .map((trip) => {
-        const startIso = extractStartIsoFromTrip(trip);
-        return {
-          ...trip,
-          startIso,
-          coverImage: extractCoverImage(trip),
-        };
-      })
-      .filter((trip) => trip.startIso && trip.startIso >= todayIso)
-      .sort((a, b) => a.startIso.localeCompare(b.startIso))
-      .slice(0, 6);
-  }, [myTrips]);
-
   const handleFixIssue = (issueAction) => {
     setShowShareModal(false);
     const map = {
@@ -1066,179 +1025,209 @@ export default function TripPlannerApp() {
   // Onboarding screen
   if (mode === 'onboarding') {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
-        <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8 md:p-12">
-          <div className="text-center mb-8">
-            <div className="flex justify-center mb-4">
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 via-purple-50 to-pink-50">
+        <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+          <header className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-5 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
               <img
                 src="/favicon.png"
                 alt="plnr.guide logo"
-                className="w-14 h-14 rounded-xl border border-zinc-200 bg-white object-cover shadow-sm"
+                className="w-10 h-10 rounded-xl border border-zinc-200 bg-white object-cover shadow-sm"
               />
+              <div>
+                <h1 className="text-2xl font-black text-zinc-900">plnr.guide</h1>
+                <p className="text-sm text-zinc-600">Plan, save, and share your trips</p>
+              </div>
             </div>
-            <h1 className="text-4xl md:text-5xl font-black text-zinc-900 mb-4">
-              plnr.guide
-            </h1>
-            <p className="text-lg text-zinc-600">
-              Create beautiful, shareable trip itineraries in minutes
-            </p>
-          </div>
+            <div className="inline-flex rounded-xl overflow-hidden border border-zinc-300">
+              <button
+                type="button"
+                onClick={() => { setOnboardingPage("trips"); window.history.pushState(null, "", "/app"); }}
+                className={`px-4 py-2 text-sm font-medium ${onboardingPage === "trips" ? "bg-zinc-900 text-white" : "bg-white text-zinc-700"}`}
+              >
+                Trips
+              </button>
+              <button
+                type="button"
+                onClick={() => { setOnboardingPage("create"); window.history.pushState(null, "", "/new"); }}
+                className={`px-4 py-2 text-sm font-medium border-l border-zinc-300 ${onboardingPage === "create" ? "bg-zinc-900 text-white" : "bg-white text-zinc-700"}`}
+              >
+                New Trip
+              </button>
+            </div>
+          </header>
 
-          <div className="space-y-4">
-            <div className="p-4 md:p-5 border border-zinc-200 rounded-xl bg-gradient-to-r from-zinc-50 to-white">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3 min-w-0">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-zinc-900 text-sm">Account</p>
+          {onboardingPage === "trips" ? (
+            <div className="space-y-4">
+              <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-zinc-900">Account</p>
                     <p className="text-sm text-zinc-600 mt-1">
-                      {user
-                        ? `Signed in as ${user.email}`
-                        : "Sign in to save trips, edit them later, and manage upcoming trips across devices."}
+                      {user ? `Signed in as ${user.email}` : "Sign in to save and sync trips across devices."}
                     </p>
-                    {!isSupabaseConfigured && (
-                      <p className="text-xs text-amber-700 mt-2">
-                        Sign in is temporarily unavailable right now.
-                      </p>
-                    )}
+                  </div>
+                  <div className={`px-2 py-1 rounded-full text-xs font-medium border whitespace-nowrap ${user ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-zinc-100 text-zinc-600 border-zinc-200"}`}>
+                    {user ? "Signed in" : "Guest"}
                   </div>
                 </div>
-                <div className={`px-2 py-1 rounded-full text-xs font-medium border whitespace-nowrap ${user ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-zinc-100 text-zinc-600 border-zinc-200"}`}>
-                  {user ? "Signed in" : "Guest"}
-                </div>
-              </div>
-              <div className="mt-4">
-                {user ? (
-                  <button
-                    onClick={handleSignOut}
-                    className="w-full sm:w-auto px-4 py-2 rounded-lg border border-zinc-300 hover:bg-white text-sm font-medium"
-                  >
-                    Sign Out
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleSignIn}
-                    className="w-full sm:w-auto px-4 py-2 rounded-lg bg-zinc-900 text-white hover:bg-black text-sm font-medium"
-                  >
-                    Create Account / Sign In
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {user && upcomingTrips.length > 0 && (
-              <div className="rounded-xl border border-zinc-200 bg-white p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-zinc-900">Upcoming Trips</h3>
-                  <button
-                    type="button"
-                    onClick={handleOpenMyTrips}
-                    className="text-xs text-blue-700 hover:underline"
-                  >
-                    View all
-                  </button>
-                </div>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {upcomingTrips.slice(0, 4).map((trip) => (
+                <div className="mt-4 flex gap-2 flex-wrap">
+                  {user ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => { setOnboardingPage("create"); window.history.pushState(null, "", "/new"); }}
+                        className="px-4 py-2 rounded-lg bg-zinc-900 text-white hover:bg-black text-sm font-medium"
+                      >
+                        Create New Trip
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSignOut}
+                        className="px-4 py-2 rounded-lg border border-zinc-300 hover:bg-zinc-50 text-sm font-medium"
+                      >
+                        Sign Out
+                      </button>
+                    </>
+                  ) : (
                     <button
-                      key={trip.id}
                       type="button"
-                      onClick={() => handleOpenCloudTrip(trip.id)}
-                      className="text-left rounded-xl overflow-hidden border border-zinc-200 hover:border-zinc-300"
+                      onClick={handleSignIn}
+                      className="px-4 py-2 rounded-lg bg-zinc-900 text-white hover:bg-black text-sm font-medium"
                     >
-                      <div className="h-24 bg-zinc-100">
-                        {trip.coverImage ? (
-                          <img src={trip.coverImage} alt="" className="w-full h-full object-cover" loading="lazy" />
-                        ) : null}
+                      Create Account / Sign In
+                    </button>
+                  )}
+                </div>
+              </section>
+
+              {user ? (
+                <>
+                  <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-5">
+                    <h3 className="text-base font-semibold text-zinc-900 mb-3">Upcoming ({savedUpcomingTrips.length})</h3>
+                    {savedUpcomingTrips.length === 0 ? (
+                      <p className="text-sm text-zinc-500">No upcoming trips yet.</p>
+                    ) : (
+                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {savedUpcomingTrips.map((trip) => {
+                          const cover = extractCoverImage(trip);
+                          return (
+                            <div key={trip.id} className="rounded-xl border border-zinc-200 overflow-hidden bg-white">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenCloudTrip(trip.id)}
+                                className="w-full text-left hover:bg-zinc-50"
+                              >
+                                <div className="h-28 bg-zinc-100">
+                                  {cover && <img src={cover} alt="" className="w-full h-full object-cover" loading="lazy" />}
+                                </div>
+                                <div className="p-3">
+                                  <p className="font-medium text-zinc-900">{trip.title}</p>
+                                  <p className="text-xs text-zinc-500 mt-1">{trip.slug || "no-slug"} • {trip.visibility}</p>
+                                </div>
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
-                      <div className="p-3">
-                        <p className="text-sm font-semibold text-zinc-900">{trip.title}</p>
-                        <p className="text-xs text-zinc-500 mt-1">Starts {new Date(`${trip.startIso}T00:00:00`).toLocaleDateString()}</p>
+                    )}
+                  </section>
+
+                  <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-5">
+                    <button
+                      type="button"
+                      onClick={() => setShowPastSavedTrips((prev) => !prev)}
+                      className="w-full px-3 py-2 rounded-lg border border-zinc-200 text-sm font-semibold text-zinc-700 bg-zinc-50 hover:bg-zinc-100 flex items-center justify-between"
+                    >
+                      <span>Past ({savedPastTrips.length})</span>
+                      <span>{showPastSavedTrips ? "Hide" : "Show"}</span>
+                    </button>
+                    {showPastSavedTrips && (
+                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                        {savedPastTrips.map((trip) => {
+                          const cover = extractCoverImage(trip);
+                          return (
+                            <div key={trip.id} className="rounded-xl border border-zinc-200 overflow-hidden bg-white">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenCloudTrip(trip.id)}
+                                className="w-full text-left hover:bg-zinc-50"
+                              >
+                                <div className="h-24 bg-zinc-100">
+                                  {cover && <img src={cover} alt="" className="w-full h-full object-cover" loading="lazy" />}
+                                </div>
+                                <div className="p-3">
+                                  <p className="font-medium text-zinc-900">{trip.title}</p>
+                                </div>
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
+                    )}
+                  </section>
+                </>
+              ) : (
+                <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-5">
+                  <p className="text-sm text-zinc-600">No saved trips in guest mode. Create a trip or sign in to sync across devices.</p>
+                </section>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-5">
+                <h2 className="text-xl font-bold text-zinc-900 mb-3">Start a New Trip</h2>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <button
+                    onClick={handleStartFromTemplate}
+                    className="p-4 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-left"
+                  >
+                    <p className="font-semibold text-zinc-900">Example Template</p>
+                    <p className="text-sm text-zinc-600 mt-1">Start from a complete sample trip.</p>
+                  </button>
+                  <button
+                    onClick={handleStartFromScratch}
+                    className="p-4 rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-left"
+                  >
+                    <p className="font-semibold text-zinc-900">Start from Scratch</p>
+                    <p className="text-sm text-zinc-600 mt-1">Build every day yourself.</p>
+                  </button>
+                </div>
+              </section>
+
+              <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-5">
+                <p className="text-sm font-semibold text-zinc-900 mb-3">Templates</p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {QUICK_TEMPLATES.map((tpl) => (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      onClick={() => handleStartFromQuickTemplate(tpl.id)}
+                      className="rounded-xl border border-zinc-200 hover:border-zinc-300 p-3 text-left bg-zinc-50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{tpl.emoji}</span>
+                        <p className="font-semibold text-sm text-zinc-900">{tpl.title}</p>
+                      </div>
+                      <p className="text-xs text-zinc-600 mt-1">{tpl.description}</p>
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
+              </section>
 
-            <button
-              onClick={handleStartFromTemplate}
-              className="w-full p-6 rounded-xl border-2 border-blue-500 bg-blue-50 hover:bg-blue-100 transition-colors text-left group"
-            >
-              <div className="flex items-start gap-4">
-                <div className="text-3xl">🗺️</div>
-                <div>
-                  <h3 className="font-bold text-xl text-zinc-900 mb-2 group-hover:text-blue-700">
-                    Start with Example Template
-                  </h3>
-                  <p className="text-zinc-600">
-                    See a fully populated example trip you can customize.
-                    {isSupabaseConfigured && !user ? (
-                      <span className="block mt-1 text-sm text-zinc-500">Guest trips stay on this browser unless you sign in.</span>
-                    ) : null}
-                  </p>
-                </div>
-              </div>
-            </button>
-
-            <div className="rounded-xl border border-zinc-200 bg-white p-4">
-              <p className="text-sm font-semibold text-zinc-900 mb-3">Start from a Template</p>
-              <div className="grid sm:grid-cols-2 gap-3">
-                {QUICK_TEMPLATES.map((tpl) => (
+              {isAdminUser && (
+                <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-5">
                   <button
-                    key={tpl.id}
-                    type="button"
-                    onClick={() => handleStartFromQuickTemplate(tpl.id)}
-                    className="rounded-xl border border-zinc-200 hover:border-zinc-300 p-3 text-left bg-zinc-50"
+                    onClick={openImportModal}
+                    className="w-full p-4 rounded-xl border-2 border-dashed border-zinc-300 hover:border-zinc-400 hover:bg-zinc-50 text-left"
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">{tpl.emoji}</span>
-                      <p className="font-semibold text-sm text-zinc-900">{tpl.title}</p>
-                    </div>
-                    <p className="text-xs text-zinc-600 mt-1">{tpl.description}</p>
+                    <p className="font-semibold text-zinc-900">Import JSON (Admin)</p>
+                    <p className="text-sm text-zinc-600 mt-1">Load itinerary data directly.</p>
                   </button>
-                ))}
-              </div>
+                </section>
+              )}
             </div>
-
-            <button
-              onClick={handleStartFromScratch}
-              className="w-full p-6 rounded-xl border-2 border-zinc-300 hover:border-zinc-400 hover:bg-zinc-50 transition-colors text-left group"
-            >
-              <div className="flex items-start gap-4">
-                <div className="text-3xl">✨</div>
-                <div>
-                  <h3 className="font-bold text-xl text-zinc-900 mb-2 group-hover:text-zinc-700">
-                    Start from Scratch
-                  </h3>
-                  <p className="text-zinc-600">
-                    Build your trip from the ground up.
-                    {isSupabaseConfigured && !user ? (
-                      <span className="block mt-1 text-sm text-zinc-500">Guest trips stay local to this device.</span>
-                    ) : null}
-                  </p>
-                </div>
-              </div>
-            </button>
-
-            {isAdminUser && (
-              <button
-                onClick={openImportModal}
-                className="w-full p-6 rounded-xl border-2 border-dashed border-zinc-300 hover:border-zinc-400 hover:bg-zinc-50 transition-colors text-left group"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="text-3xl">💻</div>
-                  <div>
-                    <h3 className="font-bold text-xl text-zinc-900 mb-2 group-hover:text-zinc-700">
-                      Import JSON (Admin)
-                    </h3>
-                    <p className="text-zinc-600">
-                      Paste your own trip JSON data to immediately load your itinerary
-                    </p>
-                  </div>
-                </div>
-              </button>
-            )}
-          </div>
+          )}
 
           {showImportModal && isAdminUser && (
             <div className="fixed inset-0 z-50" onClick={() => setShowImportModal(false)}>
@@ -1254,9 +1243,7 @@ export default function TripPlannerApp() {
                   className="w-full h-[58vh] p-3 border border-zinc-300 rounded-lg font-mono text-xs focus:ring-2 focus:ring-blue-500 outline-none"
                   placeholder='{ "tripConfig": { ... }, "days": [], "flights": [] }'
                 />
-                {importError && (
-                  <p className="text-red-600 text-sm mt-2">{importError}</p>
-                )}
+                {importError && <p className="text-red-600 text-sm mt-2">{importError}</p>}
                 <div className="flex gap-2 mt-6">
                   <button
                     onClick={() => setShowImportModal(false)}
@@ -1274,34 +1261,6 @@ export default function TripPlannerApp() {
               </aside>
             </div>
           )}
-
-          <div className="mt-8 pt-8 border-t border-zinc-200">
-            <h4 className="font-semibold text-zinc-900 mb-3">Features:</h4>
-            <ul className="space-y-2 text-sm text-zinc-600">
-              <li className="flex items-center gap-2">
-                <span className="text-green-600">✓</span>
-                Free account for saved trips, edits, and cross-device access
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-green-600">✓</span>
-                Get a shareable link to your trip
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-green-600">✓</span>
-                Interactive maps and photo galleries
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-green-600">✓</span>
-                Print-friendly itineraries
-              </li>
-              {isSupabaseConfigured && (
-                <li className="flex items-center gap-2">
-                  <span className="text-green-600">✓</span>
-                  Optional account with saved trips
-                </li>
-              )}
-            </ul>
-          </div>
         </div>
         {signInDrawer}
       </div>
@@ -1348,59 +1307,32 @@ export default function TripPlannerApp() {
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-zinc-900">{tripConfig.title}</h1>
           </div>
           <div className="flex gap-2 items-center flex-wrap">
-            {!user ? (
-              <button type="button" onClick={handleSignIn} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50">
-                Sign In
-              </button>
-            ) : (
-              <>
-                {isSupabaseConfigured && (
-                  <>
-                    <button type="button" onClick={handleOpenMyTrips} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50">
-                      My Saved Trips
-                    </button>
-                    <button type="button" onClick={handleSaveToCloud} disabled={cloudSaving} className="px-3 py-2 rounded-2xl bg-emerald-600 text-white text-sm hover:bg-emerald-700 disabled:opacity-50">
-                      {cloudSaving
-                        ? "Saving..."
-                        : canCollaborateOnSharedTrip
-                          ? "Save Changes"
-                          : cloudTripId
-                            ? isCloudOwnedByCurrentUser
-                              ? "Update Saved"
-                              : "Save Copy"
-                            : "Save Trip"}
-                    </button>
-                    {isSharedCloudTrip && (
-                      <button type="button" onClick={handleSaveCopyToCloud} disabled={cloudSaving} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50 disabled:opacity-50">
-                        Save Copy
-                      </button>
-                    )}
-                  </>
-                )}
-                <button type="button" onClick={handleSignOut} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50">
-                  Sign Out
-                </button>
-              </>
-            )}
-            <button type="button" onClick={handleGoHome} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50 flex items-center gap-1 text-zinc-700 font-medium" title="Go Home">
-              <span>Home</span>
+            <button type="button" onClick={handleGoHome} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50 flex items-center gap-1 text-zinc-700 font-medium" title="Back to trips">
+              <span>Trips</span>
             </button>
-            {canEditCurrentTrip && (
-              <button type="button" onClick={handleReset} className="px-3 py-2 rounded-2xl border border-red-200 text-red-600 text-sm hover:bg-red-50 flex items-center gap-1 font-medium" title="Reset">
-                <span>Reset</span>
-              </button>
-            )}
             <div className="inline-flex rounded-2xl overflow-hidden border border-zinc-300">
               <button type="button" onClick={()=>setView('cards')} className={`px-3 py-2 text-sm ${view==='cards' ? 'bg-zinc-900 text-white' : 'bg-white'}`}>Cards</button>
               <button type="button" onClick={()=>setView('calendar')} className={`px-3 py-2 text-sm border-l border-zinc-300 ${view==='calendar' ? 'bg-zinc-900 text-white' : 'bg-white'}`}>Calendar</button>
             </div>
             <input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Filter days, places, notes" className="px-3 py-2 rounded-2xl border border-zinc-300 bg-white text-sm outline-none focus:ring-2 focus:ring-pink-400"/>
-            {filter && (<button type="button" onClick={()=>setFilter("")} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-white">Clear</button>)}
             <button type="button" onClick={handleShare} className="px-3 py-2 rounded-2xl bg-blue-600 text-white text-sm hover:bg-blue-700">Share</button>
             {canEditCurrentTrip && (
               <button type="button" onClick={handleEditTrip} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-white">Edit</button>
             )}
-            <button type="button" onClick={()=>window.print()} className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-white">Print</button>
+            <details className="relative">
+              <summary className="list-none cursor-pointer px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-50">More</summary>
+              <div className="absolute right-0 mt-2 w-48 rounded-xl border border-zinc-200 bg-white shadow-lg p-2 flex flex-col gap-1 z-20">
+                <button type="button" onClick={()=>window.print()} className="text-left px-3 py-2 rounded-lg text-sm hover:bg-zinc-50">Print</button>
+                {canEditCurrentTrip && (
+                  <button type="button" onClick={handleReset} className="text-left px-3 py-2 rounded-lg text-sm hover:bg-red-50 text-red-600">Reset</button>
+                )}
+                {!user ? (
+                  <button type="button" onClick={handleSignIn} className="text-left px-3 py-2 rounded-lg text-sm hover:bg-zinc-50">Sign In</button>
+                ) : (
+                  <button type="button" onClick={handleSignOut} className="text-left px-3 py-2 rounded-lg text-sm hover:bg-zinc-50">Sign Out</button>
+                )}
+              </div>
+            </details>
           </div>
         </div>
       </header>

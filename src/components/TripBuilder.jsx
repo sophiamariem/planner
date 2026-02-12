@@ -910,31 +910,38 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
                                 {autosaveState === "saving" ? "Saving draft..." : `Saved${lastSavedAt ? ` ${lastSavedAt.toLocaleTimeString()}` : ""}`}
                             </p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
                             <button
                                 onClick={onHome}
                                 className="px-4 py-2 rounded-lg border border-zinc-300 hover:bg-zinc-50 text-sm font-medium"
                             >
-                                Home
-                            </button>
-                            <button
-                                onClick={onReset}
-                                className="px-4 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium"
-                            >
-                                Reset
+                                Trips
                             </button>
                             <button
                                 onClick={onCancel}
                                 className="px-4 py-2 rounded-lg border border-zinc-300 hover:bg-zinc-50 text-sm font-medium"
                             >
-                                Back to Preview
+                                Preview
                             </button>
                             <button
                                 onClick={handleSaveClick}
                                 className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium"
                             >
-                                Save & Preview
+                                Save
                             </button>
+                            <details className="relative">
+                                <summary className="list-none cursor-pointer px-3 py-2 rounded-lg border border-zinc-300 text-sm hover:bg-zinc-50">
+                                    More
+                                </summary>
+                                <div className="absolute right-0 mt-2 w-40 rounded-xl border border-zinc-200 bg-white shadow-lg p-2 flex flex-col gap-1 z-20">
+                                    <button
+                                        onClick={onReset}
+                                        className="text-left px-3 py-2 rounded-lg text-sm hover:bg-red-50 text-red-600"
+                                    >
+                                        Reset
+                                    </button>
+                                </div>
+                            </details>
                         </div>
                     </div>
 
