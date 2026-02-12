@@ -11,6 +11,7 @@ import { extractCoverImage, formatVisibilityLabel } from "./utils/tripMeta";
 import { isSupabaseConfigured } from "./lib/supabaseClient";
 
 import ToastLayer from "./components/ToastLayer";
+import AppOverlays from "./components/AppOverlays";
 import AuthPage from "./components/AuthPage";
 import OnboardingScreen from "./screens/OnboardingScreen";
 import BuilderScreen from "./screens/BuilderScreen";
@@ -283,6 +284,67 @@ export default function TripPlannerApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showShareModal, isCloudOwnedByCurrentUser, cloudTripId, cloudShareAccess]);
 
+  const overlayProps = {
+    toasts,
+    showSignInModal,
+    onCloseSignInModal: () => setShowSignInModal(false),
+    isSupabaseConfigured,
+    signInEmail,
+    onSignInEmailChange: setSignInEmail,
+    onGoogleSignIn: submitGoogleSignIn,
+    onSubmitSignIn: submitSignIn,
+    signInLoading,
+    showResetModal,
+    onCloseResetModal: () => setShowResetModal(false),
+    onConfirmReset: confirmReset,
+    showShareModal,
+    onCloseShareModal: () => setShowShareModal(false),
+    publishIssues,
+    onFixIssue: handleFixIssue,
+    currentShareURL,
+    canCopyShareLink,
+    onCopyShareLink: copyShareLink,
+    user,
+    cloudSaving,
+    onOpenSignInFromShare: () => {
+      setShowShareModal(false);
+      handleSignIn();
+    },
+    cloudTripId,
+    isCloudOwnedByCurrentUser,
+    cloudShareAccess,
+    onShareAccessChange: handleShareAccessChange,
+    collaboratorEmail,
+    onCollaboratorEmailChange: setCollaboratorEmail,
+    onAddCollaborator: handleAddCollaborator,
+    collaboratorsLoading,
+    collaborators,
+    onRemoveCollaborator: handleRemoveCollaborator,
+    isViewOnly,
+    onViewOnlyChange: setIsViewOnly,
+    showMyTripsModal,
+    onCloseMyTripsModal: () => setShowMyTripsModal(false),
+    myTripsLoading,
+    myTrips,
+    savedUpcomingTrips,
+    savedPastTrips,
+    showPastSavedTrips,
+    onTogglePast: () => setShowPastSavedTrips((prev) => !prev),
+    onOpenTrip: handleOpenCloudTrip,
+    onDeleteTrip: handleDeleteCloudTrip,
+    extractCoverImage,
+    formatVisibilityLabel,
+    cloudVisibility,
+    onChangeVisibility: setCloudVisibility,
+    showImportModal,
+    isAdminUser,
+    importJson,
+    onImportJsonChange: setImportJson,
+    importError,
+    onCloseImportModal: () => setShowImportModal(false),
+    onImportJson: handleImportJson,
+  };
+
   if (isPrivacyRoute) {
     return <PrivacyPage />;
   }
@@ -315,45 +377,33 @@ export default function TripPlannerApp() {
   // Onboarding screen
   if (mode === 'onboarding') {
     return (
-      <OnboardingScreen
-        onboardingPage={onboardingPage}
-        onSwitchPage={(page) => {
-          setOnboardingPage(page);
-          window.history.pushState(null, "", page === "trips" ? "/app" : "/new");
-        }}
-        user={user}
-        onGoCreate={() => { setOnboardingPage("create"); window.history.pushState(null, "", "/new"); }}
-        onSignOut={handleSignOut}
-        onSignIn={handleSignIn}
-        savedUpcomingTrips={savedUpcomingTrips}
-        savedPastTrips={savedPastTrips}
-        showPastSavedTrips={showPastSavedTrips}
-        onTogglePast={() => setShowPastSavedTrips((prev) => !prev)}
-        onOpenTrip={handleOpenCloudTrip}
-        extractCoverImage={extractCoverImage}
-        formatVisibilityLabel={formatVisibilityLabel}
-        onStartFromTemplate={handleStartFromTemplate}
-        onStartFromScratch={handleStartFromScratch}
-        quickTemplates={QUICK_TEMPLATES}
-        onStartFromQuickTemplate={handleStartFromQuickTemplate}
-        isAdminUser={isAdminUser}
-        onOpenImportModal={openImportModal}
-        showImportModal={showImportModal}
-        importJson={importJson}
-        onImportJsonChange={setImportJson}
-        importError={importError}
-        onCloseImportModal={() => setShowImportModal(false)}
-        onImportJson={handleImportJson}
-        showSignInModal={showSignInModal}
-        onCloseSignInModal={() => setShowSignInModal(false)}
-        isSupabaseConfigured={isSupabaseConfigured}
-        signInEmail={signInEmail}
-        onSignInEmailChange={setSignInEmail}
-        onGoogleSignIn={submitGoogleSignIn}
-        onSubmitSignIn={submitSignIn}
-        signInLoading={signInLoading}
-        toasts={toasts}
-      />
+      <>
+        <OnboardingScreen
+          onboardingPage={onboardingPage}
+          onSwitchPage={(page) => {
+            setOnboardingPage(page);
+            window.history.pushState(null, "", page === "trips" ? "/app" : "/new");
+          }}
+          user={user}
+          onGoCreate={() => { setOnboardingPage("create"); window.history.pushState(null, "", "/new"); }}
+          onSignOut={handleSignOut}
+          onSignIn={handleSignIn}
+          savedUpcomingTrips={savedUpcomingTrips}
+          savedPastTrips={savedPastTrips}
+          showPastSavedTrips={showPastSavedTrips}
+          onTogglePast={() => setShowPastSavedTrips((prev) => !prev)}
+          onOpenTrip={handleOpenCloudTrip}
+          extractCoverImage={extractCoverImage}
+          formatVisibilityLabel={formatVisibilityLabel}
+          onStartFromTemplate={handleStartFromTemplate}
+          onStartFromScratch={handleStartFromScratch}
+          quickTemplates={QUICK_TEMPLATES}
+          onStartFromQuickTemplate={handleStartFromQuickTemplate}
+          isAdminUser={isAdminUser}
+          onOpenImportModal={openImportModal}
+        />
+        <AppOverlays {...overlayProps} />
+      </>
     );
   }
 
@@ -365,114 +415,61 @@ export default function TripPlannerApp() {
   // Builder mode
   if (mode === 'builder') {
     return (
-      <BuilderScreen
-        tripData={tripData}
-        onSave={handleSaveAndPreview}
-        onCancel={handleCancelEdit}
-        onHome={handleGoHome}
-        onReset={handleReset}
-        initialTab={builderStartTab}
-        isAdmin={isAdminUser}
-        showSignInModal={showSignInModal}
-        onCloseSignInModal={() => setShowSignInModal(false)}
-        isSupabaseConfigured={isSupabaseConfigured}
-        signInEmail={signInEmail}
-        onSignInEmailChange={setSignInEmail}
-        onGoogleSignIn={submitGoogleSignIn}
-        onSubmitSignIn={submitSignIn}
-        signInLoading={signInLoading}
-        toasts={toasts}
-        showResetModal={showResetModal}
-        onCloseResetModal={() => setShowResetModal(false)}
-        onConfirmReset={confirmReset}
-      />
+      <>
+        <BuilderScreen
+          tripData={tripData}
+          onSave={handleSaveAndPreview}
+          onCancel={handleCancelEdit}
+          onHome={handleGoHome}
+          onReset={handleReset}
+          initialTab={builderStartTab}
+          isAdmin={isAdminUser}
+        />
+        <AppOverlays {...overlayProps} />
+      </>
     );
   }
 
   // View mode
   return (
-    <ViewScreen
-      activePaletteBg={activePalette.bg}
-      tripTitle={tripConfig.title}
-      isSharedCloudTrip={isSharedCloudTrip}
-      canCollaborateOnSharedTrip={canCollaborateOnSharedTrip}
-      copiedFromOwnerId={copiedFrom?.ownerId}
-      onGoHome={handleGoHome}
-      view={view}
-      onChangeView={setView}
-      filter={filter}
-      onChangeFilter={setFilter}
-      onShare={() => handleShare(setShowShareModal)}
-      canSaveSharedCopy={canSaveSharedCopy}
-      onSaveSharedCopy={handleSaveSharedCopy}
-      cloudSaving={cloudSaving}
-      canEditCurrentTrip={canEditCurrentTrip}
-      onEditTrip={handleEditTrip}
-      onReset={handleReset}
-      user={user}
-      onSignIn={handleSignIn}
-      onSignOut={handleSignOut}
-      toasts={toasts}
-      showSignInModal={showSignInModal}
-      onCloseSignInModal={() => setShowSignInModal(false)}
-      isSupabaseConfigured={isSupabaseConfigured}
-      signInEmail={signInEmail}
-      onSignInEmailChange={setSignInEmail}
-      onGoogleSignIn={submitGoogleSignIn}
-      onSubmitSignIn={submitSignIn}
-      signInLoading={signInLoading}
-      showResetModal={showResetModal}
-      onCloseResetModal={() => setShowResetModal(false)}
-      onConfirmReset={confirmReset}
-      showShareModal={showShareModal}
-      onCloseShareModal={() => setShowShareModal(false)}
-      publishIssues={publishIssues}
-      onFixIssue={handleFixIssue}
-      currentShareURL={currentShareURL}
-      canCopyShareLink={canCopyShareLink}
-      onCopyShareLink={copyShareLink}
-      onOpenSignInFromShare={() => {
-        setShowShareModal(false);
-        handleSignIn();
-      }}
-      cloudTripId={cloudTripId}
-      isCloudOwnedByCurrentUser={isCloudOwnedByCurrentUser}
-      cloudShareAccess={cloudShareAccess}
-      onShareAccessChange={handleShareAccessChange}
-      collaboratorEmail={collaboratorEmail}
-      onCollaboratorEmailChange={setCollaboratorEmail}
-      onAddCollaborator={handleAddCollaborator}
-      collaboratorsLoading={collaboratorsLoading}
-      collaborators={collaborators}
-      onRemoveCollaborator={handleRemoveCollaborator}
-      isViewOnly={isViewOnly}
-      onViewOnlyChange={setIsViewOnly}
-      showMyTripsModal={showMyTripsModal}
-      onCloseMyTripsModal={() => setShowMyTripsModal(false)}
-      myTripsLoading={myTripsLoading}
-      myTrips={myTrips}
-      savedUpcomingTrips={savedUpcomingTrips}
-      savedPastTrips={savedPastTrips}
-      showPastSavedTrips={showPastSavedTrips}
-      onTogglePast={() => setShowPastSavedTrips((prev) => !prev)}
-      onOpenTrip={handleOpenCloudTrip}
-      onDeleteTrip={handleDeleteCloudTrip}
-      extractCoverImage={extractCoverImage}
-      formatVisibilityLabel={formatVisibilityLabel}
-      cloudVisibility={cloudVisibility}
-      onChangeVisibility={setCloudVisibility}
-      tripConfig={tripConfig}
-      cloudSlug={cloudSlug}
-      flights={flights}
-      days={days}
-      filtered={filtered}
-      showMaps={showMaps}
-      imgClass={imgClass}
-      selectedId={selectedId}
-      onSelectDay={setSelectedId}
-      dayBadges={dayBadges}
-      selectedDay={selectedDay}
-      activePaletteCard={activePalette.card}
-    />
+    <>
+      <ViewScreen
+        activePaletteBg={activePalette.bg}
+        tripTitle={tripConfig.title}
+        isSharedCloudTrip={isSharedCloudTrip}
+        canCollaborateOnSharedTrip={canCollaborateOnSharedTrip}
+        copiedFromOwnerId={copiedFrom?.ownerId}
+        onGoHome={handleGoHome}
+        view={view}
+        onChangeView={setView}
+        filter={filter}
+        onChangeFilter={setFilter}
+        onShare={() => handleShare(setShowShareModal)}
+        canSaveSharedCopy={canSaveSharedCopy}
+        onSaveSharedCopy={handleSaveSharedCopy}
+        cloudSaving={cloudSaving}
+        canEditCurrentTrip={canEditCurrentTrip}
+        onEditTrip={handleEditTrip}
+        onReset={handleReset}
+        user={user}
+        onSignIn={handleSignIn}
+        onSignOut={handleSignOut}
+        tripConfig={tripConfig}
+        cloudSlug={cloudSlug}
+        cloudTripId={cloudTripId}
+        isSupabaseConfigured={isSupabaseConfigured}
+        flights={flights}
+        days={days}
+        filtered={filtered}
+        showMaps={showMaps}
+        imgClass={imgClass}
+        selectedId={selectedId}
+        onSelectDay={setSelectedId}
+        dayBadges={dayBadges}
+        selectedDay={selectedDay}
+        activePaletteCard={activePalette.card}
+      />
+      <AppOverlays {...overlayProps} />
+    </>
   );
 }
