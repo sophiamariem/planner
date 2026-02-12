@@ -58,10 +58,14 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
     const [photoPicker, setPhotoPicker] = useState({
         open: false,
         dayIndex: null,
+        target: "day",
         query: "",
         results: [],
         selected: [],
     });
+    const [coverPhotoLoading, setCoverPhotoLoading] = useState(false);
+    const [showCoverUrlInput, setShowCoverUrlInput] = useState(false);
+    const [coverUrlDraft, setCoverUrlDraft] = useState("");
     const [toast, setToast] = useState(null);
     const tabs = isAdmin ? ['basic', 'flights', 'days', 'JSON (Advanced)'] : ['basic', 'flights', 'days'];
 
@@ -363,6 +367,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
             setPhotoPicker({
                 open: true,
                 dayIndex: index,
+                target: "day",
                 query,
                 results,
                 selected: [],
@@ -374,13 +379,55 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
         }
     };
 
+    const findCoverPhoto = async () => {
+        const query = String(config?.title || "").trim() || String(config?.footer || "").trim();
+        if (!query) {
+            pushToast("Add a trip title first so we can find cover photos.", "error");
+            return;
+        }
+
+        setCoverPhotoLoading(true);
+        try {
+            const results = await fetchUnsplashResults(query, 18);
+            if (!results.length) {
+                pushToast("No photos found. Try a different title.", "error");
+                return;
+            }
+            setPhotoPicker({
+                open: true,
+                dayIndex: null,
+                target: "cover",
+                query,
+                results,
+                selected: config?.cover ? [config.cover] : [],
+            });
+        } catch (_error) {
+            pushToast("Couldn't fetch photos right now.", "error");
+        } finally {
+            setCoverPhotoLoading(false);
+        }
+    };
+
     const applyPickedPhotos = () => {
-        const { dayIndex, selected, query } = photoPicker;
-        if (dayIndex === null) return;
+        const { dayIndex, selected, query, target } = photoPicker;
         if (!selected.length) {
             pushToast("Select at least one photo.", "error");
             return;
         }
+        if (target === "cover") {
+            setConfig((prev) => ({ ...prev, cover: selected[0] || null }));
+            setPhotoPicker({
+                open: false,
+                dayIndex: null,
+                target: "day",
+                query: "",
+                results: [],
+                selected: [],
+            });
+            pushToast("Cover photo updated.", "success");
+            return;
+        }
+        if (dayIndex === null) return;
         updateDayObject(dayIndex, {
             photos: selected,
             photoQ: query,
@@ -388,6 +435,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
         setPhotoPicker({
             open: false,
             dayIndex: null,
+            target: "day",
             query: "",
             results: [],
             selected: [],
@@ -397,12 +445,13 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
 
     const togglePickedPhoto = (url) => {
         setPhotoPicker((prev) => {
+            const maxSelected = prev.target === "cover" ? 1 : 4;
             const exists = prev.selected.includes(url);
             if (exists) {
                 return { ...prev, selected: prev.selected.filter((u) => u !== url) };
             }
-            if (prev.selected.length >= 4) {
-                pushToast("Choose up to 4 photos.", "error");
+            if (prev.selected.length >= maxSelected) {
+                pushToast(prev.target === "cover" ? "Choose one cover photo." : "Choose up to 4 photos.", "error");
                 return prev;
             }
             return { ...prev, selected: [...prev.selected, url] };
@@ -429,6 +478,18 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
         setDays(updated);
         setPhotoUrlDraftByDay((prev) => ({ ...prev, [dayIndex]: "" }));
         setShowPhotoUrlInputByDay((prev) => ({ ...prev, [dayIndex]: false }));
+    };
+
+    const addCoverUrl = () => {
+        const url = String(coverUrlDraft || "").trim();
+        if (!url) {
+            pushToast("Paste an image URL first.", "error");
+            return;
+        }
+        setConfig((prev) => ({ ...prev, cover: url }));
+        setCoverUrlDraft("");
+        setShowCoverUrlInput(false);
+        pushToast("Cover photo updated.", "success");
     };
 
     const addFlight = () => {
@@ -864,7 +925,9 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
                             </button>
                         </div>
 
-                        <p className="text-xs text-zinc-500 mt-3">Select up to 4 photos.</p>
+                        <p className="text-xs text-zinc-500 mt-3">
+                            {photoPicker.target === "cover" ? "Select one photo." : "Select up to 4 photos."}
+                        </p>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
                             {photoPicker.results.map((photo, i) => {
                                 const selected = photoPicker.selected.includes(photo.full);
@@ -1058,25 +1121,60 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
 
 
                         <div>
-                            <label className="block text-sm font-medium text-zinc-700 mb-2">Favicon URL (optional)</label>
-                            <input
-                                type="url"
-                                value={config.favicon || ''}
-                                onChange={e => setConfig({ ...config, favicon: e.target.value || null })}
-                                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                placeholder="https://example.com/icon.jpg"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-zinc-700 mb-2">Cover Image URL (optional)</label>
-                            <input
-                                type="url"
-                                value={config.cover || ''}
-                                onChange={e => setConfig({ ...config, cover: e.target.value || null })}
-                                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                placeholder="https://example.com/cover.jpg"
-                            />
+                            <label className="block text-sm font-medium text-zinc-700 mb-2">Cover Photo</label>
+                            {config.cover ? (
+                                <div className="relative w-full h-44 rounded-xl overflow-hidden border border-zinc-200 bg-zinc-100 mb-3">
+                                    <img src={config.cover} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfig((prev) => ({ ...prev, cover: null }))}
+                                        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 border border-zinc-200 text-zinc-700 hover:bg-white"
+                                        title="Remove cover photo"
+                                        aria-label="Remove cover photo"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="w-full h-44 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 flex items-center justify-center text-sm text-zinc-500 mb-3">
+                                    No cover photo yet
+                                </div>
+                            )}
+                            <div className="flex flex-wrap gap-2">
+                                <button
+                                    type="button"
+                                    onClick={findCoverPhoto}
+                                    disabled={coverPhotoLoading}
+                                    className="px-3 py-2 rounded-lg border border-zinc-300 hover:bg-zinc-50 text-sm font-medium disabled:opacity-60"
+                                >
+                                    {coverPhotoLoading ? "Finding..." : "Find Photo"}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCoverUrlInput((prev) => !prev)}
+                                    className="px-3 py-2 rounded-lg border border-zinc-300 hover:bg-zinc-50 text-sm font-medium"
+                                >
+                                    {showCoverUrlInput ? "Cancel URL" : "Add URL"}
+                                </button>
+                            </div>
+                            {showCoverUrlInput && (
+                                <div className="mt-3 flex gap-2">
+                                    <input
+                                        type="url"
+                                        value={coverUrlDraft}
+                                        onChange={(e) => setCoverUrlDraft(e.target.value)}
+                                        className="flex-1 px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        placeholder="https://example.com/cover.jpg"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={addCoverUrl}
+                                        className="px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium"
+                                    >
+                                        Add
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
