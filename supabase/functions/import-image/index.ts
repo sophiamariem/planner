@@ -18,14 +18,29 @@ function json(body: unknown, status = 200) {
   });
 }
 
+const DENYLIST_HOSTS = new Set([
+  "localhost",
+  "0.0.0.0",
+  "127.0.0.1",
+  "::1",
+  "169.254.169.254",
+  "metadata.google.internal",
+]);
+
+const DENYLIST_SUFFIXES = [
+  ".localhost",
+  ".local",
+  ".internal",
+  ".lan",
+];
+
 function isPrivateOrLocalHost(hostname: string) {
   const host = String(hostname || "").trim().toLowerCase();
   if (!host) return true;
-  if (host === "localhost" || host.endsWith(".localhost")) return true;
-  if (host === "0.0.0.0" || host === "127.0.0.1") return true;
-  if (host === "::1") return true;
-  if (host === "metadata.google.internal") return true;
-  if (host === "169.254.169.254") return true; // AWS/GCP/Azure metadata IP
+  if (DENYLIST_HOSTS.has(host)) return true;
+  for (const suffix of DENYLIST_SUFFIXES) {
+    if (host.endsWith(suffix)) return true;
+  }
 
   // Block literal IPv4 private/link-local ranges.
   const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
@@ -43,6 +58,18 @@ function isPrivateOrLocalHost(hostname: string) {
   // Block obvious IPv6 local ranges when provided as a literal.
   if (host.startsWith("fe80:") || host.startsWith("fc") || host.startsWith("fd")) return true;
 
+  return false;
+}
+
+function isBlockedUrl(url: URL) {
+  // Only allow http(s).
+  if (url.protocol !== "http:" && url.protocol !== "https:") return true;
+  // Block credentials in URLs.
+  if (url.username || url.password) return true;
+  // Block non-standard ports (keep it simple).
+  const port = url.port ? Number(url.port) : null;
+  if (port !== null && port !== 80 && port !== 443) return true;
+  if (isPrivateOrLocalHost(url.hostname)) return true;
   return false;
 }
 
@@ -76,6 +103,37 @@ function proxyImageSourceUrls(url: string) {
     `https://images.weserv.nl/?url=${encoded}&w=1800&output=jpg`,
     `https://wsrv.nl/?url=${encoded}&w=1800&output=jpg`,
   ];
+}
+
+async function fetchWithCheckedRedirects(inputUrl: string, headers: HeadersInit, maxRedirects = 5) {
+  let current: URL;
+  try {
+    current = new URL(inputUrl);
+  } catch {
+    return null;
+  }
+  if (isBlockedUrl(current)) return null;
+
+  for (let i = 0; i <= maxRedirects; i += 1) {
+    const res = await fetch(current.toString(), {
+      headers,
+      redirect: "manual",
+    });
+
+    // Handle redirects manually so we can re-check host/scheme at each hop.
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get("location");
+      if (!location) return null;
+      const next = new URL(location, current);
+      if (isBlockedUrl(next)) return null;
+      current = next;
+      continue;
+    }
+
+    return res;
+  }
+
+  return null;
 }
 
 Deno.serve(async (req) => {
@@ -126,7 +184,7 @@ Deno.serve(async (req) => {
 
   try {
     const parsed = new URL(sourceUrl);
-    if (isPrivateOrLocalHost(parsed.hostname)) {
+    if (isBlockedUrl(parsed)) {
       return json({ error: "Blocked source host." }, 400);
     }
   } catch {
@@ -140,15 +198,13 @@ Deno.serve(async (req) => {
 
   for (const candidate of fetchCandidates) {
     try {
-      const response = await fetch(candidate, {
-        headers: {
-          // Helps with hosts that reject empty/default agents.
-          "User-Agent": "plnr-import-image/1.0",
-          "Accept": "image/*,*/*;q=0.8",
-          "Referer": sourceUrl,
-        },
-        redirect: "follow",
+      const response = await fetchWithCheckedRedirects(candidate, {
+        // Helps with hosts that reject empty/default agents.
+        "User-Agent": "plnr-import-image/1.0",
+        "Accept": "image/*,*/*;q=0.8",
+        "Referer": sourceUrl,
       });
+      if (!response) continue;
       if (!response.ok) {
         console.log("[import-image] fetch not ok", { candidate, status: response.status });
         continue;
