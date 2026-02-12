@@ -17,6 +17,7 @@ import ImportJsonDrawer from "./components/drawers/ImportJsonDrawer";
 import ToastLayer from "./components/ToastLayer";
 import OnboardingTripsPanel from "./components/onboarding/OnboardingTripsPanel";
 import OnboardingCreatePanel from "./components/onboarding/OnboardingCreatePanel";
+import OnboardingShell from "./components/onboarding/OnboardingShell";
 import AuthPage from "./components/AuthPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
@@ -1065,38 +1066,14 @@ export default function TripPlannerApp() {
   // Onboarding screen
   if (mode === 'onboarding') {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 via-purple-50 to-pink-50">
-        <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
-          <header className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-5 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <img
-                src="/favicon.png"
-                alt="PLNR logo"
-                className="w-10 h-10 rounded-xl border border-zinc-200 bg-white object-cover shadow-sm"
-              />
-              <div>
-                <h1 className="text-2xl font-black text-zinc-900">PLNR</h1>
-                <p className="text-sm text-zinc-600">Plan, save, and share your trips</p>
-              </div>
-            </div>
-            <div className="inline-flex rounded-xl overflow-hidden border border-zinc-300">
-              <button
-                type="button"
-                onClick={() => { setOnboardingPage("trips"); window.history.pushState(null, "", "/app"); }}
-                className={`px-4 py-2 text-sm font-medium ${onboardingPage === "trips" ? "bg-zinc-900 text-white" : "bg-white text-zinc-700"}`}
-              >
-                Trips
-              </button>
-              <button
-                type="button"
-                onClick={() => { setOnboardingPage("create"); window.history.pushState(null, "", "/new"); }}
-                className={`px-4 py-2 text-sm font-medium border-l border-zinc-300 ${onboardingPage === "create" ? "bg-zinc-900 text-white" : "bg-white text-zinc-700"}`}
-              >
-                New Trip
-              </button>
-            </div>
-          </header>
-
+      <>
+        <OnboardingShell
+          onboardingPage={onboardingPage}
+          onSwitchPage={(page) => {
+            setOnboardingPage(page);
+            window.history.pushState(null, "", page === "trips" ? "/app" : "/new");
+          }}
+        >
           {onboardingPage === "trips" ? (
             <OnboardingTripsPanel
               user={user}
@@ -1131,7 +1108,7 @@ export default function TripPlannerApp() {
             onClose={() => setShowImportModal(false)}
             onImport={handleImportJson}
           />
-        </div>
+        </OnboardingShell>
         <SignInDrawer
           open={showSignInModal}
           onClose={() => setShowSignInModal(false)}
@@ -1143,7 +1120,7 @@ export default function TripPlannerApp() {
           signInLoading={signInLoading}
         />
         <ToastLayer toasts={toasts} />
-      </div>
+      </>
     );
   }
 
@@ -1182,8 +1159,8 @@ export default function TripPlannerApp() {
           onSubmitSignIn={submitSignIn}
           signInLoading={signInLoading}
         />
-        <ResetDrawer open={showResetModal} onClose={() => setShowResetModal(false)} onConfirm={confirmReset} />
         <ToastLayer toasts={toasts} />
+        <ResetDrawer open={showResetModal} onClose={() => setShowResetModal(false)} onConfirm={confirmReset} />
       </>
     );
   }
