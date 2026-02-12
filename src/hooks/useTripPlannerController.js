@@ -1,8 +1,4 @@
-import { useEffect } from "react";
 import useFavicon from "./useFavicon";
-import useTripPlannerUiState from "./useTripPlannerUiState";
-import useTripCreationActions from "./useTripCreationActions";
-import useCloudTripLoader from "./useCloudTripLoader";
 import { QUICK_TEMPLATES } from "../utils/tripTemplates";
 import { extractCoverImage, formatVisibilityLabel } from "../utils/tripMeta";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
@@ -14,349 +10,75 @@ import useScreenProps from "./controller/useScreenProps";
 import useTripAuthDomain from "./controller/useTripAuthDomain";
 import useTripShareDomain from "./controller/useTripShareDomain";
 import useTripNavigationDomain from "./controller/useTripNavigationDomain";
+import useControllerState from "./controller/useControllerState";
+import useCloudDomain from "./controller/useCloudDomain";
+import useTripCreationDomain from "./controller/useTripCreationDomain";
+import useControllerWiring from "./controller/useControllerWiring";
 
 export default function useTripPlannerController() {
-  const { isAuthRoute, isPrivacyRoute, isTermsRoute } = useRouteFlags();
+  const routeFlags = useRouteFlags();
+  const state = useControllerState();
+  const { pushToast } = useToastManager(state.setToasts);
 
-  const {
-    mode, setMode,
-    onboardingPage, setOnboardingPage,
-    tripData, setTripData,
-    isViewOnly, setIsViewOnly,
-    setSourceUrl,
-    filter, setFilter,
-    showMaps,
-    view, setView,
-    showShareModal, setShowShareModal,
-    showMyTripsModal, setShowMyTripsModal,
-    showSignInModal, setShowSignInModal,
-    showResetModal, setShowResetModal,
-    showImportModal, setShowImportModal,
-    builderStartTab, setBuilderStartTab,
-    importJson, setImportJson,
-    importError, setImportError,
-    toasts, setToasts,
-    signInEmail, setSignInEmail,
-    signInLoading, setSignInLoading,
-    cloudTripId, setCloudTripId,
-    cloudSlug, setCloudSlug,
-    shareToken, setShareToken,
-    cloudVisibility, setCloudVisibility,
-    cloudShareAccess, setCloudShareAccess,
-    cloudOwnerId, setCloudOwnerId,
-    setCloudCollaboratorRole,
-    collaboratorEmail, setCollaboratorEmail,
-    collaborators, setCollaborators,
-    collaboratorsLoading, setCollaboratorsLoading,
-    cloudSaving, setCloudSaving,
-    myTrips, setMyTrips,
-    myTripsLoading, setMyTripsLoading,
-    showPastSavedTrips, setShowPastSavedTrips,
-    user, setUser,
-    isAdminUser,
-    tripConfig,
-    flights,
-    days,
-    dayBadges,
-    activePalette,
-    selectedId, setSelectedId,
-    selectedDay,
-    imgClass,
-    filtered,
-    savedUpcomingTrips,
-    savedPastTrips,
-    isCloudOwnedByCurrentUser,
-    isSharedCloudTrip,
-    canCollaborateOnSharedTrip,
-    canEditCurrentTrip,
-    canSaveSharedCopy,
-    copiedFrom,
-  } = useTripPlannerUiState();
-
-  useEffect(() => {
-    if (mode !== "onboarding") return;
-    setOnboardingPage(user ? "trips" : "create");
-  }, [user, mode, setOnboardingPage]);
-
-  const { pushToast } = useToastManager(setToasts);
-
-  const {
-    openImportModal,
-    handleStartFromTemplate,
-    handleStartFromQuickTemplate,
-    handleStartFromScratch,
-    handleImportJson,
-  } = useTripCreationActions({
-    isAdminUser,
-    pushToast,
-    importJson,
-    setTripData,
-    setBuilderStartTab,
-    setCloudTripId,
-    setCloudSlug,
-    setShareToken,
-    setCloudShareAccess,
-    setCloudOwnerId,
-    setCloudCollaboratorRole,
-    setSourceUrl,
-    setMode,
-    setShowImportModal,
-    setImportJson,
-    setImportError,
-  });
-
-  const {
-    handleSignIn,
-    submitSignIn,
-    submitGoogleSignIn,
-    handleSignOut,
-  } = useTripAuthDomain({
-    signInEmail,
-    setSignInLoading,
-    setShowSignInModal,
-    setSignInEmail,
-    setUser,
-    setMyTrips,
+  const creationDomain = useTripCreationDomain({
+    ...state,
     pushToast,
   });
 
-  const {
-    refreshMyTrips,
-    refreshCollaborators,
-    loadCloudTrip,
-  } = useCloudTripLoader({
-    user,
-    cloudTripId,
-    isCloudOwnedByCurrentUser,
-    pushToast,
-    setMode,
-    setOnboardingPage,
-    setTripData,
-    setIsViewOnly,
-    setSourceUrl,
-    setCloudTripId,
-    setCloudSlug,
-    setShareToken,
-    setCloudVisibility,
-    setCloudShareAccess,
-    setCloudOwnerId,
-    setCloudCollaboratorRole,
-    setCollaboratorsLoading,
-    setCollaborators,
-    setMyTripsLoading,
-    setMyTrips,
-    setUser,
-  });
-
-  useFavicon(tripConfig.favicon);
-
-  const {
-    currentShareURL,
-    canCopyShareLink,
-    handleSaveSharedCopy,
-    handleAddCollaborator,
-    handleRemoveCollaborator,
-    handleShare,
-    handleShareAccessChange,
-    copyShareLink,
-  } = useTripShareDomain({
-    user,
-    tripData,
-    cloudTripId,
-    cloudSlug,
-    shareToken,
-    cloudVisibility,
-    cloudShareAccess,
-    cloudOwnerId,
-    collaboratorEmail,
-    isCloudOwnedByCurrentUser,
-    setCloudSaving,
-    setCloudTripId,
-    setCloudSlug,
-    setShareToken,
-    setCloudVisibility,
-    setCloudShareAccess,
-    setCloudOwnerId,
-    setCloudCollaboratorRole,
-    setCollaboratorEmail,
-    setCollaboratorsLoading,
-    refreshMyTrips,
-    refreshCollaborators,
+  const authDomain = useTripAuthDomain({
+    ...state,
     pushToast,
   });
 
-  const {
-    handleOpenCloudTrip,
-    handleDeleteCloudTrip,
-    handleEditTrip,
-    handleSaveAndPreview,
-    handleCancelEdit,
-    handleGoHome,
-    handleReset,
-    confirmReset,
-    handleFixIssue,
-  } = useTripNavigationDomain({
-    user,
-    myTrips,
-    cloudTripId,
-    loadCloudTrip,
-    refreshMyTrips,
+  const cloudDomain = useCloudDomain({
+    ...state,
     pushToast,
-    setMode,
-    setOnboardingPage,
-    setBuilderStartTab,
-    setShowShareModal,
-    setShowMyTripsModal,
-    setShowSignInModal,
-    setShowImportModal,
-    setShowResetModal,
-    setIsViewOnly,
-    setSourceUrl,
-    setTripData,
-    setCloudTripId,
-    setCloudSlug,
-    setShareToken,
-    setCloudShareAccess,
-    setCloudOwnerId,
-    setCloudCollaboratorRole,
   });
 
-  const publishIssues = usePublishIssues(tripData);
+  useFavicon(state.tripConfig.favicon);
 
-  useEffect(() => {
-    if (!showShareModal || !isCloudOwnedByCurrentUser || !cloudTripId || cloudShareAccess !== "collaborate") return;
-    refreshCollaborators(cloudTripId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showShareModal, isCloudOwnedByCurrentUser, cloudTripId, cloudShareAccess]);
-
-  const overlayProps = useOverlayProps({
-    toasts,
-    showSignInModal,
-    setShowSignInModal,
-    isSupabaseConfigured,
-    signInEmail,
-    setSignInEmail,
-    submitGoogleSignIn,
-    submitSignIn,
-    signInLoading,
-    showResetModal,
-    setShowResetModal,
-    confirmReset,
-    showShareModal,
-    setShowShareModal,
-    publishIssues,
-    handleFixIssue,
-    currentShareURL,
-    canCopyShareLink,
-    copyShareLink,
-    user,
-    cloudSaving,
-    handleSignIn,
-    cloudTripId,
-    isCloudOwnedByCurrentUser,
-    cloudShareAccess,
-    handleShareAccessChange,
-    collaboratorEmail,
-    setCollaboratorEmail,
-    handleAddCollaborator,
-    collaboratorsLoading,
-    collaborators,
-    handleRemoveCollaborator,
-    isViewOnly,
-    setIsViewOnly,
-    showMyTripsModal,
-    setShowMyTripsModal,
-    myTripsLoading,
-    myTrips,
-    savedUpcomingTrips,
-    savedPastTrips,
-    showPastSavedTrips,
-    setShowPastSavedTrips,
-    handleOpenCloudTrip,
-    handleDeleteCloudTrip,
-    extractCoverImage,
-    formatVisibilityLabel,
-    cloudVisibility,
-    setCloudVisibility,
-    showImportModal,
-    isAdminUser,
-    importJson,
-    setImportJson,
-    importError,
-    setShowImportModal,
-    handleImportJson,
+  const shareDomain = useTripShareDomain({
+    ...state,
+    ...cloudDomain,
+    pushToast,
   });
 
+  const navigationDomain = useTripNavigationDomain({
+    ...state,
+    loadCloudTrip: cloudDomain.loadCloudTrip,
+    refreshMyTrips: cloudDomain.refreshMyTrips,
+    pushToast,
+  });
+
+  const publishIssues = usePublishIssues(state.tripData);
+
+  const { mode, overlayInputs, screenInputs } = useControllerWiring({
+    state,
+    actions: {
+      ...creationDomain,
+      ...authDomain,
+      ...shareDomain,
+      ...navigationDomain,
+    },
+    config: {
+      isSupabaseConfigured,
+      quickTemplates: QUICK_TEMPLATES,
+      extractCoverImage,
+      formatVisibilityLabel,
+      publishIssues,
+    },
+  });
+
+  const overlayProps = useOverlayProps(overlayInputs);
   const {
     authProps,
     onboardingProps,
     builderProps,
     viewProps,
-  } = useScreenProps({
-    setMode,
-    setOnboardingPage,
-    user,
-    isSupabaseConfigured,
-    signInEmail,
-    setSignInEmail,
-    submitGoogleSignIn,
-    submitSignIn,
-    signInLoading,
-    onboardingPage,
-    handleSignOut,
-    handleSignIn,
-    savedUpcomingTrips,
-    savedPastTrips,
-    showPastSavedTrips,
-    setShowPastSavedTrips,
-    handleOpenCloudTrip,
-    extractCoverImage,
-    formatVisibilityLabel,
-    handleStartFromTemplate,
-    handleStartFromScratch,
-    quickTemplates: QUICK_TEMPLATES,
-    handleStartFromQuickTemplate,
-    isAdminUser,
-    openImportModal,
-    tripData,
-    handleSaveAndPreview,
-    handleCancelEdit,
-    handleGoHome,
-    handleReset,
-    builderStartTab,
-    activePalette,
-    tripConfig,
-    isSharedCloudTrip,
-    canCollaborateOnSharedTrip,
-    copiedFrom,
-    view,
-    setView,
-    filter,
-    setFilter,
-    handleShare,
-    setShowShareModal,
-    canSaveSharedCopy,
-    handleSaveSharedCopy,
-    cloudSaving,
-    canEditCurrentTrip,
-    handleEditTrip,
-    cloudSlug,
-    cloudTripId,
-    flights,
-    days,
-    filtered,
-    showMaps,
-    imgClass,
-    selectedId,
-    setSelectedId,
-    dayBadges,
-    selectedDay,
-  });
+  } = useScreenProps(screenInputs);
 
   return {
-    isAuthRoute,
-    isPrivacyRoute,
-    isTermsRoute,
+    ...routeFlags,
     mode,
     authProps,
     onboardingProps,
