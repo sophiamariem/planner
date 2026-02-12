@@ -1,6 +1,7 @@
 import React from 'react';
 import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import PrimaryButton from '../../components/PrimaryButton';
+import S from './uiStyles';
 
 function PhotoTile({ uri, onRemove }) {
   return (
@@ -28,29 +29,29 @@ export default function PlanDaysSection({
 }) {
   return (
     <>
-      <Text style={{ color: '#111827', fontWeight: '700' }}>Days</Text>
+      <Text style={S.label}>Days</Text>
       {dayDrafts.map((item, index) => (
-        <View key={item._key || `day-edit-${index}`} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 14, padding: 10, gap: 8, backgroundColor: '#fff' }}>
+        <View key={item._key || `day-edit-${index}`} style={[S.itemCard, { borderRadius: 14 }]}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>
+            <Text style={S.labelSmall}>
               Day {index + 1} {previewDates[index] ? `(${formatChipLabel(previewDates[index])})` : ''}
             </Text>
             <View style={{ flexDirection: 'row', gap: 6 }}>
-              <Pressable onPress={() => moveDay(index, index - 1)} disabled={index === 0} style={{ opacity: index === 0 ? 0.35 : 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
-                <Text style={{ color: '#374151', fontWeight: '700', fontSize: 14 }}>↑</Text>
+              <Pressable onPress={() => moveDay(index, index - 1)} disabled={index === 0} style={[S.arrowButton, { opacity: index === 0 ? 0.35 : 1 }]}>
+                <Text style={S.arrowButtonText}>↑</Text>
               </Pressable>
-              <Pressable onPress={() => moveDay(index, index + 1)} disabled={index === dayDrafts.length - 1} style={{ opacity: index === dayDrafts.length - 1 ? 0.35 : 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
-                <Text style={{ color: '#374151', fontWeight: '700', fontSize: 14 }}>↓</Text>
+              <Pressable onPress={() => moveDay(index, index + 1)} disabled={index === dayDrafts.length - 1} style={[S.arrowButton, { opacity: index === dayDrafts.length - 1 ? 0.35 : 1 }]}>
+                <Text style={S.arrowButtonText}>↓</Text>
               </Pressable>
             </View>
           </View>
 
-          <TextInput value={item.title} onChangeText={(value) => updateDayDraft(index, { title: value })} placeholder="Day title" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
-          <TextInput value={item.notesText} onChangeText={(value) => updateDayDraft(index, { notesText: value })} placeholder="Notes (one per line)" multiline style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff', minHeight: 70, textAlignVertical: 'top' }} />
+          <TextInput value={item.title} onChangeText={(value) => updateDayDraft(index, { title: value })} placeholder="Day title" style={S.input10} />
+          <TextInput value={item.notesText} onChangeText={(value) => updateDayDraft(index, { notesText: value })} placeholder="Notes (one per line)" multiline style={[S.input10, { minHeight: 70, textAlignVertical: 'top' }]} />
 
           <View style={{ gap: 6, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, backgroundColor: '#fafafa', padding: 10 }}>
-            <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Photos</Text>
-            <TextInput value={item.photoQuery} onChangeText={(value) => updateDayDraft(index, { photoQuery: value })} placeholder="Search photos for this day" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+            <Text style={S.labelSmall}>Photos</Text>
+            <TextInput value={item.photoQuery} onChangeText={(value) => updateDayDraft(index, { photoQuery: value })} placeholder="Search photos for this day" style={S.input10} />
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <View style={{ flex: 1 }}>
                 <PrimaryButton title={item.photoLoading ? 'Finding...' : 'Find Photos'} onPress={() => runPhotoSearchForDay(index)} disabled={item.photoLoading} variant="outline" />
@@ -69,7 +70,7 @@ export default function PlanDaysSection({
                   onChangeText={(value) => updateDayDraft(index, { photoUrl: value })}
                   placeholder="Paste photo URL"
                   autoCapitalize="none"
-                  style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }}
+                  style={[S.input10, { flex: 1 }]}
                 />
                 <Pressable
                   onPress={() => addPhotoUrlToDay(index)}
@@ -96,14 +97,14 @@ export default function PlanDaysSection({
                 ))}
               </ScrollView>
             ) : (
-              <Text style={{ color: '#71717a', fontSize: 12 }}>No photos added yet.</Text>
+              <Text style={S.emptyTextSmall}>No photos added yet.</Text>
             )}
           </View>
 
           <View style={{ gap: 6 }}>
-            <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Locations</Text>
+            <Text style={S.labelSmall}>Locations</Text>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <TextInput value={item.locationQuery} onChangeText={(value) => updateDayDraft(index, { locationQuery: value })} placeholder="Search place or address" style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
+              <TextInput value={item.locationQuery} onChangeText={(value) => updateDayDraft(index, { locationQuery: value })} placeholder="Search place or address" style={[S.input10, { flex: 1 }]} />
               <Pressable onPress={() => addLocationToDay(index)} style={{ marginLeft: 8, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, justifyContent: 'center', backgroundColor: '#fff' }}>
                 <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>{item.locationLoading ? '...' : 'Add'}</Text>
               </Pressable>
@@ -121,7 +122,7 @@ export default function PlanDaysSection({
                 ))}
               </View>
             ) : (
-              <Text style={{ color: '#71717a', fontSize: 12 }}>No locations added yet.</Text>
+              <Text style={S.emptyTextSmall}>No locations added yet.</Text>
             )}
           </View>
         </View>

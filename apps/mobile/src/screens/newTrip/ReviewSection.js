@@ -1,10 +1,11 @@
 import React from 'react';
 import { Image, ScrollView, Text, TextInput, View } from 'react-native';
 import { normalizeDayTitle } from './useNewTripController';
+import S from './uiStyles';
 
 export default function ReviewSection({ reviewCoverPhoto, title, previewDates, flights, tripFooter, dayDrafts, updateFooter }) {
   return (
-    <View style={{ gap: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, padding: 12, backgroundColor: '#ffffff' }}>
+    <View style={S.sectionCard}>
       <View style={{ borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 16, backgroundColor: '#fafafa', overflow: 'hidden' }}>
         {reviewCoverPhoto ? (
           <View style={{ width: '100%', height: 170 }}>
@@ -59,8 +60,8 @@ export default function ReviewSection({ reviewCoverPhoto, title, previewDates, f
         </View>
       </View>
       <View style={{ gap: 8 }}>
-        <Text style={{ color: '#111827', fontWeight: '700' }}>Footer</Text>
-        <TextInput value={tripFooter} onChangeText={updateFooter} placeholder="Planned with PLNR" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: '#fff' }} />
+        <Text style={S.label}>Footer</Text>
+        <TextInput value={tripFooter} onChangeText={updateFooter} placeholder="Planned with PLNR" style={S.input12} />
       </View>
     </View>
   );

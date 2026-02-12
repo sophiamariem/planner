@@ -7,6 +7,7 @@ import PlanFlightsSection from './newTrip/PlanFlightsSection';
 import PlanTabSwitcher from './newTrip/PlanTabSwitcher';
 import ReviewSection from './newTrip/ReviewSection';
 import StepSwitcher from './newTrip/StepSwitcher';
+import S from './newTrip/uiStyles';
 import useNewTripController, {
   TEMPLATE_OPTIONS,
   formatChipLabel,
@@ -101,7 +102,7 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
       ) : null}
 
       {step === 1 ? (
-        <View style={{ gap: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, padding: 12, backgroundColor: '#ffffff' }}>
+        <View style={S.sectionCard}>
           <PlanTabSwitcher planTab={planTab} setPlanTab={setPlanTab} />
 
           {planTab === 'days' ? (

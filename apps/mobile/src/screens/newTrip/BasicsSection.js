@@ -1,6 +1,7 @@
 import React from 'react';
 import { Image, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import PrimaryButton from '../../components/PrimaryButton';
+import S from './uiStyles';
 
 export default function BasicsSection({
   isCreating,
@@ -27,10 +28,10 @@ export default function BasicsSection({
   setCoverPhoto,
 }) {
   return (
-    <View style={{ gap: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, padding: 12, backgroundColor: '#ffffff' }}>
+    <View style={S.sectionCard}>
       {isCreating ? (
         <View style={{ gap: 8 }}>
-          <Text style={{ color: '#111827', fontWeight: '700' }}>Start from template</Text>
+          <Text style={S.label}>Start from template</Text>
           <View style={{ gap: 8 }}>
             {templateOptions.map((template) => {
               const active = selectedTemplateId === template.id;
@@ -51,12 +52,12 @@ export default function BasicsSection({
       ) : null}
 
       <View style={{ gap: 8 }}>
-        <Text style={{ color: '#111827', fontWeight: '700' }}>Trip title</Text>
-        <TextInput value={title} onChangeText={updateTitle} placeholder="Summer in Lisbon" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }} />
+        <Text style={S.label}>Trip title</Text>
+        <TextInput value={title} onChangeText={updateTitle} placeholder="Summer in Lisbon" style={[S.input12, { fontSize: 16 }]} />
       </View>
 
       <View style={{ gap: 8 }}>
-        <Text style={{ color: '#111827', fontWeight: '700' }}>Start date</Text>
+        <Text style={S.label}>Start date</Text>
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
           {datePresets.map((preset) => {
             const iso = `${preset.getFullYear()}-${String(preset.getMonth() + 1).padStart(2, '0')}-${String(preset.getDate()).padStart(2, '0')}`;
@@ -69,23 +70,23 @@ export default function BasicsSection({
           })}
         </View>
         {Platform.OS === 'android' ? (
-          <Pressable onPress={openStartDatePicker} style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: '#fff' }}>
+          <Pressable onPress={openStartDatePicker} style={S.input12}>
             <Text style={{ color: '#111827', fontSize: 16 }}>{formatIsoAsDisplayDate(startDate) || 'Select start date'}</Text>
             <Text style={{ color: '#6b7280', fontSize: 11, marginTop: 2 }}>{startDate || 'YYYY-MM-DD'}</Text>
           </Pressable>
         ) : (
-          <TextInput value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" autoCapitalize="none" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }} />
+          <TextInput value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" autoCapitalize="none" style={[S.input12, { fontSize: 16 }]} />
         )}
       </View>
 
       <View style={{ gap: 8 }}>
-        <Text style={{ color: '#111827', fontWeight: '700' }}>Duration</Text>
-        <TextInput value={daysCount} onChangeText={setDaysCount} placeholder="1-14" keyboardType="numeric" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }} />
+        <Text style={S.label}>Duration</Text>
+        <TextInput value={daysCount} onChangeText={setDaysCount} placeholder="1-14" keyboardType="numeric" style={[S.input12, { fontSize: 16 }]} />
       </View>
 
       <View style={{ gap: 8 }}>
-        <Text style={{ color: '#111827', fontWeight: '700' }}>Cover photo</Text>
-        <TextInput value={coverQuery} onChangeText={setCoverQuery} placeholder="Search cover photo" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 15, backgroundColor: '#fff' }} />
+        <Text style={S.label}>Cover photo</Text>
+        <TextInput value={coverQuery} onChangeText={setCoverQuery} placeholder="Search cover photo" style={[S.input12, { fontSize: 15 }]} />
         <PrimaryButton title={coverLoading ? 'Finding...' : 'Find Photos'} onPress={runCoverSearch} disabled={coverLoading} variant="outline" />
         {coverError ? <Text style={{ color: '#dc2626', fontSize: 12 }}>{coverError}</Text> : null}
         {coverPhoto ? (
