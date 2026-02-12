@@ -147,6 +147,7 @@ function createDayDraft(index, total) {
     notesText: '',
     badgesText: '',
     photos: [],
+    photoUrl: '',
     photoQuery: '',
     photoResults: [],
     photoLoading: false,
@@ -165,6 +166,7 @@ function hydrateDayDraft(day = {}, dayBadges = {}, index = 0, total = 3) {
     notesText: Array.isArray(day.notes) ? day.notes.join('\n') : '',
     badgesText: Array.isArray(dayBadges?.[day.id]) ? dayBadges[day.id].join(' ') : '',
     photos: Array.isArray(day.photos) ? day.photos.filter(Boolean) : [],
+    photoUrl: '',
     photoQuery: day.title || '',
     photoResults: [],
     photoLoading: false,
@@ -517,6 +519,29 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
     updateDayDraft(index, { photos: [...next, url] });
   };
 
+  const addPhotoUrlToDay = (index) => {
+    const day = dayDrafts[index];
+    const url = String(day?.photoUrl || '').trim();
+    if (!url) {
+      updateDayDraft(index, { photoError: 'Paste an image URL first.' });
+      return;
+    }
+    if (!/^https?:\/\//i.test(url)) {
+      updateDayDraft(index, { photoError: 'Use a full image URL starting with http:// or https://.' });
+      return;
+    }
+    const photos = Array.isArray(day?.photos) ? day.photos : [];
+    if (photos.includes(url)) {
+      updateDayDraft(index, { photoError: '', photoUrl: '' });
+      return;
+    }
+    if (photos.length >= 6) {
+      updateDayDraft(index, { photoError: 'You can add up to 6 photos per day.' });
+      return;
+    }
+    updateDayDraft(index, { photos: [...photos, url], photoUrl: '', photoError: '' });
+  };
+
   const removePhotoFromDay = (index, photoIndex) => {
     const day = dayDrafts[index];
     const next = Array.isArray(day?.photos) ? day.photos.filter((_, i) => i !== photoIndex) : [];
@@ -735,24 +760,6 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
 
             {planTab === 'days' ? (
               <>
-            <Text style={{ color: '#111827', fontWeight: '700' }}>Day order</Text>
-            <Text style={{ color: '#6b7280', fontSize: 12 }}>Use arrows to reorder.</Text>
-            {dayDrafts.map((item, index) => (
-              <View key={`order-${item._key || index}`} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 10, backgroundColor: '#fff', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12, flex: 1 }}>
-                  Day {index + 1} {previewDates[index] ? `(${formatChipLabel(previewDates[index])})` : ''} • {normalizeDayTitle(item.title, index, dayDrafts.length)}
-                </Text>
-                <View style={{ flexDirection: 'row', gap: 6 }}>
-                  <Pressable onPress={() => moveDay(index, index - 1)} disabled={index === 0} style={{ opacity: index === 0 ? 0.35 : 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
-                    <Text style={{ color: '#374151', fontWeight: '700', fontSize: 14 }}>↑</Text>
-                  </Pressable>
-                  <Pressable onPress={() => moveDay(index, index + 1)} disabled={index === dayDrafts.length - 1} style={{ opacity: index === dayDrafts.length - 1 ? 0.35 : 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
-                    <Text style={{ color: '#374151', fontWeight: '700', fontSize: 14 }}>↓</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ))}
-
             <Text style={{ color: '#111827', fontWeight: '700' }}>Days</Text>
             {dayDrafts.map((item, index) => (
               <View key={item._key || `day-edit-${index}`} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 14, padding: 10, gap: 8, backgroundColor: '#fff' }}>
@@ -760,6 +767,14 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
                   <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>
                     Day {index + 1} {previewDates[index] ? `(${formatChipLabel(previewDates[index])})` : ''}
                   </Text>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    <Pressable onPress={() => moveDay(index, index - 1)} disabled={index === 0} style={{ opacity: index === 0 ? 0.35 : 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
+                      <Text style={{ color: '#374151', fontWeight: '700', fontSize: 14 }}>↑</Text>
+                    </Pressable>
+                    <Pressable onPress={() => moveDay(index, index + 1)} disabled={index === dayDrafts.length - 1} style={{ opacity: index === dayDrafts.length - 1 ? 0.35 : 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
+                      <Text style={{ color: '#374151', fontWeight: '700', fontSize: 14 }}>↓</Text>
+                    </Pressable>
+                  </View>
                 </View>
 
                 <TextInput value={item.title} onChangeText={(value) => updateDayDraft(index, { title: value })} placeholder="Day title" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
@@ -769,6 +784,21 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
                   <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Photos</Text>
                   <TextInput value={item.photoQuery} onChangeText={(value) => updateDayDraft(index, { photoQuery: value })} placeholder="Search photos for this day" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }} />
                   <PrimaryButton title={item.photoLoading ? 'Finding...' : 'Find Photos'} onPress={() => runPhotoSearchForDay(index)} disabled={item.photoLoading} variant="outline" />
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TextInput
+                      value={item.photoUrl || ''}
+                      onChangeText={(value) => updateDayDraft(index, { photoUrl: value })}
+                      placeholder="Paste photo URL"
+                      autoCapitalize="none"
+                      style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#fff' }}
+                    />
+                    <Pressable
+                      onPress={() => addPhotoUrlToDay(index)}
+                      style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 12, justifyContent: 'center', backgroundColor: '#fff' }}
+                    >
+                      <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Add URL</Text>
+                    </Pressable>
+                  </View>
                   {item.photoError ? <Text style={{ color: '#dc2626', fontSize: 12 }}>{item.photoError}</Text> : null}
                   {Array.isArray(item.photoResults) && item.photoResults.length > 0 ? (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>

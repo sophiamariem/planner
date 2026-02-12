@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image, Linking, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 function defaultDayTitle(index, total) {
   if (index === 0) return 'Arrival';
@@ -112,6 +113,25 @@ function fallbackPhotoUri(query, index = 0) {
   return `https://picsum.photos/seed/${seed}-${index}/1200/800`;
 }
 
+function getMapPreviewUrls(pins = []) {
+  const valid = (pins || []).filter((p) => Array.isArray(p?.ll) && p.ll.length === 2).slice(0, 8);
+  if (!valid.length) return [];
+  const lats = valid.map((p) => Number(p.ll[0])).filter(Number.isFinite);
+  const lons = valid.map((p) => Number(p.ll[1])).filter(Number.isFinite);
+  if (!lats.length || !lons.length) return [];
+  const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
+  const centerLon = lons.reduce((a, b) => a + b, 0) / lons.length;
+  const markerParam = valid
+    .map((p) => `${Number(p.ll[0]).toFixed(6)},${Number(p.ll[1]).toFixed(6)},red-pushpin`)
+    .join('|');
+  const osm = `https://staticmap.openstreetmap.de/staticmap.php?center=${centerLat.toFixed(6)},${centerLon.toFixed(6)}&zoom=11&size=800x360&markers=${encodeURIComponent(markerParam)}`;
+  const yandexMarkers = valid
+    .map((p) => `${Number(p.ll[1]).toFixed(6)},${Number(p.ll[0]).toFixed(6)},pm2rdm`)
+    .join('~');
+  const yandex = `https://static-maps.yandex.ru/1.x/?lang=en_US&ll=${centerLon.toFixed(6)},${centerLat.toFixed(6)}&z=11&l=map&size=650,320&pt=${encodeURIComponent(yandexMarkers)}`;
+  return [osm, yandex];
+}
+
 function RemoteImage({ uri, fallbackUri, fallbackUris = [], style, resizeMode = 'cover' }) {
   const candidates = useMemo(() => {
     const list = [uri, ...(Array.isArray(fallbackUris) ? fallbackUris : []), fallbackUri].filter((v) => String(v || '').trim());
@@ -151,25 +171,6 @@ function extractCover(tripData) {
   return tripData?.tripConfig?.cover || (tripData?.days || []).find((d) => (d.photos || []).length > 0)?.photos?.[0] || null;
 }
 
-function getMapPreviewUrls(pins = []) {
-  const valid = (pins || []).filter((p) => Array.isArray(p?.ll) && p.ll.length === 2).slice(0, 8);
-  if (!valid.length) return [];
-  const lats = valid.map((p) => Number(p.ll[0])).filter(Number.isFinite);
-  const lons = valid.map((p) => Number(p.ll[1])).filter(Number.isFinite);
-  if (!lats.length || !lons.length) return [];
-  const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
-  const centerLon = lons.reduce((a, b) => a + b, 0) / lons.length;
-  const markerParam = valid
-    .map((p) => `${Number(p.ll[0]).toFixed(6)},${Number(p.ll[1]).toFixed(6)},red-pushpin`)
-    .join('|');
-  const osm = `https://staticmap.openstreetmap.de/staticmap.php?center=${centerLat.toFixed(6)},${centerLon.toFixed(6)}&zoom=11&size=800x360&markers=${encodeURIComponent(markerParam)}`;
-  const yandexMarkers = valid
-    .map((p) => `${Number(p.ll[1]).toFixed(6)},${Number(p.ll[0]).toFixed(6)},pm2rdm`)
-    .join('~');
-  const yandex = `https://static-maps.yandex.ru/1.x/?lang=en_US&ll=${centerLon.toFixed(6)},${centerLat.toFixed(6)}&z=11&l=map&size=650,320&pt=${encodeURIComponent(yandexMarkers)}`;
-  return [osm, yandex];
-}
-
 function getMapQueryUrl(pin) {
   if (Array.isArray(pin?.ll) && pin.ll.length === 2) {
     const lat = Number(pin.ll[0]);
@@ -192,6 +193,14 @@ function buildShareUrl(tripRow) {
   if (!slug) return null;
   const base = String(process.env.EXPO_PUBLIC_WEB_APP_URL || 'https://plnr.guide').replace(/\/+$/, '');
   return `${base}/${slug}`;
+}
+
+function flightDisplayTitle(flight, index, total) {
+  if (String(flight?.title || '').trim()) return String(flight.title).trim();
+  if (total <= 1) return 'Flight Out';
+  if (index === 0) return 'Flight Out';
+  if (index === total - 1) return 'Flight Home';
+  return 'Domestic Flight';
 }
 
 function IconActionButton({ iconName, onPress, tone = 'default', accessibilityLabel, compact = false }) {
@@ -286,17 +295,6 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
   const [hasOfflineCopy, setHasOfflineCopy] = useState(false);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const shareUrl = buildShareUrl(tripRow);
-
-  const upcoming = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return days.find((d) => {
-      if (!d.isoDate) return false;
-      const date = new Date(`${d.isoDate}T00:00:00`);
-      if (Number.isNaN(date.getTime())) return false;
-      return date >= today;
-    }) || days[0] || null;
-  }, [days]);
 
   useEffect(() => {
     let mounted = true;
@@ -408,11 +406,6 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
                 <Text style={{ color: '#1d4ed8', fontSize: 11, fontWeight: '700' }}>{days.length} days</Text>
               </View>
             </View>
-            {upcoming ? (
-              <View style={{ marginTop: 4, alignSelf: 'flex-start', borderWidth: 1, borderColor: '#dbeafe', backgroundColor: '#eff6ff', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
-                <Text style={{ color: '#1d4ed8', fontSize: 12, fontWeight: '700' }}>Coming up: {upcoming.title || `${upcoming.dow || ''} ${upcoming.date || ''}`}</Text>
-              </View>
-            ) : null}
             {tripFooter ? (
               <Text style={{ color: '#6b7280', fontSize: 12, marginTop: 2 }}>{tripFooter}</Text>
             ) : null}
@@ -420,11 +413,6 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
         </View>
 
         <View style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 14, backgroundColor: '#ffffff', padding: 10, gap: 8 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <Text style={{ color: '#111827', fontWeight: '800', fontSize: 14 }}>
-              {upcoming ? `Today / Next: ${upcoming.title || `${upcoming.dow || ''} ${upcoming.date || ''}`}` : 'Today / Next'}
-            </Text>
-          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {days.map((day, index) => (
               <Pressable
@@ -451,10 +439,28 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
           <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 16, backgroundColor: '#ffffff', padding: 12, gap: 8 }}>
             <Text style={{ color: '#111827', fontWeight: '800', fontSize: 16 }}>Flights</Text>
             {flights.map((f, i) => (
-              <View key={`flight-${i}`} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 10, backgroundColor: '#f8fafc', gap: 3 }}>
-                <Text style={{ color: '#111827', fontWeight: '700' }}>{f.title || 'Flight'}</Text>
-                <Text style={{ color: '#4b5563', fontSize: 12 }}>{f.route || `${f.flightFrom || ''} → ${f.flightTo || ''}`}</Text>
+              <View key={`flight-${i}`} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 10, backgroundColor: '#f8fafc', gap: 6 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="airplane-outline" size={14} color="#111827" />
+                    <Text style={{ color: '#111827', fontWeight: '800' }}>{flightDisplayTitle(f, i, flights.length)}</Text>
+                  </View>
+                  <Text style={{ color: '#6b7280', fontSize: 12, fontWeight: '700' }}>{f.num || ''}</Text>
+                </View>
+                <Text style={{ color: '#374151', fontSize: 13, fontWeight: '600' }}>{f.route || `${f.flightFrom || ''} → ${f.flightTo || ''}`}</Text>
                 {f.date ? <Text style={{ color: '#6b7280', fontSize: 12 }}>{f.date}</Text> : null}
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {f.times ? (
+                    <View style={{ borderWidth: 1, borderColor: '#2563eb', borderRadius: 999, backgroundColor: '#2563eb', paddingHorizontal: 9, paddingVertical: 4 }}>
+                      <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>{f.times}</Text>
+                    </View>
+                  ) : null}
+                  {f.codes ? (
+                    <View style={{ borderWidth: 1, borderColor: '#111827', borderRadius: 999, backgroundColor: '#111827', paddingHorizontal: 9, paddingVertical: 4 }}>
+                      <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>{f.codes}</Text>
+                    </View>
+                  ) : null}
+                </View>
               </View>
             ))}
           </View>
@@ -501,22 +507,30 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
               ) : null}
 
               {(day.notes || []).length > 0 ? (
-                <View style={{ gap: 5 }}>
+                <LinearGradient
+                  colors={['#fef3c7', '#fce7f3']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{ borderRadius: 12, paddingHorizontal: 10, paddingVertical: 9, gap: 6 }}
+                >
+                  <Text style={{ color: '#7c2d12', fontWeight: '700', fontSize: 12 }}>Plan</Text>
                   {(day.notes || []).map((note, i) => (
-                    <View key={`note-${i}`} style={{ flexDirection: 'row', gap: 6 }}>
-                      <Text style={{ color: '#9ca3af' }}>•</Text>
+                    <View key={`note-${i}`} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                      <View style={{ width: 20, height: 20, borderRadius: 999, backgroundColor: '#111827', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
+                        <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>{i + 1}</Text>
+                      </View>
                       <Text style={{ color: '#374151', fontSize: 13, flex: 1 }}>{note}</Text>
                     </View>
                   ))}
-                </View>
+                </LinearGradient>
               ) : (
                 <Text style={{ color: '#9ca3af', fontSize: 12 }}>No notes for this day.</Text>
               )}
 
               {Array.isArray(day.pins) && day.pins.length > 0 ? (
                 <View style={{ gap: 6 }}>
-                  {getMapPreviewUrls(day.pins).length > 0 ? (
-                    <Pressable onPress={() => openPinInMaps(day.pins[0])} style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 12, overflow: 'hidden', backgroundColor: '#f8fafc' }}>
+                  {String(day.route || '').trim() && getMapPreviewUrls(day.pins).length > 0 ? (
+                    <Pressable onPress={() => openPinInMaps(day.pins[0])} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, overflow: 'hidden', backgroundColor: '#f8fafc' }}>
                       <RemoteImage
                         uri={getMapPreviewUrls(day.pins)[0]}
                         fallbackUris={getMapPreviewUrls(day.pins).slice(1)}
@@ -524,9 +538,6 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
                         style={{ width: '100%', height: 132, backgroundColor: '#f1f5f9' }}
                         resizeMode="cover"
                       />
-                      <View style={{ position: 'absolute', right: 8, bottom: 8, borderWidth: 1, borderColor: '#dbeafe', backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
-                        <Text style={{ color: '#1e3a8a', fontSize: 11, fontWeight: '700' }}>Open map</Text>
-                      </View>
                     </Pressable>
                   ) : null}
                   <Text style={{ color: '#111827', fontWeight: '700', fontSize: 12 }}>Locations</Text>
