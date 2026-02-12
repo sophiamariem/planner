@@ -3,6 +3,7 @@ const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
 const ACCESS_TOKEN_KEY = 'sb-access-token';
 const REFRESH_TOKEN_KEY = 'sb-refresh-token';
+const SESSION_URL_KEY = 'sb-supabase-url';
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
@@ -27,11 +28,61 @@ export function getRefreshToken() {
 export function clearSession() {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(SESSION_URL_KEY);
 }
 
 export function saveSession({ accessToken, refreshToken }) {
   if (accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
   if (refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  if (supabaseUrl) localStorage.setItem(SESSION_URL_KEY, supabaseUrl);
+}
+
+function base64UrlDecode(input) {
+  const raw = String(input || '').replace(/-/g, '+').replace(/_/g, '/');
+  const pad = raw.length % 4 ? '='.repeat(4 - (raw.length % 4)) : '';
+  try {
+    return atob(raw + pad);
+  } catch {
+    return '';
+  }
+}
+
+function parseJwtPayload(token) {
+  const t = String(token || '').trim();
+  const parts = t.split('.');
+  if (parts.length !== 3) return null;
+  const json = base64UrlDecode(parts[1]);
+  if (!json) return null;
+  try {
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+function expectedIssuerPrefix() {
+  const u = String(supabaseUrl || '').replace(/\/+$/, '');
+  if (!u) return '';
+  return `${u}/auth/v1`;
+}
+
+function validateStoredSessionForCurrentProject() {
+  const storedUrl = localStorage.getItem(SESSION_URL_KEY);
+  if (storedUrl && supabaseUrl && storedUrl !== supabaseUrl) {
+    clearSession();
+    return false;
+  }
+  const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+  if (!accessToken) return true;
+  const payload = parseJwtPayload(accessToken);
+  if (!payload?.iss) return true;
+  const expected = expectedIssuerPrefix();
+  if (expected && typeof payload.iss === 'string' && !payload.iss.startsWith(expected)) {
+    // Token from another Supabase project/environment.
+    clearSession();
+    return false;
+  }
+  return true;
 }
 
 export function setSessionFromUrl() {
@@ -66,6 +117,7 @@ async function refreshAccessToken() {
     method: 'POST',
     headers: {
       apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ refresh_token: refreshToken }),
@@ -96,6 +148,7 @@ async function refreshAccessToken() {
 
 export async function authedFetch(path, options = {}) {
   const { url, anonKey } = getSupabaseConfig();
+  validateStoredSessionForCurrentProject();
   const accessToken = getAccessToken();
 
   const headers = {
@@ -104,7 +157,19 @@ export async function authedFetch(path, options = {}) {
     ...(options.headers || {}),
   };
 
-  if (accessToken) {
+  const isJwtLike = (value) => {
+    const s = String(value || '').trim();
+    // Supabase keys and access tokens are JWTs (3 base64url segments).
+    return s.split('.').length === 3;
+  };
+
+  const isFunctionCall = String(path || '').startsWith('/functions/v1/');
+  const initialFunctionBearer = isJwtLike(accessToken) ? accessToken : anonKey;
+  if (isFunctionCall) {
+    // Edge functions are fronted by JWT verification. If a user token is stale (or from another project),
+    // it will fail as "Invalid JWT". We retry with anon key so the function can still run.
+    headers.Authorization = `Bearer ${initialFunctionBearer}`;
+  } else if (accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
@@ -121,14 +186,19 @@ export async function authedFetch(path, options = {}) {
     });
   };
 
-  let response = await doFetch(accessToken);
+  let bearerToUse = headers.Authorization ? headers.Authorization.replace(/^Bearer\s+/i, '') : null;
+  let response = await doFetch(bearerToUse);
 
   // If token expired, attempt a refresh+retry once.
-  if ((response.status === 401 || response.status === 403) && getRefreshToken()) {
-    const nextAccessToken = await refreshAccessToken();
-    if (nextAccessToken) {
-      response = await doFetch(nextAccessToken);
+  if (isFunctionCall && (response.status === 401 || response.status === 403)) {
+    // If we tried a user token first, retry with anon key (which matches the project URL env).
+    if (bearerToUse && bearerToUse !== anonKey) {
+      bearerToUse = anonKey;
+      response = await doFetch(bearerToUse);
     }
+  } else if (!isFunctionCall && (response.status === 401 || response.status === 403) && getRefreshToken()) {
+    const nextAccessToken = await refreshAccessToken();
+    if (nextAccessToken) response = await doFetch(nextAccessToken);
   }
 
   return response;

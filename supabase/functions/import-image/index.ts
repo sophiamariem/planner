@@ -63,6 +63,16 @@ Deno.serve(async (req) => {
     return json({ error: "Server config missing." }, 500);
   }
 
+  // With `--no-verify-jwt`, Edge Functions skip gateway auth checks.
+  // We enforce auth here by validating the caller's user access token.
+  const authHeader = req.headers.get("authorization") || req.headers.get("Authorization") || "";
+  const bearer = authHeader.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7).trim()
+    : "";
+  if (!bearer) {
+    return json({ error: "Missing Authorization bearer token." }, 401);
+  }
+
   let payload: { sourceUrl?: string; bucket?: string } = {};
   try {
     payload = await req.json();
@@ -134,12 +144,51 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  const { data: authData, error: authError } = await admin.auth.getUser(bearer);
+  if (authError || !authData?.user) {
+    return json({ error: "Invalid user session." }, 401);
+  }
+
+  // Ensure bucket exists (common gotcha across environments).
+  try {
+    const { data: buckets, error: listError } = await admin.storage.listBuckets();
+    if (!listError) {
+      const exists = Array.isArray(buckets) && buckets.some((b) => b?.name === bucket);
+      if (!exists) {
+        const { error: createError } = await admin.storage.createBucket(bucket, { public: true });
+        if (createError) {
+          console.log("[import-image] createBucket failed", { bucket, error: createError.message });
+        } else {
+          console.log("[import-image] bucket created", { bucket });
+        }
+      }
+    } else {
+      console.log("[import-image] listBuckets failed", { error: listError.message });
+    }
+  } catch {
+    console.log("[import-image] bucket ensure threw", { bucket });
+  }
+
   const { error: uploadError } = await admin.storage
     .from(bucket)
     .upload(path, blob, { upsert: true, contentType: contentType || `image/${ext}` });
 
   if (uploadError) {
-    return json({ error: "Storage upload failed.", details: uploadError.message }, 502);
+    // Retry once after trying to create bucket (handles first-run races).
+    try {
+      const { error: createError } = await admin.storage.createBucket(bucket, { public: true });
+      if (createError) {
+        return json({ error: "Storage upload failed.", details: uploadError.message }, 502);
+      }
+      const { error: retryError } = await admin.storage
+        .from(bucket)
+        .upload(path, blob, { upsert: true, contentType: contentType || `image/${ext}` });
+      if (retryError) {
+        return json({ error: "Storage upload failed.", details: retryError.message }, 502);
+      }
+    } catch {
+      return json({ error: "Storage upload failed.", details: uploadError.message }, 502);
+    }
   }
 
   const { data } = admin.storage.from(bucket).getPublicUrl(path);
