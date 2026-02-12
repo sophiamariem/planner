@@ -4,6 +4,7 @@ import { Linking, Pressable, ScrollView, Share, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons';
 import TripDayCard from './tripView/TripDayCard';
 import TripCalendarPanel from './tripView/TripCalendarPanel';
+import TripFlightsCard from './tripView/TripFlightsCard';
 import { RemoteImage, fallbackPhotoUri, proxyImageUris } from './tripView/media';
 import { formatStartDate, getDayNavLabel, normalizeDaysWithInferredDates, parseIsoDate } from './tripView/dateUtils';
 
@@ -38,14 +39,6 @@ function buildShareUrl(tripRow) {
 function normalizeArrowText(value) {
   if (typeof value !== 'string') return value;
   return value.replace(/\s*->\s*/g, ' → ');
-}
-
-function flightDisplayTitle(flight, index, total) {
-  if (String(flight?.title || '').trim()) return normalizeArrowText(String(flight.title).trim());
-  if (total <= 1) return 'Flight Out';
-  if (index === 0) return 'Flight Out';
-  if (index === total - 1) return 'Flight Home';
-  return 'Domestic Flight';
 }
 
 function IconActionButton({ iconName, onPress, tone = 'default', accessibilityLabel, compact = false, disabled = false }) {
@@ -347,36 +340,7 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
           )}
         </View>
 
-        {flights.length > 0 ? (
-          <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, backgroundColor: '#ffffff', padding: 14, gap: 10 }}>
-            <Text style={{ color: '#111827', fontWeight: '800', fontSize: 18 }}>Flights</Text>
-            {flights.map((f, i) => (
-              <View key={`flight-${i}`} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 14, padding: 12, backgroundColor: '#f8fafc', gap: 8 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="airplane-outline" size={16} color="#111827" />
-                    <Text style={{ color: '#111827', fontWeight: '800', fontSize: 16 }}>{flightDisplayTitle(f, i, flights.length)}</Text>
-                  </View>
-                  <Text style={{ color: '#6b7280', fontSize: 13, fontWeight: '700' }}>{normalizeArrowText(f.num || '')}</Text>
-                </View>
-                <Text style={{ color: '#374151', fontSize: 15, fontWeight: '600' }}>{normalizeArrowText(f.route || `${f.flightFrom || ''} → ${f.flightTo || ''}`)}</Text>
-                {f.date ? <Text style={{ color: '#6b7280', fontSize: 13 }}>{f.date}</Text> : null}
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                  {f.times ? (
-                    <View style={{ borderWidth: 1, borderColor: '#2563eb', borderRadius: 999, backgroundColor: '#2563eb', paddingHorizontal: 11, paddingVertical: 5 }}>
-                      <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>{normalizeArrowText(f.times)}</Text>
-                    </View>
-                  ) : null}
-                  {f.codes ? (
-                    <View style={{ borderWidth: 1, borderColor: '#111827', borderRadius: 999, backgroundColor: '#111827', paddingHorizontal: 11, paddingVertical: 5 }}>
-                      <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>{normalizeArrowText(f.codes)}</Text>
-                    </View>
-                  ) : null}
-                </View>
-              </View>
-            ))}
-          </View>
-        ) : null}
+        <TripFlightsCard flights={flights} normalizeArrowText={normalizeArrowText} />
 
         <View style={{ gap: 12 }}>
           {viewMode === 'cards'
