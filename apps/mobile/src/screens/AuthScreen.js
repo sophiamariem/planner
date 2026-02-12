@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Image, Text, TextInput, View } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
 import { signInWithGoogle, signInWithMagicLink } from '../lib/cloudTripsMobile';
 import { isSupabaseConfigured } from '../lib/supabaseMobile';
@@ -38,8 +38,8 @@ export default function AuthScreen({ onAuthStarted, onToast }) {
   return (
     <View style={{ flex: 1, justifyContent: 'center', gap: 14 }}>
       <View style={{ alignItems: 'center', gap: 6 }}>
-        <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: '#111827', alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: '#fff', fontSize: 22 }}>✈︎</Text>
+        <View style={{ width: 56, height: 56, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: '#dbe0ff', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+          <Image source={require('../../assets/icon.png')} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
         </View>
         <Text style={{ fontSize: 30, fontWeight: '800', color: '#111827' }}>PLNR</Text>
         <Text style={{ color: '#6b7280', textAlign: 'center' }}>Sign in to access your saved trips and keep plans synced.</Text>
