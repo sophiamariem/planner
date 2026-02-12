@@ -74,7 +74,7 @@ export default function TripPreviewContent({
               <CalendarView
                 year={tripConfig.calendar.year}
                 month={tripConfig.calendar.month}
-                activeDays={days.map(d => Number(d.id))}
+                days={days}
                 selectedId={selectedId}
                 onSelect={onSelectDay}
                 badges={dayBadges}
