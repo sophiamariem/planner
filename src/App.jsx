@@ -4,7 +4,7 @@ import useFavicon from "./hooks/useFavicon";
 import { ensureTailwindCDN } from "./utils/tailwind";
 import { getTripFromURL, updateURLWithTrip, saveTripToLocalStorage, loadTripFromLocalStorage, generateShareURL, clearLocalStorageTrip, validateTripData, getSourceFromURL, getCloudFromURL, isViewOnlyFromURL } from "./utils/tripData";
 import { isSupabaseConfigured, setSessionFromUrl } from "./lib/supabaseClient";
-import { getCurrentUser, signInWithMagicLink, signInWithGoogle, signOut, saveTripToCloud, updateCloudTrip, listMyTrips, loadCloudTripById, loadCloudTripByShareToken, loadCloudTripBySlug, deleteCloudTripById } from "./lib/cloudTrips";
+import { getCurrentUser, signInWithMagicLink, signInWithGoogle, signOut, saveTripToCloud, updateCloudTrip, listMyTrips, loadCloudTripById, loadSharedCloudTripById, loadCloudTripByShareToken, loadCloudTripBySlug, deleteCloudTripById } from "./lib/cloudTrips";
 
 import FlightCard from "./components/FlightCard";
 import DayCard from "./components/DayCard";
@@ -294,7 +294,11 @@ export default function TripPlannerApp() {
     } else if (cloudRef.type === "slug") {
       row = await loadCloudTripBySlug(cloudRef.value);
     } else {
-      row = await loadCloudTripById(cloudRef.value);
+      try {
+        row = await loadCloudTripById(cloudRef.value);
+      } catch {
+        row = await loadSharedCloudTripById(cloudRef.value);
+      }
     }
 
     const validation = validateTripData(row.trip_data);
@@ -1506,16 +1510,6 @@ export default function TripPlannerApp() {
                   <p className="text-xs text-zinc-500 ml-6">
                     Prevents others from seeing "Edit" or "Reset" buttons.
                   </p>
-                </div>
-              )}
-
-              {cloudTripId && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
-                  {cloudSlug && (
-                    <p className="text-xs text-emerald-800 font-medium">
-                      Slug: <code>{cloudSlug}</code>
-                    </p>
-                  )}
                 </div>
               )}
 

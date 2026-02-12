@@ -188,6 +188,18 @@ export async function loadCloudTripById(id) {
   return rows[0];
 }
 
+export async function loadSharedCloudTripById(id) {
+  if (!isSupabaseConfigured) throw new Error('Shared trips are unavailable right now.');
+
+  const response = await authedFetch(`/rest/v1/trips?id=eq.${encodeURIComponent(id)}&visibility=in.(unlisted,public)&select=id,slug,title,visibility,share_access,share_token,trip_data,owner_id,created_at,updated_at&limit=1`, {
+    method: 'GET',
+  });
+
+  const rows = await parseJson(response, 'Could not load shared trip.');
+  if (!rows.length) throw new Error('Shared trip not found.');
+  return rows[0];
+}
+
 export async function loadCloudTripByShareToken(shareToken) {
   if (!isSupabaseConfigured) throw new Error('Shared trips are unavailable right now.');
 
