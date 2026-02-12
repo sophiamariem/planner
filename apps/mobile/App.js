@@ -21,7 +21,7 @@ export default function App() {
   const [createSaving, setCreateSaving] = useState(false);
   const [editingTrip, setEditingTrip] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
-  const [toast, setToast] = useState('');
+  const [toast, setToast] = useState({ message: '', tone: 'info' });
 
   const toSafeUserMessage = (message, fallback = 'Something went wrong. Please try again.') => {
     const raw = String(message || '').trim();
@@ -46,9 +46,9 @@ export default function App() {
     return raw;
   };
 
-  const pushToast = (msg) => {
-    setToast(toSafeUserMessage(msg));
-    setTimeout(() => setToast(''), 2600);
+  const pushToast = (msg, tone = 'info') => {
+    setToast({ message: toSafeUserMessage(msg), tone });
+    setTimeout(() => setToast({ message: '', tone: 'info' }), 2600);
   };
 
   const refreshSessionAndData = useCallback(async () => {
@@ -63,7 +63,7 @@ export default function App() {
         setTrips([]);
       }
     } catch (error) {
-      pushToast(error.message || 'Failed to refresh session.');
+      pushToast(error.message || 'Failed to refresh session.', 'error');
     } finally {
       setLoading(false);
     }
@@ -81,7 +81,7 @@ export default function App() {
     const sub = Linking.addEventListener('url', async ({ url }) => {
       const stored = await setSessionFromUrl(url);
       if (stored) {
-        pushToast('Signed in successfully.');
+        pushToast('Signed in successfully.', 'success');
         await refreshSessionAndData();
       }
     });
@@ -96,7 +96,7 @@ export default function App() {
       const row = await loadCloudTripById(id);
       setSelectedTrip(row);
     } catch (error) {
-      pushToast(error.message || 'Could not open trip.');
+      pushToast(error.message || 'Could not open trip.', 'error');
     }
   };
 
@@ -105,19 +105,19 @@ export default function App() {
     setUser(null);
     setTrips([]);
     setSelectedTrip(null);
-    pushToast('Signed out.');
+    pushToast('Signed out.', 'success');
   };
 
   const handleCreateTrip = async (tripData) => {
     setCreateSaving(true);
     try {
       const row = await saveTripToCloud(tripData, 'private');
-      pushToast('Trip created.');
+      pushToast('Trip created.', 'success');
       setCreatingTrip(false);
       await refreshSessionAndData();
       setSelectedTrip(row);
     } catch (error) {
-      pushToast(error.message || 'Could not create trip.');
+      pushToast(error.message || 'Could not create trip.', 'error');
     } finally {
       setCreateSaving(false);
     }
@@ -131,10 +131,10 @@ export default function App() {
       const row = await updateCloudTripById(selectedTrip.id, tripData, selectedTrip.visibility || 'private');
       setSelectedTrip(row);
       setEditingTrip(false);
-      pushToast('Trip updated.');
+      pushToast('Trip updated.', 'success');
       await refreshSessionAndData();
     } catch (error) {
-      pushToast(error.message || 'Could not update trip.');
+      pushToast(error.message || 'Could not update trip.', 'error');
     } finally {
       setEditSaving(false);
     }
@@ -155,9 +155,9 @@ export default function App() {
               await deleteCloudTripById(selectedTrip.id);
               setSelectedTrip(null);
               await refreshSessionAndData();
-              pushToast('Trip deleted.');
+              pushToast('Trip deleted.', 'success');
             } catch (error) {
-              pushToast(error.message || 'Could not delete trip.');
+              pushToast(error.message || 'Could not delete trip.', 'error');
             }
           },
         },
@@ -183,9 +183,9 @@ export default function App() {
                 setSelectedTrip(null);
               }
               await refreshSessionAndData();
-              pushToast('Trip deleted.');
+              pushToast('Trip deleted.', 'success');
             } catch (error) {
-              pushToast(error.message || 'Could not delete trip.');
+              pushToast(error.message || 'Could not delete trip.', 'error');
             }
           },
         },
@@ -253,10 +253,25 @@ export default function App() {
           />
         </BottomSheet>
 
-        {toast ? (
+        {toast.message ? (
           <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20 }}>
-            <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 14, backgroundColor: '#ffffff', padding: 12, shadowColor: '#111827', shadowOpacity: 0.14, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 4 }}>
-              <Text style={{ color: '#111827', textAlign: 'center', fontWeight: '600' }}>{toast}</Text>
+            <View
+              style={{
+                borderWidth: 1,
+                borderColor: toast.tone === 'success' ? '#a7f3d0' : toast.tone === 'error' ? '#fecaca' : '#e5e7eb',
+                borderRadius: 14,
+                backgroundColor: toast.tone === 'success' ? '#ecfdf5' : toast.tone === 'error' ? '#fef2f2' : '#ffffff',
+                padding: 12,
+                shadowColor: '#111827',
+                shadowOpacity: 0.14,
+                shadowRadius: 10,
+                shadowOffset: { width: 0, height: 3 },
+                elevation: 4,
+              }}
+            >
+              <Text style={{ color: toast.tone === 'success' ? '#065f46' : toast.tone === 'error' ? '#991b1b' : '#111827', textAlign: 'center', fontWeight: '600' }}>
+                {toast.message}
+              </Text>
             </View>
           </View>
         ) : null}

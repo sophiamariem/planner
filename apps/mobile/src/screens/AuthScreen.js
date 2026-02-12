@@ -10,19 +10,19 @@ export default function AuthScreen({ onAuthStarted, onToast }) {
 
   const handleMagicLink = async () => {
     if (!email.trim()) {
-      onToast('Enter an email address.');
+      onToast('Enter an email address.', 'error');
       return;
     }
 
     setSending(true);
     try {
       await signInWithMagicLink(email.trim());
-      onToast('Check your inbox for your PLNR sign-in link.');
+      onToast('Check your inbox for your PLNR sign-in link.', 'success');
       setTimeout(() => {
         onAuthStarted();
       }, 150);
     } catch (error) {
-      onToast(error.message || 'Could not send magic link.');
+      onToast(error.message || 'Could not send magic link.', 'error');
     } finally {
       setSending(false);
     }
@@ -33,7 +33,7 @@ export default function AuthScreen({ onAuthStarted, onToast }) {
       await signInWithGoogle();
       onAuthStarted();
     } catch (error) {
-      onToast(error.message || 'Could not start Google sign-in.');
+      onToast(error.message || 'Could not start Google sign-in.', 'error');
     }
   };
 
