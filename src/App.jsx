@@ -1069,6 +1069,13 @@ export default function TripPlannerApp() {
       <div className="min-h-screen bg-gradient-to-b from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
         <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8 md:p-12">
           <div className="text-center mb-8">
+            <div className="flex justify-center mb-4">
+              <img
+                src="/favicon.png"
+                alt="plnr.guide logo"
+                className="w-14 h-14 rounded-xl border border-zinc-200 bg-white object-cover shadow-sm"
+              />
+            </div>
             <h1 className="text-4xl md:text-5xl font-black text-zinc-900 mb-4">
               plnr.guide
             </h1>
@@ -1078,35 +1085,44 @@ export default function TripPlannerApp() {
           </div>
 
           <div className="space-y-4">
-            <div className="p-4 border border-zinc-200 rounded-xl bg-zinc-50 flex items-center justify-between gap-4">
-              <div>
-                <p className="font-medium text-zinc-900 text-sm">Account</p>
-                <p className="text-xs text-zinc-600">
-                  {user
-                    ? `Signed in as ${user.email}`
-                    : "Sign in to save trips, edit them later, and manage upcoming trips across devices."}
-                </p>
-                {!isSupabaseConfigured && (
-                  <p className="text-xs text-amber-700 mt-1">
-                    Sign in is temporarily unavailable right now.
-                  </p>
+            <div className="p-4 md:p-5 border border-zinc-200 rounded-xl bg-gradient-to-r from-zinc-50 to-white">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-zinc-900 text-sm">Account</p>
+                    <p className="text-sm text-zinc-600 mt-1">
+                      {user
+                        ? `Signed in as ${user.email}`
+                        : "Sign in to save trips, edit them later, and manage upcoming trips across devices."}
+                    </p>
+                    {!isSupabaseConfigured && (
+                      <p className="text-xs text-amber-700 mt-2">
+                        Sign in is temporarily unavailable right now.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className={`px-2 py-1 rounded-full text-xs font-medium border whitespace-nowrap ${user ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-zinc-100 text-zinc-600 border-zinc-200"}`}>
+                  {user ? "Signed in" : "Guest"}
+                </div>
+              </div>
+              <div className="mt-4">
+                {user ? (
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full sm:w-auto px-4 py-2 rounded-lg border border-zinc-300 hover:bg-white text-sm font-medium"
+                  >
+                    Sign Out
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSignIn}
+                    className="w-full sm:w-auto px-4 py-2 rounded-lg bg-zinc-900 text-white hover:bg-black text-sm font-medium"
+                  >
+                    Create Account / Sign In
+                  </button>
                 )}
               </div>
-              {user ? (
-                <button
-                  onClick={handleSignOut}
-                  className="px-3 py-2 rounded-lg border border-zinc-300 hover:bg-white text-sm"
-                >
-                  Sign Out
-                </button>
-              ) : (
-                <button
-                  onClick={handleSignIn}
-                  className="px-3 py-2 rounded-lg bg-zinc-900 text-white hover:bg-black text-sm"
-                >
-                  Create Account / Sign In
-                </button>
-              )}
             </div>
 
             {user && upcomingTrips.length > 0 && (
@@ -1152,7 +1168,7 @@ export default function TripPlannerApp() {
                 <div className="text-3xl">🗺️</div>
                 <div>
                   <h3 className="font-bold text-xl text-zinc-900 mb-2 group-hover:text-blue-700">
-                    Start with Example Template {isSupabaseConfigured && !user ? "(Guest)" : ""}
+                    Start with Example Template
                   </h3>
                   <p className="text-zinc-600">
                     See a fully populated example trip you can customize. {isSupabaseConfigured && !user ? "Guest trips stay on this browser unless you sign in." : ""}
@@ -1189,7 +1205,7 @@ export default function TripPlannerApp() {
                 <div className="text-3xl">✨</div>
                 <div>
                   <h3 className="font-bold text-xl text-zinc-900 mb-2 group-hover:text-zinc-700">
-                    Start from Scratch {isSupabaseConfigured && !user ? "(Guest)" : ""}
+                    Start from Scratch
                   </h3>
                   <p className="text-zinc-600">
                     Build your trip from the ground up. {isSupabaseConfigured && !user ? "Guest trips stay local to this device." : ""}
