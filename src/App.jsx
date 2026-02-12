@@ -12,6 +12,9 @@ import CalendarView from "./components/CalendarView";
 import TripBuilder from "./components/TripBuilder";
 import SignInDrawer from "./components/drawers/SignInDrawer";
 import ShareDrawer from "./components/drawers/ShareDrawer";
+import ResetDrawer from "./components/drawers/ResetDrawer";
+import MyTripsDrawer from "./components/drawers/MyTripsDrawer";
+import ToastLayer from "./components/ToastLayer";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
 
@@ -1027,51 +1030,6 @@ export default function TripPlannerApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showShareModal, isCloudOwnedByCurrentUser, cloudTripId, cloudShareAccess]);
 
-  const resetDrawer = showResetModal && (
-    <div className="fixed inset-0 z-50" onClick={() => setShowResetModal(false)}>
-      <div className="absolute inset-0 bg-black/40" />
-      <aside className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-2xl p-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-xl font-bold text-zinc-900 mb-2">Reset current trip?</h2>
-        <p className="text-sm text-zinc-600 mb-5">
-          This clears your local draft and returns to the start screen.
-        </p>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowResetModal(false)}
-            className="flex-1 px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={confirmReset}
-            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
-          >
-            Reset
-          </button>
-        </div>
-      </aside>
-    </div>
-  );
-
-  const toastLayer = toasts.length > 0 && (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex flex-col gap-2 items-center">
-      {toasts.map((toast) => (
-        <div
-          key={toast.id}
-          className={`rounded-xl border px-4 py-3 text-sm shadow-lg max-w-[90vw] sm:max-w-md ${
-            toast.tone === "success"
-              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-              : toast.tone === "error"
-                ? "bg-red-50 border-red-200 text-red-700"
-                : "bg-white border-zinc-200 text-zinc-800"
-          }`}
-        >
-          {toast.message}
-        </div>
-      ))}
-    </div>
-  );
-
   if (isPrivacyRoute) {
     return <PrivacyPage />;
   }
@@ -1145,7 +1103,7 @@ export default function TripPlannerApp() {
             </div>
           )}
         </div>
-        {toastLayer}
+        <ToastLayer toasts={toasts} />
       </div>
     );
   }
@@ -1400,7 +1358,7 @@ export default function TripPlannerApp() {
           onSubmitSignIn={submitSignIn}
           signInLoading={signInLoading}
         />
-        {toastLayer}
+        <ToastLayer toasts={toasts} />
       </div>
     );
   }
@@ -1440,8 +1398,8 @@ export default function TripPlannerApp() {
           onSubmitSignIn={submitSignIn}
           signInLoading={signInLoading}
         />
-        {resetDrawer}
-        {toastLayer}
+        <ResetDrawer open={showResetModal} onClose={() => setShowResetModal(false)} onConfirm={confirmReset} />
+        <ToastLayer toasts={toasts} />
       </>
     );
   }
@@ -1521,7 +1479,7 @@ export default function TripPlannerApp() {
         </div>
       </header>
 
-      {toastLayer}
+      <ToastLayer toasts={toasts} />
 
       <SignInDrawer
         open={showSignInModal}
@@ -1534,7 +1492,7 @@ export default function TripPlannerApp() {
         signInLoading={signInLoading}
       />
 
-      {resetDrawer}
+      <ResetDrawer open={showResetModal} onClose={() => setShowResetModal(false)} onConfirm={confirmReset} />
 
       <ShareDrawer
         open={showShareModal}
@@ -1565,144 +1523,22 @@ export default function TripPlannerApp() {
         onViewOnlyChange={setIsViewOnly}
       />
 
-      {showMyTripsModal && (
-        <div className="fixed inset-0 z-50" onClick={() => setShowMyTripsModal(false)}>
-          <div className="absolute inset-0 bg-black/40" />
-          <aside className="absolute right-0 top-0 h-full w-full sm:max-w-2xl bg-white shadow-2xl p-6 overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h2 className="text-2xl font-bold text-zinc-900 mb-2">My Saved Trips</h2>
-            <p className="text-zinc-600 mb-4 text-sm">Open one of your saved trips.</p>
-
-            {myTripsLoading ? (
-              <p className="text-sm text-zinc-600">Loading trips...</p>
-            ) : myTrips.length === 0 ? (
-              <p className="text-sm text-zinc-600">No saved trips yet. Save your current trip first.</p>
-            ) : (
-              <div className="max-h-[70vh] overflow-auto space-y-5">
-                <section>
-                  <h3 className="text-sm font-semibold text-zinc-900 mb-2">Upcoming ({savedUpcomingTrips.length})</h3>
-                  {savedUpcomingTrips.length === 0 ? (
-                    <p className="text-xs text-zinc-500">No upcoming trips.</p>
-                  ) : (
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      {savedUpcomingTrips.map((trip) => {
-                        const cover = extractCoverImage(trip);
-                        return (
-                          <div key={trip.id} className="rounded-xl border border-zinc-200 overflow-hidden bg-white">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenCloudTrip(trip.id)}
-                              className="w-full text-left hover:bg-zinc-50"
-                            >
-                              <div className="h-28 bg-zinc-100">
-                                {cover && (
-                                  <img src={cover} alt="" className="w-full h-full object-cover" loading="lazy" />
-                                )}
-                              </div>
-                              <div className="p-3">
-                                <p className="font-medium text-zinc-900">{trip.title}</p>
-                                <p className="text-xs text-zinc-500 mt-1">
-                                  {trip.slug || "no-slug"} • {formatVisibilityLabel(trip.visibility)}
-                                </p>
-                                <p className="text-xs text-zinc-400 mt-1">
-                                  Updated {new Date(trip.updated_at || trip.created_at).toLocaleString()}
-                                </p>
-                              </div>
-                            </button>
-                            <div className="px-3 pb-3">
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteCloudTrip(trip.id)}
-                                className="w-full px-3 py-1.5 rounded-lg border border-rose-200 text-rose-700 text-xs font-medium hover:bg-rose-50"
-                              >
-                                Delete Trip
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
-
-                <section>
-                  <button
-                    type="button"
-                    onClick={() => setShowPastSavedTrips((prev) => !prev)}
-                    className="w-full mb-2 px-3 py-2 rounded-lg border border-zinc-200 text-sm font-semibold text-zinc-700 bg-zinc-50 hover:bg-zinc-100 flex items-center justify-between"
-                  >
-                    <span>Past ({savedPastTrips.length})</span>
-                    <span>{showPastSavedTrips ? "Hide" : "Show"}</span>
-                  </button>
-                  {showPastSavedTrips ? (
-                    savedPastTrips.length === 0 ? (
-                      <p className="text-xs text-zinc-500">No past trips.</p>
-                    ) : (
-                      <div className="grid sm:grid-cols-2 gap-3">
-                        {savedPastTrips.map((trip) => {
-                          const cover = extractCoverImage(trip);
-                          return (
-                            <div key={trip.id} className="rounded-xl border border-zinc-200 overflow-hidden bg-white">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenCloudTrip(trip.id)}
-                                className="w-full text-left hover:bg-zinc-50"
-                              >
-                                <div className="h-28 bg-zinc-100">
-                                  {cover && (
-                                    <img src={cover} alt="" className="w-full h-full object-cover" loading="lazy" />
-                                  )}
-                                </div>
-                                <div className="p-3">
-                                  <p className="font-medium text-zinc-900">{trip.title}</p>
-                                  <p className="text-xs text-zinc-500 mt-1">
-                                    {trip.slug || "no-slug"} • {formatVisibilityLabel(trip.visibility)}
-                                  </p>
-                                  <p className="text-xs text-zinc-400 mt-1">
-                                    Updated {new Date(trip.updated_at || trip.created_at).toLocaleString()}
-                                  </p>
-                                </div>
-                              </button>
-                              <div className="px-3 pb-3">
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteCloudTrip(trip.id)}
-                                  className="w-full px-3 py-1.5 rounded-lg border border-rose-200 text-rose-700 text-xs font-medium hover:bg-rose-50"
-                                >
-                                  Delete Trip
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )
-                  ) : null}
-                </section>
-              </div>
-            )}
-
-            <div className="mt-4 flex items-center gap-2">
-              <label className="text-sm text-zinc-600">Default visibility:</label>
-              <select
-                value={cloudVisibility}
-                onChange={(e) => setCloudVisibility(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-zinc-300 text-sm"
-              >
-                <option value="private">Only me</option>
-                <option value="unlisted">Shared (link only)</option>
-                <option value="public">Public</option>
-              </select>
-            </div>
-
-            <button
-              onClick={() => setShowMyTripsModal(false)}
-              className="mt-6 w-full px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium"
-            >
-              Close
-            </button>
-          </aside>
-        </div>
-      )}
+      <MyTripsDrawer
+        open={showMyTripsModal}
+        onClose={() => setShowMyTripsModal(false)}
+        myTripsLoading={myTripsLoading}
+        myTrips={myTrips}
+        savedUpcomingTrips={savedUpcomingTrips}
+        savedPastTrips={savedPastTrips}
+        showPastSavedTrips={showPastSavedTrips}
+        onTogglePast={() => setShowPastSavedTrips((prev) => !prev)}
+        onOpenTrip={handleOpenCloudTrip}
+        onDeleteTrip={handleDeleteCloudTrip}
+        extractCoverImage={extractCoverImage}
+        formatVisibilityLabel={formatVisibilityLabel}
+        cloudVisibility={cloudVisibility}
+        onChangeVisibility={setCloudVisibility}
+      />
 
       <main className="max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-8">
         {tripConfig.cover && (
