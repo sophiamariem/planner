@@ -273,10 +273,24 @@ async function uploadUrlToStorage(sourceUrl, cache = new Map()) {
   const token = await getAccessToken();
   if (!token) return clean;
 
+  const candidateFetchUrls = [clean, ...proxyImageSourceUrls(clean)];
+
   try {
-    const input = await fetch(clean);
-    if (!input.ok) throw new Error('image_fetch_failed');
-    const blob = await input.blob();
+    let blob = null;
+    for (const candidate of candidateFetchUrls) {
+      try {
+        const input = await fetch(candidate);
+        if (!input.ok) continue;
+        const nextBlob = await input.blob();
+        if (nextBlob && nextBlob.size) {
+          blob = nextBlob;
+          break;
+        }
+      } catch {
+        // try next candidate
+      }
+    }
+    if (!blob) throw new Error('image_fetch_failed');
     if (!blob || !blob.size) throw new Error('image_empty');
 
     const ext = blob.type ? getExtFromMime(blob.type) : getFileExtFromUrl(clean);
@@ -300,6 +314,17 @@ async function uploadUrlToStorage(sourceUrl, cache = new Map()) {
     cache.set(clean, clean);
     return clean;
   }
+}
+
+function proxyImageSourceUrls(url) {
+  const clean = String(url || '').trim();
+  if (!clean) return [];
+  const stripped = clean.replace(/^https?:\/\//i, '');
+  const encoded = encodeURIComponent(stripped);
+  return [
+    `https://images.weserv.nl/?url=${encoded}&w=1800&output=jpg`,
+    `https://wsrv.nl/?url=${encoded}&w=1800&output=jpg`,
+  ];
 }
 
 async function importTripMediaToStorage(tripData) {
