@@ -7,6 +7,7 @@ const CORS_HEADERS = {
 };
 
 const DEFAULT_BUCKET = "trip-media";
+const MAX_IMPORTS_PER_USER_PER_DAY = 120;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -249,6 +250,21 @@ Deno.serve(async (req) => {
   const { data: authData, error: authError } = await admin.auth.getUser(bearer);
   if (authError || !authData?.user) {
     return json({ error: "Invalid user session." }, 401);
+  }
+
+  // Simple per-user daily rate limit (requires DB migration).
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: nextCount, error: bumpError } = await admin.rpc("bump_import_usage", {
+      p_user_id: authData.user.id,
+      p_day: today,
+      p_inc: 1,
+    });
+    if (!bumpError && typeof nextCount === "number" && nextCount > MAX_IMPORTS_PER_USER_PER_DAY) {
+      return json({ error: "Too many imports today. Please try again tomorrow." }, 429);
+    }
+  } catch {
+    // If limiter fails, continue (fail-open) rather than breaking saves.
   }
 
   const { error: uploadError } = await admin.storage
