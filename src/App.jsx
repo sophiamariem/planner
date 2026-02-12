@@ -13,9 +13,11 @@ import SignInDrawer from "./components/drawers/SignInDrawer";
 import ShareDrawer from "./components/drawers/ShareDrawer";
 import ResetDrawer from "./components/drawers/ResetDrawer";
 import MyTripsDrawer from "./components/drawers/MyTripsDrawer";
+import ImportJsonDrawer from "./components/drawers/ImportJsonDrawer";
 import ToastLayer from "./components/ToastLayer";
 import OnboardingTripsPanel from "./components/onboarding/OnboardingTripsPanel";
 import OnboardingCreatePanel from "./components/onboarding/OnboardingCreatePanel";
+import AuthPage from "./components/AuthPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
 
@@ -1041,71 +1043,22 @@ export default function TripPlannerApp() {
 
   if (isAuthRoute) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-zinc-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-2xl border border-zinc-200 shadow-xl p-6">
-          <h1 className="text-2xl font-bold text-zinc-900">Account</h1>
-          <p className="text-sm text-zinc-600 mt-1 mb-4">
-            Sign in to save, sync, and reopen trips on any device.
-          </p>
-          {!isSupabaseConfigured && (
-            <p className="text-sm text-amber-700 mb-4">
-              Sign in is temporarily unavailable right now.
-            </p>
-          )}
-          {user ? (
-            <div className="space-y-3">
-              <p className="text-sm text-zinc-700">Signed in as {user.email}</p>
-              <button
-                type="button"
-                onClick={() => {
-                  window.history.replaceState(null, "", "/");
-                  setMode("onboarding");
-                }}
-                className="w-full px-4 py-2 rounded-lg bg-zinc-900 text-white text-sm font-medium hover:bg-black"
-              >
-                Continue to App
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={submitGoogleSignIn}
-                disabled={!isSupabaseConfigured}
-                className="w-full px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium disabled:opacity-50"
-              >
-                Continue with Google
-              </button>
-              <input
-                type="email"
-                value={signInEmail}
-                onChange={(e) => setSignInEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-400"
-              />
-              <button
-                type="button"
-                onClick={submitSignIn}
-                disabled={signInLoading || !isSupabaseConfigured}
-                className="w-full px-4 py-2 rounded-lg bg-zinc-900 text-white text-sm font-medium hover:bg-black disabled:opacity-50"
-              >
-                {signInLoading ? "Sending..." : "Send Magic Link"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  window.history.replaceState(null, "", "/");
-                  setMode("onboarding");
-                }}
-                className="w-full px-4 py-2 rounded-lg border border-zinc-300 text-sm font-medium hover:bg-zinc-50"
-              >
-                Continue as Guest
-              </button>
-            </div>
-          )}
-        </div>
+      <>
+        <AuthPage
+          user={user}
+          isSupabaseConfigured={isSupabaseConfigured}
+          signInEmail={signInEmail}
+          onEmailChange={setSignInEmail}
+          onGoogleSignIn={submitGoogleSignIn}
+          onSubmitSignIn={submitSignIn}
+          signInLoading={signInLoading}
+          onContinueToApp={() => {
+            window.history.replaceState(null, "", "/");
+            setMode("onboarding");
+          }}
+        />
         <ToastLayer toasts={toasts} />
-      </div>
+      </>
     );
   }
 
@@ -1169,38 +1122,15 @@ export default function TripPlannerApp() {
             />
           )}
 
-          {showImportModal && isAdminUser && (
-            <div className="fixed inset-0 z-50" onClick={() => setShowImportModal(false)}>
-              <div className="absolute inset-0 bg-black/40" />
-              <aside className="absolute right-0 top-0 h-full w-full sm:max-w-2xl bg-white shadow-2xl p-6 overflow-y-auto" onClick={e => e.stopPropagation()}>
-                <h2 className="text-2xl font-bold text-zinc-900 mb-4">Import Trip JSON</h2>
-                <p className="text-zinc-600 mb-4 text-sm">
-                  Paste your trip data JSON below. We've provided a complete template for you — just edit the values to match your trip!
-                </p>
-                <textarea
-                  value={importJson}
-                  onChange={(e) => setImportJson(e.target.value)}
-                  className="w-full h-[58vh] p-3 border border-zinc-300 rounded-lg font-mono text-xs focus:ring-2 focus:ring-blue-500 outline-none"
-                  placeholder='{ "tripConfig": { ... }, "days": [], "flights": [] }'
-                />
-                {importError && <p className="text-red-600 text-sm mt-2">{importError}</p>}
-                <div className="flex gap-2 mt-6">
-                  <button
-                    onClick={() => setShowImportModal(false)}
-                    className="flex-1 px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium"
-                  >
-                    Close
-                  </button>
-                  <button
-                    onClick={handleImportJson}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
-                  >
-                    Import Data
-                  </button>
-                </div>
-              </aside>
-            </div>
-          )}
+          <ImportJsonDrawer
+            open={showImportModal}
+            isAdminUser={isAdminUser}
+            importJson={importJson}
+            onImportJsonChange={setImportJson}
+            importError={importError}
+            onClose={() => setShowImportModal(false)}
+            onImport={handleImportJson}
+          />
         </div>
         <SignInDrawer
           open={showSignInModal}
