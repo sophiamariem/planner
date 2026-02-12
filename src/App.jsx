@@ -42,6 +42,11 @@ const QUICK_TEMPLATES = [
   },
 ];
 
+const ADMIN_EMAILS = (process.env.REACT_APP_ADMIN_EMAILS || "sophiamariem@gmail.com")
+  .split(",")
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean);
+
 function extractStartIsoFromTrip(tripLike) {
   const days = tripLike?.days || tripLike?.trip_data?.days || [];
   const isoDates = (days || []).map((d) => d.isoDate).filter(Boolean).sort();
@@ -180,6 +185,7 @@ export default function TripPlannerApp() {
   const [myTripsLoading, setMyTripsLoading] = useState(false);
   const [showPastSavedTrips, setShowPastSavedTrips] = useState(false);
   const [user, setUser] = useState(null);
+  const isAdminUser = Boolean(user?.email && ADMIN_EMAILS.includes(String(user.email).toLowerCase()));
 
   const templateJSON = JSON.stringify({
     tripConfig: {
@@ -215,6 +221,10 @@ export default function TripPlannerApp() {
   }, null, 2);
 
   const openImportModal = () => {
+    if (!isAdminUser) {
+      pushToast("This import tool is only available to admins.", "error");
+      return;
+    }
     setImportJson(templateJSON);
     setShowImportModal(true);
     setImportError("");
@@ -742,6 +752,10 @@ export default function TripPlannerApp() {
   };
 
   const handleImportJson = () => {
+    if (!isAdminUser) {
+      pushToast("This import tool is only available to admins.", "error");
+      return;
+    }
     try {
       if (!importJson.trim()) {
         setImportError("Please paste some JSON data first.");
@@ -1184,26 +1198,27 @@ export default function TripPlannerApp() {
               </div>
             </button>
 
-
-            <button
-              onClick={openImportModal}
-              className="w-full p-6 rounded-xl border-2 border-dashed border-zinc-300 hover:border-zinc-400 hover:bg-zinc-50 transition-colors text-left group"
-            >
-              <div className="flex items-start gap-4">
-                <div className="text-3xl">💻</div>
-                <div>
-                  <h3 className="font-bold text-xl text-zinc-900 mb-2 group-hover:text-zinc-700">
-                    Import JSON (Tech-savvy)
-                  </h3>
-                  <p className="text-zinc-600">
-                    Paste your own trip JSON data to immediately load your itinerary
-                  </p>
+            {isAdminUser && (
+              <button
+                onClick={openImportModal}
+                className="w-full p-6 rounded-xl border-2 border-dashed border-zinc-300 hover:border-zinc-400 hover:bg-zinc-50 transition-colors text-left group"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="text-3xl">💻</div>
+                  <div>
+                    <h3 className="font-bold text-xl text-zinc-900 mb-2 group-hover:text-zinc-700">
+                      Import JSON (Admin)
+                    </h3>
+                    <p className="text-zinc-600">
+                      Paste your own trip JSON data to immediately load your itinerary
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </button>
+              </button>
+            )}
           </div>
 
-          {showImportModal && (
+          {showImportModal && isAdminUser && (
             <div className="fixed inset-0 z-50" onClick={() => setShowImportModal(false)}>
               <div className="absolute inset-0 bg-black/40" />
               <aside className="absolute right-0 top-0 h-full w-full sm:max-w-2xl bg-white shadow-2xl p-6 overflow-y-auto" onClick={e => e.stopPropagation()}>
