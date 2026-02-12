@@ -164,8 +164,10 @@ export async function updateCloudTrip(id, tripData, visibility = 'private', curr
 
 export async function listMyTrips() {
   if (!isSupabaseConfigured) return [];
+  const user = await getCurrentUser();
+  if (!user?.id) return [];
 
-  const response = await authedFetch('/rest/v1/trips?select=id,slug,title,visibility,share_access,trip_data,owner_id,created_at,updated_at&order=updated_at.desc&limit=100', {
+  const response = await authedFetch(`/rest/v1/trips?owner_id=eq.${encodeURIComponent(user.id)}&select=id,slug,title,visibility,share_access,trip_data,owner_id,created_at,updated_at&order=updated_at.desc&limit=100`, {
     method: 'GET',
   });
 
