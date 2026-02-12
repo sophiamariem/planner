@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
-import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, SafeAreaView, StatusBar, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, AppState, SafeAreaView, StatusBar, Text, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -22,6 +22,7 @@ export default function App() {
   const [editingTrip, setEditingTrip] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [toast, setToast] = useState({ message: '', tone: 'info' });
+  const appStateRef = useRef(AppState.currentState);
 
   const toSafeUserMessage = (message, fallback = 'Something went wrong. Please try again.') => {
     const raw = String(message || '').trim();
@@ -59,15 +60,24 @@ export default function App() {
       if (currentUser) {
         const rows = await listMyTrips();
         setTrips(rows || []);
+        if (selectedTrip?.id) {
+          try {
+            const freshSelected = await loadCloudTripById(selectedTrip.id);
+            setSelectedTrip(freshSelected);
+          } catch {
+            setSelectedTrip(null);
+          }
+        }
       } else {
         setTrips([]);
+        setSelectedTrip(null);
       }
     } catch (error) {
       pushToast(error.message || 'Failed to refresh session.', 'error');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedTrip?.id]);
 
   useEffect(() => {
     const init = async () => {
@@ -90,6 +100,25 @@ export default function App() {
       sub.remove();
     };
   }, [refreshSessionAndData]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', async (nextState) => {
+      const becameActive = appStateRef.current !== 'active' && nextState === 'active';
+      appStateRef.current = nextState;
+      if (!becameActive || !user?.id) return;
+      try {
+        if (selectedTrip?.id) {
+          const freshTrip = await loadCloudTripById(selectedTrip.id);
+          setSelectedTrip(freshTrip);
+        }
+        const rows = await listMyTrips();
+        setTrips(rows || []);
+      } catch {
+        // keep current view if refresh fails
+      }
+    });
+    return () => sub.remove();
+  }, [user?.id, selectedTrip?.id]);
 
   const handleOpenTrip = async (id) => {
     try {
@@ -239,6 +268,7 @@ export default function App() {
                 currentUserId={user?.id}
                 savingSharedCopy={createSaving}
                 onSaveSharedCopy={handleSaveSharedCopy}
+                onRefresh={refreshSessionAndData}
                 onBack={() => setSelectedTrip(null)}
                 onEdit={() => setEditingTrip(true)}
                 onDelete={handleDeleteTrip}

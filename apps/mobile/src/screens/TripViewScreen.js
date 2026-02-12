@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import TripTopBar from './tripView/TripTopBar';
 import TripHeaderCard from './tripView/TripHeaderCard';
 import TripDayCard from './tripView/TripDayCard';
@@ -8,7 +8,7 @@ import TripViewSwitcher from './tripView/TripViewSwitcher';
 import { getDayNavLabel } from './tripView/dateUtils';
 import useTripViewController from './tripView/useTripViewController';
 
-export default function TripViewScreen({ tripRow, currentUserId, savingSharedCopy = false, onSaveSharedCopy, onBack, onEdit, onDelete, onToast }) {
+export default function TripViewScreen({ tripRow, currentUserId, savingSharedCopy = false, onSaveSharedCopy, onRefresh, onBack, onEdit, onDelete, onToast }) {
   const {
     scrollRef,
     dayOffsetsRef,
@@ -20,6 +20,8 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
     startDate,
     cover,
     tripFooter,
+    dayBadges,
+    badgeLegend,
     hasOfflineCopy,
     activeDayIndex,
     setActiveDayIndex,
@@ -46,6 +48,7 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
         onBack={onBack}
         onDelete={onDelete}
         onEdit={onEdit}
+        onRefresh={onRefresh}
         onShare={handleShareTrip}
         shareDisabled={!shareUrl}
       />
@@ -82,6 +85,7 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
             activeDayIndex={activeDayIndex}
             onJumpToDay={handleJumpToDay}
             calendarMonths={calendarMonths}
+            dayBadges={dayBadges}
             onSelectDayIndex={(index) => {
               setActiveDayIndex(index);
               setViewMode('cards');
@@ -93,6 +97,15 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
             }}
             getDayNavLabel={getDayNavLabel}
           />
+          {badgeLegend.length > 0 ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
+              {badgeLegend.map((badge, i) => (
+                <View key={`legend-${i}`} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 999, backgroundColor: '#ffffff', paddingHorizontal: 8, paddingVertical: 4 }}>
+                  <Text style={{ color: '#4b5563', fontSize: 12 }}>{`${String(badge?.emoji || '').trim()} ${String(badge?.label || '').trim()}`.trim()}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
 
         {viewMode === 'cards' ? (

@@ -4,6 +4,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 export default function TripCalendarPanel({
   calendarMonths,
   activeDayIndex,
+  dayBadges = {},
   onSelectDayIndex,
 }) {
   const months = Array.isArray(calendarMonths?.months) ? calendarMonths.months : [];
@@ -105,6 +106,10 @@ export default function TripCalendarPanel({
                 const dayIndex = byIso.get(iso);
                 const isActive = typeof dayIndex === 'number';
                 const isSelected = isActive && dayIndex === activeDayIndex;
+                const badgeKey = isActive ? String((dayIndex || 0) + 1) : '';
+                const badges = isActive
+                  ? (dayBadges?.[badgeKey] || dayBadges?.[Number(badgeKey)] || [])
+                  : [];
                 return (
                   <Pressable
                     key={`${y}-${m}-${dayNum}`}
@@ -136,6 +141,21 @@ export default function TripCalendarPanel({
                       >
                         {dayNum}
                       </Text>
+                      {badges.length > 0 ? (
+                        <Text
+                          numberOfLines={1}
+                          style={{
+                            position: 'absolute',
+                            bottom: 2,
+                            left: 2,
+                            right: 2,
+                            textAlign: 'center',
+                            fontSize: 10,
+                          }}
+                        >
+                          {badges.slice(0, 2).join('')}
+                        </Text>
+                      ) : null}
                     </View>
                   </Pressable>
                 );

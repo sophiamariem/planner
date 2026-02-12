@@ -53,6 +53,8 @@ export default function useTripViewController({ tripRow, currentUserId, onToast 
   const startDate = formatStartDate(days);
   const cover = extractCover(tripData);
   const tripFooter = String(tripData?.tripConfig?.footer || '').trim();
+  const dayBadges = (tripData?.dayBadges && typeof tripData.dayBadges === 'object') ? tripData.dayBadges : {};
+  const badgeLegend = Array.isArray(tripData?.tripConfig?.badgeLegend) ? tripData.tripConfig.badgeLegend : [];
   const [hasOfflineCopy, setHasOfflineCopy] = useState(false);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [viewMode, setViewMode] = useState('cards');
@@ -181,6 +183,8 @@ export default function useTripViewController({ tripRow, currentUserId, onToast 
     startDate,
     cover,
     tripFooter,
+    dayBadges,
+    badgeLegend,
     hasOfflineCopy,
     activeDayIndex,
     setActiveDayIndex,

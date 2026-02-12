@@ -38,15 +38,23 @@ function normalizeSupabasePublicImageUrl(uri) {
   return clean;
 }
 
+function expandImageCandidates(value) {
+  const raw = coerceImageUri(value);
+  if (!raw) return [];
+  const normalized = normalizeSupabasePublicImageUrl(raw);
+  if (!normalized || normalized === raw) return [raw];
+  return [raw, normalized];
+}
+
 export function fallbackPhotoUri(query, index = 0) {
   const seed = encodeURIComponent(String(query || 'travel').trim() || 'travel');
   return `https://picsum.photos/seed/${seed}-${index}/1200/800`;
 }
 
 export function proxyImageUris(uri) {
-  const raw = normalizeSupabasePublicImageUrl(uri);
-  if (!raw) return [];
-  const stripped = raw.replace(/^https?:\/\//i, '');
+  const [preferred] = expandImageCandidates(uri);
+  if (!preferred) return [];
+  const stripped = preferred.replace(/^https?:\/\//i, '');
   const encoded = encodeURIComponent(stripped);
   return [
     `https://images.weserv.nl/?url=${encoded}&w=1600&output=jpg`,
@@ -78,14 +86,14 @@ export function RemoteImage({ uri, fallbackUri, fallbackUris = [], style, resize
   const candidatesKey = useMemo(
     () =>
       [uri, ...fallbackList, fallbackUri]
-        .map((v) => normalizeSupabasePublicImageUrl(v))
+        .flatMap((v) => expandImageCandidates(v))
         .filter(Boolean)
         .join('|'),
     [uri, fallbackUri, fallbackList.join('|')],
   );
   const candidates = useMemo(() => {
     const list = [uri, ...fallbackList, fallbackUri]
-      .map((v) => normalizeSupabasePublicImageUrl(v))
+      .flatMap((v) => expandImageCandidates(v))
       .filter(Boolean);
     return [...new Set(list)];
   }, [candidatesKey]);
@@ -127,7 +135,7 @@ export function RemoteImage({ uri, fallbackUri, fallbackUris = [], style, resize
 
 export function DayPhotoLayout({ photos = [], query = '' }) {
   const list = (Array.isArray(photos) ? photos : [])
-    .map((photo) => normalizeSupabasePublicImageUrl(photo))
+    .map((photo) => coerceImageUri(photo))
     .filter(Boolean)
     .slice(0, 5);
   if (!list.length) return null;
