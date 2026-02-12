@@ -195,8 +195,13 @@ function buildShareUrl(tripRow) {
   return `${base}/${slug}`;
 }
 
+function normalizeArrowText(value) {
+  if (typeof value !== 'string') return value;
+  return value.replace(/\s*->\s*/g, ' → ');
+}
+
 function flightDisplayTitle(flight, index, total) {
-  if (String(flight?.title || '').trim()) return String(flight.title).trim();
+  if (String(flight?.title || '').trim()) return normalizeArrowText(String(flight.title).trim());
   if (total <= 1) return 'Flight Out';
   if (index === 0) return 'Flight Out';
   if (index === total - 1) return 'Flight Home';
@@ -445,19 +450,19 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
                     <Ionicons name="airplane-outline" size={14} color="#111827" />
                     <Text style={{ color: '#111827', fontWeight: '800' }}>{flightDisplayTitle(f, i, flights.length)}</Text>
                   </View>
-                  <Text style={{ color: '#6b7280', fontSize: 12, fontWeight: '700' }}>{f.num || ''}</Text>
+                  <Text style={{ color: '#6b7280', fontSize: 12, fontWeight: '700' }}>{normalizeArrowText(f.num || '')}</Text>
                 </View>
-                <Text style={{ color: '#374151', fontSize: 13, fontWeight: '600' }}>{f.route || `${f.flightFrom || ''} → ${f.flightTo || ''}`}</Text>
+                <Text style={{ color: '#374151', fontSize: 13, fontWeight: '600' }}>{normalizeArrowText(f.route || `${f.flightFrom || ''} → ${f.flightTo || ''}`)}</Text>
                 {f.date ? <Text style={{ color: '#6b7280', fontSize: 12 }}>{f.date}</Text> : null}
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                   {f.times ? (
                     <View style={{ borderWidth: 1, borderColor: '#2563eb', borderRadius: 999, backgroundColor: '#2563eb', paddingHorizontal: 9, paddingVertical: 4 }}>
-                      <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>{f.times}</Text>
+                      <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>{normalizeArrowText(f.times)}</Text>
                     </View>
                   ) : null}
                   {f.codes ? (
                     <View style={{ borderWidth: 1, borderColor: '#111827', borderRadius: 999, backgroundColor: '#111827', paddingHorizontal: 9, paddingVertical: 4 }}>
-                      <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>{f.codes}</Text>
+                      <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>{normalizeArrowText(f.codes)}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -493,7 +498,7 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
                     </View>
                   </View>
                   <Text style={{ color: '#111827', fontWeight: '800', fontSize: 16 }}>
-                    {normalizeDayTitle(day.title, index, days.length)}
+                    {normalizeArrowText(normalizeDayTitle(day.title, index, days.length))}
                   </Text>
                 </View>
               </View>
@@ -502,7 +507,7 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
 
               {day.route ? (
                 <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, backgroundColor: '#fafafa', paddingHorizontal: 10, paddingVertical: 7 }}>
-                  <Text style={{ color: '#374151', fontSize: 12, fontWeight: '600' }}>Route: {day.route}</Text>
+                  <Text style={{ color: '#374151', fontSize: 12, fontWeight: '600' }}>Route: {normalizeArrowText(day.route)}</Text>
                 </View>
               ) : null}
 
@@ -519,7 +524,7 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
                       <View style={{ width: 20, height: 20, borderRadius: 999, backgroundColor: '#111827', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
                         <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>{i + 1}</Text>
                       </View>
-                      <Text style={{ color: '#374151', fontSize: 13, flex: 1 }}>{note}</Text>
+                      <Text style={{ color: '#374151', fontSize: 13, flex: 1 }}>{normalizeArrowText(note)}</Text>
                     </View>
                   ))}
                 </LinearGradient>

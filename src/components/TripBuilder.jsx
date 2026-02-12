@@ -8,13 +8,28 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
     const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const UNSPLASH_ACCESS_KEY = process.env.REACT_APP_UNSPLASH_ACCESS_KEY;
 
-    const [config, setConfig] = useState(tripData?.tripConfig || {
-        title: "My Trip",
-        footer: "My Adventure",
-        favicon: null,
-        calendar: { year: 2025, month: 0 },
-        badgeLegend: []
-    });
+    function normalizeArrowText(value) {
+        if (typeof value !== "string") return value;
+        return value.replace(/\s*->\s*/g, " → ");
+    }
+
+    function hydrateConfig(inputConfig) {
+        const base = inputConfig || {};
+        return {
+            ...base,
+            title: normalizeArrowText(String(base.title || "My Trip")),
+            footer: normalizeArrowText(String(base.footer || "My Adventure")),
+            favicon: base.favicon || null,
+            cover: base.cover || null,
+            calendar: {
+                year: Number(base?.calendar?.year) || 2025,
+                month: Number(base?.calendar?.month) >= 0 ? Number(base.calendar.month) : 0,
+            },
+            badgeLegend: Array.isArray(base.badgeLegend) ? base.badgeLegend : [],
+        };
+    }
+
+    const [config, setConfig] = useState(hydrateConfig(tripData?.tripConfig));
 
     const [days, setDays] = useState(() => hydrateDays(tripData?.days || [], tripData?.tripConfig));
     const [flights, setFlights] = useState(() => (tripData?.flights || []).map(hydrateFlight));
@@ -136,7 +151,10 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
             pushToast("Fix required items before preview.", "error");
             return;
         }
-        onSave({ tripConfig: config, days, flights, ll: locations, palette, dayBadges });
+        const normalizedConfig = hydrateConfig(config);
+        const normalizedDays = hydrateDays(days, normalizedConfig);
+        const normalizedFlights = flights.map(hydrateFlight);
+        onSave({ tripConfig: normalizedConfig, days: normalizedDays, flights: normalizedFlights, ll: locations, palette, dayBadges });
     };
 
     useEffect(() => {
@@ -151,7 +169,14 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
     useEffect(() => {
         setAutosaveState("saving");
         const autoSaveTimer = setTimeout(() => {
-            const tripData = { tripConfig: config, days, flights, ll: locations, palette, dayBadges };
+            const tripData = {
+                tripConfig: hydrateConfig(config),
+                days: hydrateDays(days, config),
+                flights: flights.map(hydrateFlight),
+                ll: locations,
+                palette,
+                dayBadges
+            };
             // Just save to localStorage, don't call onSave which would exit builder mode
             localStorage.setItem('current-trip', JSON.stringify(tripData));
             setAutosaveState("saved");
@@ -255,8 +280,14 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
     };
 
     const updateDay = (index, field, value) => {
+        let nextValue = value;
+        if (typeof nextValue === "string") {
+            nextValue = normalizeArrowText(nextValue);
+        } else if (field === "notes" && Array.isArray(nextValue)) {
+            nextValue = nextValue.map((note) => normalizeArrowText(String(note || "")));
+        }
         const updated = [...days];
-        updated[index] = { ...updated[index], [field]: value };
+        updated[index] = { ...updated[index], [field]: nextValue };
         setDays(updated);
     };
 
@@ -426,8 +457,9 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
     };
 
     const updateFlight = (index, field, value) => {
+        const nextValue = typeof value === "string" ? normalizeArrowText(value) : value;
         const updated = [...flights];
-        updated[index] = hydrateFlight({ ...updated[index], [field]: value });
+        updated[index] = hydrateFlight({ ...updated[index], [field]: nextValue });
         setFlights(updated);
     };
 
@@ -511,7 +543,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
                   });
                 }
 
-                setConfig(parsed.tripConfig);
+                setConfig(hydrateConfig(parsed.tripConfig));
                 setDays(hydrateDays(parsed.days || [], parsed.tripConfig));
                 setFlights((parsed.flights || []).map(hydrateFlight));
                 setLocations(extractedLl);
@@ -527,7 +559,14 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
     };
 
     const updateJsonFromState = () => {
-        const currentTripData = { tripConfig: config, days, flights, ll: locations, palette, dayBadges };
+        const currentTripData = {
+            tripConfig: hydrateConfig(config),
+            days: hydrateDays(days, config),
+            flights: flights.map(hydrateFlight),
+            ll: locations,
+            palette,
+            dayBadges
+        };
         setJsonInput(JSON.stringify(currentTripData, null, 2));
     };
 
@@ -646,7 +685,10 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
             const base = {
                 ...day,
                 pins: day.pins || [],
-                notes: day.notes || [],
+                title: normalizeArrowText(day.title || ""),
+                route: normalizeArrowText(day.route || ""),
+                photoQ: normalizeArrowText(day.photoQ || ""),
+                notes: Array.isArray(day.notes) ? day.notes.map((note) => normalizeArrowText(String(note || ""))) : [],
                 photos: day.photos || [],
             };
 
@@ -719,12 +761,12 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
             departureDate,
             departureTime,
             arrivalTime,
-            route: flightFrom && flightTo ? `${flightFrom} → ${flightTo}` : (flight.route || ""),
+            route: flightFrom && flightTo ? `${flightFrom} → ${flightTo}` : normalizeArrowText(flight.route || ""),
             date: departureDate ? formatIsoAsDisplayDate(departureDate) : (flight.date || ""),
             times: departureTime || arrivalTime
                 ? `${departureTime || "—"} → ${arrivalTime || "—"}`
-                : (flight.times || ""),
-            title: flight.title || (flightFrom && flightTo ? `Flight: ${flightFrom} → ${flightTo}` : "Flight"),
+                : normalizeArrowText(flight.times || ""),
+            title: normalizeArrowText(flight.title || (flightFrom && flightTo ? `Flight: ${flightFrom} → ${flightTo}` : "Flight")),
         };
     }
 
@@ -959,7 +1001,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
                             <input
                                 type="text"
                                 value={config.title}
-                                onChange={e => setConfig({ ...config, title: e.target.value })}
+                                onChange={e => setConfig({ ...config, title: normalizeArrowText(e.target.value) })}
                                 className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="My Amazing Trip • June 2025"
                             />
@@ -970,7 +1012,7 @@ export default function TripBuilder({ tripData, onSave, onCancel, onHome, onRese
                             <input
                                 type="text"
                                 value={config.footer}
-                                onChange={e => setConfig({ ...config, footer: e.target.value })}
+                                onChange={e => setConfig({ ...config, footer: normalizeArrowText(e.target.value) })}
                                 className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="Adventure awaits! 🌍"
                             />

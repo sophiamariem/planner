@@ -6,6 +6,11 @@ import { IconCar, IconPin } from "./Icons";
 import { mapSearch } from "../utils/maps";
 import { palette } from "../data/trip";
 
+function normalizeArrowText(value) {
+    if (typeof value !== "string") return value;
+    return value.replace(/\s*->\s*/g, " → ");
+}
+
 export default function DayCard({ d, showMaps = true, imgClass = "h-56 md:h-72" }) {
     return (
         <section id={`day-${d.id}`} className="scroll-mt-28">
@@ -18,7 +23,7 @@ export default function DayCard({ d, showMaps = true, imgClass = "h-56 md:h-72" 
                         </div>
                     </div>
                     <div>
-                        <h3 className={`text-2xl md:text-3xl font-extrabold tracking-tight ${d.highlight?"bg-gradient-to-r from-fuchsia-600 via-pink-600 to-rose-600 bg-clip-text text-transparent":"text-zinc-900"}`}>{d.title}</h3>
+                        <h3 className={`text-2xl md:text-3xl font-extrabold tracking-tight ${d.highlight?"bg-gradient-to-r from-fuchsia-600 via-pink-600 to-rose-600 bg-clip-text text-transparent":"text-zinc-900"}`}>{normalizeArrowText(d.title)}</h3>
                         <div className="mt-3 grid md:grid-cols-3 gap-4">
                             <div className="md:col-span-2 order-2 md:order-1">
                                 {d.hasMap && showMaps ? (
@@ -41,7 +46,7 @@ export default function DayCard({ d, showMaps = true, imgClass = "h-56 md:h-72" 
                             <div className="order-1 md:order-2">
                                 <div className="flex flex-wrap gap-2">
                                     {d.notes?.map((n, i) => (
-                                        <Chip key={i} className={`${palette.note}`}>{n}</Chip>
+                                        <Chip key={i} className={`${palette.note}`}>{normalizeArrowText(n)}</Chip>
                                     ))}
                                 </div>
                                 <div className="mt-3 rounded-2xl p-3 bg-gradient-to-br from-amber-100 to-pink-100">

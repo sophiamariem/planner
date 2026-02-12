@@ -117,7 +117,12 @@ function parseFlightTimes(times) {
 }
 
 function splitNotes(value) {
-  return String(value || '').split('\n').map((v) => v.trim()).filter(Boolean);
+  return String(value || '').split('\n').map((v) => normalizeArrowText(v.trim())).filter(Boolean);
+}
+
+function normalizeArrowText(value) {
+  if (typeof value !== 'string') return value;
+  return value.replace(/\s*->\s*/g, ' → ');
 }
 
 function splitBadges(value) {
@@ -163,13 +168,13 @@ function createDayDraft(index, total) {
 function hydrateDayDraft(day = {}, dayBadges = {}, index = 0, total = 3) {
   return {
     _key: createDraftKey('day'),
-    title: normalizeDayTitle(day.title, index, total),
-    notesText: Array.isArray(day.notes) ? day.notes.join('\n') : '',
+    title: normalizeArrowText(normalizeDayTitle(day.title, index, total)),
+    notesText: normalizeArrowText(Array.isArray(day.notes) ? day.notes.join('\n') : ''),
     badgesText: Array.isArray(dayBadges?.[day.id]) ? dayBadges[day.id].join(' ') : '',
     photos: Array.isArray(day.photos) ? day.photos.filter(Boolean) : [],
     photoUrl: '',
     showPhotoUrlInput: false,
-    photoQuery: day.title || '',
+    photoQuery: normalizeArrowText(day.title || ''),
     photoResults: [],
     photoLoading: false,
     photoError: '',
@@ -184,12 +189,12 @@ function hydrateFlight(f = {}) {
   const parsedTimes = parseFlightTimes(f.times);
   return {
     _key: createDraftKey('flight'),
-    from: f.flightFrom || (f.route?.split('→')[0] || '').trim(),
-    to: f.flightTo || (f.route?.split('→')[1] || '').trim(),
+    from: normalizeArrowText(f.flightFrom || (f.route?.split(/→|->/)[0] || '').trim()),
+    to: normalizeArrowText(f.flightTo || (f.route?.split(/→|->/)[1] || '').trim()),
     date: f.date || '',
-    flightNo: f.num || '',
-    departTime: parsedTimes.departTime,
-    arriveTime: parsedTimes.arriveTime,
+    flightNo: normalizeArrowText(f.num || ''),
+    departTime: normalizeArrowText(parsedTimes.departTime),
+    arriveTime: normalizeArrowText(parsedTimes.arriveTime),
   };
 }
 
@@ -198,11 +203,11 @@ function readInitialState(initialTripData) {
   const firstDate = days.map((d) => d?.isoDate).find(Boolean) || toIso(new Date());
   const dayCount = Math.max(1, Math.min(14, days.length || 3));
   return {
-    title: initialTripData?.tripConfig?.title || 'My New Trip',
+    title: normalizeArrowText(initialTripData?.tripConfig?.title || 'My New Trip'),
     startDate: firstDate,
     daysCount: String(dayCount),
     templateId: initialTripData?.tripConfig?.templateId || '',
-    footer: initialTripData?.tripConfig?.footer || 'Planned with plnr.guide',
+    footer: normalizeArrowText(initialTripData?.tripConfig?.footer || 'Planned with plnr.guide'),
     badgeLegend: Array.isArray(initialTripData?.tripConfig?.badgeLegend) ? initialTripData.tripConfig.badgeLegend : [{ emoji: '', label: '' }],
     coverPhoto: initialTripData?.tripConfig?.cover || '',
     dayDrafts: days.length
@@ -406,12 +411,21 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
   }, [coverPhoto, dayDrafts]);
 
   const updateDayDraft = (index, patch) => {
-    setDayDrafts((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)));
+    const normalizedPatch = Object.fromEntries(
+      Object.entries(patch || {}).map(([key, value]) => [key, typeof value === 'string' ? normalizeArrowText(value) : value]),
+    );
+    setDayDrafts((prev) => prev.map((d, i) => (i === index ? { ...d, ...normalizedPatch } : d)));
   };
 
   const updateFlight = (index, patch) => {
-    setFlights((prev) => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)));
+    const normalizedPatch = Object.fromEntries(
+      Object.entries(patch || {}).map(([key, value]) => [key, typeof value === 'string' ? normalizeArrowText(value) : value]),
+    );
+    setFlights((prev) => prev.map((f, i) => (i === index ? { ...f, ...normalizedPatch } : f)));
   };
+
+  const updateTitle = (value) => setTitle(normalizeArrowText(value));
+  const updateFooter = (value) => setTripFooter(normalizeArrowText(value));
 
   const openStartDatePicker = () => {
     const initial = parseIsoDate(startDate) || new Date();
@@ -617,14 +631,14 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
     const finalFlights = flights
       .filter((f) => String(f.from || '').trim() || String(f.to || '').trim())
       .map((f) => {
-        const from = String(f.from || '').trim();
-        const to = String(f.to || '').trim();
+        const from = normalizeArrowText(String(f.from || '').trim());
+        const to = normalizeArrowText(String(f.to || '').trim());
         const departTime = String(f.departTime || '').trim();
         const arriveTime = String(f.arriveTime || '').trim();
         const times = departTime && arriveTime ? `${departTime} → ${arriveTime}` : (departTime || arriveTime || '');
         return {
-          title: from && to ? `${from} to ${to}` : 'Flight',
-          num: String(f.flightNo || '').trim(),
+          title: normalizeArrowText(from && to ? `${from} to ${to}` : 'Flight'),
+          num: normalizeArrowText(String(f.flightNo || '').trim()),
           route: from && to ? `${from} → ${to}` : '',
           date: String(f.date || '').trim(),
           times,
@@ -639,8 +653,8 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
       ...base,
       tripConfig: {
         ...(base?.tripConfig || {}),
-        title: title.trim() || 'My New Trip',
-        footer: tripFooter.trim() || 'Planned with plnr.guide',
+        title: normalizeArrowText(title.trim() || 'My New Trip'),
+        footer: normalizeArrowText(tripFooter.trim() || 'Planned with plnr.guide'),
         favicon: base?.tripConfig?.favicon || null,
         cover: coverPhoto || coverFromDays || null,
         templateId: selectedTemplateId || base?.tripConfig?.templateId || '',
@@ -695,7 +709,7 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
 
             <View style={{ gap: 8 }}>
               <Text style={{ color: '#111827', fontWeight: '700' }}>Trip title</Text>
-              <TextInput value={title} onChangeText={setTitle} placeholder="Summer in Lisbon" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }} />
+              <TextInput value={title} onChangeText={updateTitle} placeholder="Summer in Lisbon" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }} />
             </View>
 
             <View style={{ gap: 8 }}>
@@ -984,7 +998,7 @@ export default function NewTripScreen({ onCancel, onSubmit, submitting = false, 
             </View>
             <View style={{ gap: 8 }}>
               <Text style={{ color: '#111827', fontWeight: '700' }}>Footer</Text>
-              <TextInput value={tripFooter} onChangeText={setTripFooter} placeholder="Planned with plnr.guide" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: '#fff' }} />
+              <TextInput value={tripFooter} onChangeText={updateFooter} placeholder="Planned with plnr.guide" style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: '#fff' }} />
             </View>
           </View>
         ) : null}
