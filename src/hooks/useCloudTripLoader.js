@@ -112,9 +112,10 @@ export default function useCloudTripLoader({
 
     const initialize = async () => {
       let currentUser = null;
+      let sessionFromUrl = false;
       if (isSupabaseConfigured) {
         try {
-          setSessionFromUrl();
+          sessionFromUrl = setSessionFromUrl();
           currentUser = await getCurrentUser();
           setUser(currentUser);
           if (currentUser) {
@@ -123,6 +124,14 @@ export default function useCloudTripLoader({
         } catch (error) {
           console.error("Error initializing auth:", error);
         }
+      }
+
+      // Always land signed-in users on Saved Trips after an auth callback.
+      if (sessionFromUrl && currentUser) {
+        window.history.replaceState(null, "", "/app");
+        setOnboardingPage("trips");
+        setMode("onboarding");
+        return;
       }
 
       const cloud = getCloudFromURL();
@@ -169,6 +178,17 @@ export default function useCloudTripLoader({
       }
 
       const currentPath = window.location.pathname;
+      if (currentPath === "/auth-callback") {
+        if (currentUser) {
+          window.history.replaceState(null, "", "/app");
+          setOnboardingPage("trips");
+        } else {
+          window.history.replaceState(null, "", "/auth");
+        }
+        setMode("onboarding");
+        return;
+      }
+
       if (currentPath === "/app" || currentPath === "/new") {
         setOnboardingPage(currentPath === "/new" ? "create" : "trips");
         setMode("onboarding");
