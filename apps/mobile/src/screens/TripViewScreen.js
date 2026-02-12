@@ -248,7 +248,7 @@ function flightDisplayTitle(flight, index, total) {
   return 'Domestic Flight';
 }
 
-function IconActionButton({ iconName, onPress, tone = 'default', accessibilityLabel, compact = false }) {
+function IconActionButton({ iconName, onPress, tone = 'default', accessibilityLabel, compact = false, disabled = false }) {
   const palette = tone === 'danger'
     ? { bg: '#fef2f2', border: '#fecaca', fg: '#b91c1c' }
     : tone === 'primary'
@@ -258,6 +258,7 @@ function IconActionButton({ iconName, onPress, tone = 'default', accessibilityLa
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      disabled={disabled}
       onPress={onPress}
       style={{
         width: compact ? 36 : 42,
@@ -268,6 +269,7 @@ function IconActionButton({ iconName, onPress, tone = 'default', accessibilityLa
         backgroundColor: palette.bg,
         alignItems: 'center',
         justifyContent: 'center',
+        opacity: disabled ? 0.45 : 1,
       }}
     >
       <Ionicons name={iconName} size={compact ? 16 : 18} color={palette.fg} />
@@ -390,7 +392,7 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
 
   const handleShareTrip = async () => {
     if (!shareUrl) {
-      onToast?.('Save this trip first to get a share link.');
+      onToast?.('Short share link is unavailable right now.', 'error');
       return;
     }
     try {
@@ -411,7 +413,7 @@ export default function TripViewScreen({ tripRow, onBack, onEdit, onDelete, onTo
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <IconActionButton iconName="trash-outline" onPress={onDelete} tone="danger" accessibilityLabel="Delete trip" />
           <IconActionButton iconName="create-outline" onPress={onEdit} tone="primary" accessibilityLabel="Edit trip" />
-          <IconActionButton iconName="share-social-outline" onPress={handleShareTrip} accessibilityLabel="Share trip" />
+          <IconActionButton iconName="share-social-outline" onPress={handleShareTrip} accessibilityLabel="Share trip" disabled={!shareUrl} />
         </View>
       </View>
 

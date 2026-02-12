@@ -4,7 +4,7 @@ import useFavicon from "./hooks/useFavicon";
 import { ensureTailwindCDN } from "./utils/tailwind";
 import { getTripFromURL, updateURLWithTrip, saveTripToLocalStorage, loadTripFromLocalStorage, generateShareURL, clearLocalStorageTrip, validateTripData, getSourceFromURL, getCloudFromURL, isViewOnlyFromURL } from "./utils/tripData";
 import { isSupabaseConfigured, setSessionFromUrl } from "./lib/supabaseClient";
-import { getCurrentUser, signInWithMagicLink, signInWithGoogle, signOut, saveTripToCloud, updateCloudTrip, listMyTrips, loadCloudTripById, loadCloudTripByShareToken, loadCloudTripBySlug, generateShareToken, deleteCloudTripById } from "./lib/cloudTrips";
+import { getCurrentUser, signInWithMagicLink, signInWithGoogle, signOut, saveTripToCloud, updateCloudTrip, listMyTrips, loadCloudTripById, loadCloudTripByShareToken, loadCloudTripBySlug, deleteCloudTripById } from "./lib/cloudTrips";
 
 import FlightCard from "./components/FlightCard";
 import DayCard from "./components/DayCard";
@@ -617,21 +617,6 @@ export default function TripPlannerApp() {
     }
   };
 
-  const handleGenerateShareToken = async () => {
-    if (!cloudTripId) {
-      pushToast("Save this trip first before creating a share link.", "error");
-      return;
-    }
-    try {
-      const token = await generateShareToken(cloudTripId);
-      setShareToken(token);
-      pushToast("Public share token created.", "success");
-    } catch (error) {
-      console.error("Share token error:", error);
-      pushToast(error.message || "Could not create share token.", "error");
-    }
-  };
-
   const handleEditTrip = () => {
     setBuilderStartTab("basic");
     setMode('builder');
@@ -820,25 +805,23 @@ export default function TripPlannerApp() {
   };
 
   const copyShareLink = () => {
-    if (!canCopyShareLink) {
-      pushToast("Save this trip first for a shareable link.", "error");
+    if (!canCopyShareLink || !currentShareURL) {
+      pushToast("Save this trip first to get a short share link.", "error");
       return;
     }
-    const shareURL = generateShareURL(tripData, { viewOnly: isViewOnly && !cloudTripId, source: sourceUrl, cloudId: cloudTripId, cloudSlug, shareToken });
-    if (shareURL) {
-      navigator.clipboard.writeText(shareURL)
-        .then(() => {
-          pushToast("Link copied.", "success");
-        })
-        .catch(() => {
-          pushToast("Could not copy link.", "error");
-        });
-    }
+    navigator.clipboard.writeText(currentShareURL)
+      .then(() => {
+        pushToast("Link copied.", "success");
+      })
+      .catch(() => {
+        pushToast("Could not copy link.", "error");
+      });
   };
 
-  const currentShareURL = generateShareURL(tripData, { viewOnly: isViewOnly && !cloudTripId, source: sourceUrl, cloudId: cloudTripId, cloudSlug, shareToken });
-  const isLocalDraftShare = !cloudTripId && !sourceUrl;
-  const canCopyShareLink = Boolean(cloudTripId || sourceUrl);
+  const currentShareURL = cloudSlug
+    ? generateShareURL(tripData, { cloudSlug, shareToken })
+    : (shareToken ? generateShareURL(tripData, { shareToken }) : null);
+  const canCopyShareLink = Boolean(currentShareURL);
 
   const publishIssues = useMemo(() => {
     const issues = [];
@@ -1381,25 +1364,8 @@ export default function TripPlannerApp() {
           <aside className="absolute right-0 top-0 h-full w-full sm:max-w-lg bg-white shadow-2xl p-6 overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h2 className="text-2xl font-bold text-zinc-900 mb-4">Share Your Trip</h2>
             <p className="text-zinc-600 mb-4">
-              {isLocalDraftShare
-                ? "You're sharing a local draft link, so it will be long. Save first for a short, clean link."
-                : "Copy this link to share your trip. Saved trips use short slug links when available."}
+              Copy your short link and share your trip.
             </p>
-            {isLocalDraftShare && (
-              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                <p className="text-xs text-amber-800">
-                  Local draft links include the full trip data in the URL.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleSaveToCloud}
-                  disabled={!isSupabaseConfigured || !user || cloudSaving}
-                  className="mt-2 px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50"
-                >
-                  {!isSupabaseConfigured ? "Short links unavailable" : !user ? "Sign in to get short links" : (cloudSaving ? "Saving..." : "Save for short link")}
-                </button>
-              </div>
-            )}
             <div className="flex flex-col gap-4">
               {publishIssues.length > 0 && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
@@ -1423,7 +1389,7 @@ export default function TripPlannerApp() {
               <div className="flex gap-2">
                 <input
                   type="text"
-                  value={currentShareURL}
+                  value={currentShareURL || ""}
                   readOnly
                   className="flex-1 px-3 py-2 border border-zinc-300 rounded-lg bg-zinc-50 text-sm font-mono"
                 />
@@ -1436,9 +1402,14 @@ export default function TripPlannerApp() {
                 </button>
               </div>
               {!canCopyShareLink && (
-                <p className="text-xs text-zinc-500">
-                  Save first to copy a clean share link.
-                </p>
+                <button
+                  type="button"
+                  onClick={handleSaveToCloud}
+                  disabled={!isSupabaseConfigured || !user || cloudSaving}
+                  className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50 self-start"
+                >
+                  {!isSupabaseConfigured ? "Sharing unavailable" : !user ? "Sign in to share" : (cloudSaving ? "Creating short link..." : "Create short link")}
+                </button>
               )}
 
               {cloudTripId ? (
@@ -1481,42 +1452,11 @@ export default function TripPlannerApp() {
                 </div>
               )}
 
-              {cloudTripId && isCloudOwnedByCurrentUser && !shareToken && (
-                <button
-                  onClick={handleGenerateShareToken}
-                  className="w-full px-4 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 text-sm font-medium"
-                >
-                  Generate Public Share Token
-                </button>
-              )}
-
-              {sourceUrl && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <p className="text-xs text-green-800 font-medium">
-                    ✨ Live Link Active: This trip stays synced and will stay updated.
-                  </p>
-                  <button
-                    onClick={() => { setSourceUrl(null); }}
-                    className="mt-2 text-xs text-green-700 underline hover:text-green-800"
-                  >
-                    Switch back to normal link (encoded in URL)
-                  </button>
-                </div>
-              )}
-
               {cloudTripId && (
                 <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
                   {cloudSlug && (
                     <p className="text-xs text-emerald-800 font-medium">
                       Slug: <code>{cloudSlug}</code>
-                    </p>
-                  )}
-                  <p className="text-xs text-emerald-800 font-medium">
-                    Saved trip ID: <code>{cloudTripId}</code>
-                  </p>
-                  {shareToken && (
-                    <p className="text-xs text-emerald-700 mt-1">
-                      Share token active: <code>{shareToken}</code>
                     </p>
                   )}
                 </div>
