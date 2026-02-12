@@ -45,7 +45,7 @@ export default function TripViewHeader({
                     : "bg-amber-50 text-amber-700 border-amber-200"
                 }`}
               >
-                {canCollaborateOnSharedTrip ? "Shared (collaborative)" : "Shared (read-only)"}
+                {canCollaborateOnSharedTrip ? "You can edit" : "You can view only"}
               </span>
             )}
             {!isSharedCloudTrip && copiedFromOwnerId && (
@@ -79,7 +79,7 @@ export default function TripViewHeader({
               disabled={cloudSaving}
               className="px-3 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-white disabled:opacity-50"
             >
-              {cloudSaving ? "Saving..." : "Save to My Trips"}
+              {cloudSaving ? "Saving..." : "Save trip"}
             </button>
           )}
           {canEditCurrentTrip && (

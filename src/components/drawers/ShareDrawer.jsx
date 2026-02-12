@@ -64,8 +64,8 @@ export default function ShareDrawer({
                       disabled={cloudSaving}
                       className="w-full px-3 py-2 rounded-lg border border-zinc-300 text-sm bg-white disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      <option value="view">Shared (read-only)</option>
-                      <option value="collaborate">Shared (collaborative)</option>
+                      <option value="view">Others can view</option>
+                      <option value="collaborate">Others can edit</option>
                     </select>
                     {cloudShareAccess === "collaborate" && (
                       <div className="mt-2 border border-zinc-200 rounded-lg bg-white p-3 space-y-2">
@@ -112,7 +112,7 @@ export default function ShareDrawer({
                   </>
                 ) : (
                   <p className="text-xs text-zinc-600">
-                    This trip is currently <strong>{cloudShareAccess === "collaborate" ? "Shared (collaborative)" : "Shared (read-only)"}</strong>.
+                    You currently have <strong>{cloudShareAccess === "collaborate" ? "edit access" : "view-only access"}</strong>.
                   </p>
                 )}
               </div>

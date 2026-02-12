@@ -41,8 +41,8 @@ export function attachCopyAttribution(tripData, source = {}) {
 
 export function formatVisibilityLabel(visibility) {
   const value = String(visibility || "").toLowerCase();
-  if (value === "private") return "Only me";
+  if (value === "private") return "Not shared yet";
   if (value === "unlisted") return "Shared (link only)";
   if (value === "public") return "Public";
-  return "Only me";
+  return "Not shared yet";
 }

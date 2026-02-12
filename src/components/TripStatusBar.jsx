@@ -6,10 +6,10 @@ export default function TripStatusBar({ cloudTripId, cloudSlug, user, isSupabase
       <span className="font-medium text-zinc-900">Status:</span>
       {cloudTripId ? (
         <>
-          <span className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-800">Saved & synced</span>
+          <span className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-800">Saved online</span>
         </>
       ) : (
-        <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-800">Local draft</span>
+        <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-800">Draft on this device</span>
       )}
       {!user && isSupabaseConfigured && (
         <span className="text-zinc-500">Sign in to sync and reopen on any device.</span>

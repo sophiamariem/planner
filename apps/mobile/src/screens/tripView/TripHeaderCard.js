@@ -43,7 +43,7 @@ export default function TripHeaderCard({
         {isSharedNotOwned ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
             <View style={{ borderWidth: 1, borderColor: '#fde68a', backgroundColor: '#fffbeb', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
-              <Text style={{ color: '#92400e', fontSize: 12, fontWeight: '700' }}>Shared (read-only)</Text>
+              <Text style={{ color: '#92400e', fontSize: 12, fontWeight: '700' }}>You can view only</Text>
             </View>
             <Pressable
               onPress={onSaveSharedCopy}
@@ -59,7 +59,7 @@ export default function TripHeaderCard({
               }}
             >
               <Text style={{ color: '#111827', fontSize: 12, fontWeight: '700' }}>
-                {savingSharedCopy ? 'Saving...' : 'Save to My Trips'}
+                {savingSharedCopy ? 'Saving...' : 'Save trip'}
               </Text>
             </Pressable>
           </View>

@@ -141,7 +141,7 @@ export default function MyTripsDrawer({
             onChange={(e) => onChangeVisibility(e.target.value)}
             className="px-3 py-2 rounded-lg border border-zinc-300 text-sm"
           >
-            <option value="private">Only me</option>
+            <option value="private">Not shared yet</option>
             <option value="unlisted">Shared (link only)</option>
             <option value="public">Public</option>
           </select>
