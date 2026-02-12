@@ -9,6 +9,14 @@ const TEMPLATE_LABELS = {
   family: 'Family Trip',
 };
 
+function formatVisibilityLabel(visibility) {
+  const value = String(visibility || '').toLowerCase();
+  if (value === 'private') return 'Only me';
+  if (value === 'unlisted') return 'Shared (link only)';
+  if (value === 'public') return 'Public';
+  return 'Only me';
+}
+
 function getStartDate(row) {
   const days = row?.trip_data?.days || [];
   const dates = days.map((d) => d.isoDate).filter(Boolean).sort();
@@ -212,7 +220,7 @@ function TripCard({ trip, onSelectTrip, onDeleteTrip }) {
       ) : null}
       <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{trip.title || 'Untitled Trip'}</Text>
       <Text style={{ color: '#6b7280', fontSize: 12 }}>
-        {trip.slug || 'no-slug'} • {trip.visibility}
+        {trip.slug || 'no-slug'} • {formatVisibilityLabel(trip.visibility)}
       </Text>
       {templateLabel ? (
         <View style={{ alignSelf: 'flex-start', marginTop: 2, borderRadius: 999, borderWidth: 1, borderColor: '#dbeafe', backgroundColor: '#eff6ff', paddingHorizontal: 8, paddingVertical: 3 }}>

@@ -164,7 +164,7 @@ export function clearLocalStorageTrip() {
  * Generates a shareable URL
  */
 export function generateShareURL(tripData, options = {}) {
-    const baseURL = window.location.origin + window.location.pathname;
+    const baseURL = `${window.location.origin}/`;
     let url = baseURL;
 
     if (options.cloudSlug) {

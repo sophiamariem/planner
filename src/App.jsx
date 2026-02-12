@@ -71,6 +71,14 @@ function extractCoverImage(tripLike) {
   );
 }
 
+function formatVisibilityLabel(visibility) {
+  const value = String(visibility || "").toLowerCase();
+  if (value === "private") return "Only me";
+  if (value === "unlisted") return "Shared (link only)";
+  if (value === "public") return "Public";
+  return "Only me";
+}
+
 function buildTemplateTrip(templateId, paletteValue) {
   const map = {
     city: {
@@ -339,13 +347,6 @@ export default function TripPlannerApp() {
         }
       }
 
-      const currentPath = window.location.pathname;
-      if (currentPath === "/app" || currentPath === "/new") {
-        setOnboardingPage(currentPath === "/new" ? "create" : (currentUser ? "trips" : "create"));
-        setMode("onboarding");
-        return;
-      }
-
       // Check for cloud URL first
       const cloud = getCloudFromURL();
       if (cloud && isSupabaseConfigured) {
@@ -360,7 +361,7 @@ export default function TripPlannerApp() {
         }
       }
 
-    // Check for source URL first
+      // Check for source URL next
       const source = getSourceFromURL();
       if (source) {
         setSourceUrl(source);
@@ -384,11 +385,18 @@ export default function TripPlannerApp() {
         return;
       }
 
-      // Check URL next
+      // Check encoded URL trip next
       const urlTrip = getTripFromURL();
       if (urlTrip) {
         setTripData(urlTrip);
         setMode('view');
+        return;
+      }
+
+      const currentPath = window.location.pathname;
+      if (currentPath === "/app" || currentPath === "/new") {
+        setOnboardingPage(currentPath === "/new" ? "create" : (currentUser ? "trips" : "create"));
+        setMode("onboarding");
         return;
       }
 
@@ -558,7 +566,7 @@ export default function TripPlannerApp() {
       window.history.pushState(null, '', cloudHash);
       await refreshMyTrips();
       if (cloudTripId && !isCloudOwnedByCurrentUser && !canCollaborateOnSharedTrip) {
-        pushToast("Saved a private copy to your trips.", "success");
+        pushToast("Saved a copy to your trips.", "success");
       } else if (canCollaborateOnSharedTrip) {
         pushToast("Shared trip updated.", "success");
       } else {
@@ -844,12 +852,35 @@ export default function TripPlannerApp() {
     setShowShareModal(true);
   };
 
-  const copyShareLink = () => {
+  const copyShareLink = async () => {
     if (!canCopyShareLink || !currentShareURL) {
       pushToast("Save this trip first to get a short share link.", "error");
       return;
     }
-    navigator.clipboard.writeText(currentShareURL)
+    let shareURL = currentShareURL;
+
+    if (cloudTripId && isCloudOwnedByCurrentUser && cloudVisibility === "private") {
+      setCloudSaving(true);
+      try {
+        const row = await updateCloudTrip(cloudTripId, tripData, "unlisted", cloudSlug, cloudShareAccess);
+        setCloudSlug(row.slug || null);
+        setCloudVisibility(row.visibility || "unlisted");
+        setCloudShareAccess(row.share_access || cloudShareAccess);
+        setCloudOwnerId(row.owner_id || cloudOwnerId || user?.id || null);
+        const nextHash = row.slug ? `#t=${encodeURIComponent(row.slug)}` : `#cloud=${encodeURIComponent(row.id)}`;
+        window.history.pushState(null, "", nextHash);
+        shareURL = row.slug ? generateShareURL(tripData, { cloudSlug: row.slug }) : shareURL;
+        pushToast("Share link ready.", "success");
+      } catch (error) {
+        console.error("Share visibility update failed:", error);
+        pushToast(error.message || "Could not prepare share link.", "error");
+        return;
+      } finally {
+        setCloudSaving(false);
+      }
+    }
+
+    navigator.clipboard.writeText(shareURL)
       .then(() => {
         pushToast("Link copied.", "success");
       })
@@ -1166,7 +1197,7 @@ export default function TripPlannerApp() {
                                 </div>
                                 <div className="p-3">
                                   <p className="font-medium text-zinc-900">{trip.title}</p>
-                                  <p className="text-xs text-zinc-500 mt-1">{trip.slug || "no-slug"} • {trip.visibility}</p>
+                                  <p className="text-xs text-zinc-500 mt-1">{trip.slug || "no-slug"} • {formatVisibilityLabel(trip.visibility)}</p>
                                 </div>
                               </button>
                             </div>
@@ -1360,7 +1391,7 @@ export default function TripPlannerApp() {
                       : "bg-amber-50 text-amber-700 border-amber-200"
                   }`}
                 >
-                  {canCollaborateOnSharedTrip ? "Shared (collaborative)" : "Shared (not yours)"}
+                  {canCollaborateOnSharedTrip ? "Shared (collaborative)" : "Shared (read-only)"}
                 </span>
               )}
             </div>
@@ -1425,12 +1456,12 @@ export default function TripPlannerApp() {
           <aside className="absolute right-0 top-0 h-full w-full sm:max-w-lg bg-white shadow-2xl p-6 overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h2 className="text-2xl font-bold text-zinc-900 mb-4">Share Your Trip</h2>
             <p className="text-zinc-600 mb-4">
-              Copy your short link and share your trip.
+              Copy your short link.
             </p>
             <div className="flex flex-col gap-4">
               {publishIssues.length > 0 && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                  <p className="text-xs font-medium text-amber-900 mb-2">Before sharing, fix these:</p>
+                  <p className="text-xs font-medium text-amber-900 mb-2">Fix before sharing:</p>
                   <div className="space-y-2">
                     {publishIssues.map((issue) => (
                       <div key={issue.key} className="flex items-center justify-between gap-2">
@@ -1483,8 +1514,8 @@ export default function TripPlannerApp() {
                         onChange={(e) => setCloudShareAccess(e.target.value)}
                         className="px-3 py-2 rounded-lg border border-zinc-300 text-sm bg-white"
                       >
-                        <option value="view">View only</option>
-                        <option value="collaborate">Collaborate (signed-in users can edit)</option>
+                        <option value="view">Shared (read-only)</option>
+                        <option value="collaborate">Shared (collaborative)</option>
                       </select>
                       <p className="text-xs text-zinc-500">
                         Save the trip after changing this setting so the shared link updates.
@@ -1492,7 +1523,7 @@ export default function TripPlannerApp() {
                     </>
                   ) : (
                     <p className="text-xs text-zinc-600">
-                      This shared trip is currently <strong>{cloudShareAccess === "collaborate" ? "collaborative" : "view only"}</strong>.
+                      This trip is currently <strong>{cloudShareAccess === "collaborate" ? "Shared (collaborative)" : "Shared (read-only)"}</strong>.
                     </p>
                   )}
                 </div>
@@ -1513,11 +1544,6 @@ export default function TripPlannerApp() {
                 </div>
               )}
 
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                <p className="text-xs text-blue-800">
-                  Share this link with friends so they can open your itinerary instantly. People can always save a copy to their own account.
-                </p>
-              </div>
             </div>
             <button
               onClick={() => setShowShareModal(false)}
@@ -1565,7 +1591,7 @@ export default function TripPlannerApp() {
                               <div className="p-3">
                                 <p className="font-medium text-zinc-900">{trip.title}</p>
                                 <p className="text-xs text-zinc-500 mt-1">
-                                  {trip.slug || "no-slug"} • {trip.visibility}
+                                  {trip.slug || "no-slug"} • {formatVisibilityLabel(trip.visibility)}
                                 </p>
                                 <p className="text-xs text-zinc-400 mt-1">
                                   Updated {new Date(trip.updated_at || trip.created_at).toLocaleString()}
@@ -1619,7 +1645,7 @@ export default function TripPlannerApp() {
                                 <div className="p-3">
                                   <p className="font-medium text-zinc-900">{trip.title}</p>
                                   <p className="text-xs text-zinc-500 mt-1">
-                                    {trip.slug || "no-slug"} • {trip.visibility}
+                                    {trip.slug || "no-slug"} • {formatVisibilityLabel(trip.visibility)}
                                   </p>
                                   <p className="text-xs text-zinc-400 mt-1">
                                     Updated {new Date(trip.updated_at || trip.created_at).toLocaleString()}
@@ -1652,8 +1678,8 @@ export default function TripPlannerApp() {
                 onChange={(e) => setCloudVisibility(e.target.value)}
                 className="px-3 py-2 rounded-lg border border-zinc-300 text-sm"
               >
-                <option value="private">Private</option>
-                <option value="unlisted">Unlisted</option>
+                <option value="private">Only me</option>
+                <option value="unlisted">Shared (link only)</option>
                 <option value="public">Public</option>
               </select>
             </div>
