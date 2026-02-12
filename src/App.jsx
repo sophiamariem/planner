@@ -915,6 +915,35 @@ export default function TripPlannerApp() {
     }
   };
 
+  const handleShareAccessChange = async (nextAccess) => {
+    if (!cloudTripId || !isCloudOwnedByCurrentUser || !tripData) return;
+    if (nextAccess === cloudShareAccess && cloudVisibility !== "private") return;
+
+    const previousAccess = cloudShareAccess;
+    const targetVisibility = cloudVisibility === "private" ? "unlisted" : cloudVisibility;
+    setCloudShareAccess(nextAccess);
+    setCloudSaving(true);
+    try {
+      const row = await updateCloudTrip(cloudTripId, tripData, targetVisibility, cloudSlug, nextAccess);
+      setCloudSlug(row.slug || null);
+      setCloudVisibility(row.visibility || targetVisibility);
+      setCloudShareAccess(row.share_access || nextAccess);
+      setCloudOwnerId(row.owner_id || cloudOwnerId || user?.id || null);
+      const nextHash = row.slug ? `#t=${encodeURIComponent(row.slug)}` : `#cloud=${encodeURIComponent(row.id)}`;
+      window.history.pushState(null, "", nextHash);
+      await refreshMyTrips();
+      if (nextAccess !== previousAccess) {
+        pushToast("Shared access updated.", "success");
+      }
+    } catch (error) {
+      console.error("Share access update failed:", error);
+      setCloudShareAccess(previousAccess);
+      pushToast(error.message || "Could not update shared access.", "error");
+    } finally {
+      setCloudSaving(false);
+    }
+  };
+
   const copyShareLink = async () => {
     if (!canCopyShareLink || !currentShareURL) {
       pushToast("Short link is not ready yet.", "error");
@@ -1606,15 +1635,14 @@ export default function TripPlannerApp() {
                       <label className="text-sm font-medium text-zinc-900">Shared access</label>
                       <select
                         value={cloudShareAccess}
-                        onChange={(e) => setCloudShareAccess(e.target.value)}
-                        className="px-3 py-2 rounded-lg border border-zinc-300 text-sm bg-white"
+                        onChange={(e) => handleShareAccessChange(e.target.value)}
+                        disabled={cloudSaving}
+                        className="px-3 py-2 rounded-lg border border-zinc-300 text-sm bg-white disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         <option value="view">Shared (read-only)</option>
                         <option value="collaborate">Shared (collaborative)</option>
                       </select>
-                      <p className="text-xs text-zinc-500">
-                        Save the trip after changing this setting so the shared link updates.
-                      </p>
+                      <p className="text-xs text-zinc-500">{cloudSaving ? "Saving shared access..." : "Shared access updates automatically."}</p>
                       {cloudShareAccess === "collaborate" && (
                         <div className="mt-2 border border-zinc-200 rounded-lg bg-white p-3 space-y-2">
                           <p className="text-xs font-semibold text-zinc-800">Collaborators who can edit</p>
