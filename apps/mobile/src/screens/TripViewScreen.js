@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Linking, Pressable, ScrollView, Share, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import TripTopBar from './tripView/TripTopBar';
+import TripHeaderCard from './tripView/TripHeaderCard';
 import TripDayCard from './tripView/TripDayCard';
 import TripCalendarPanel from './tripView/TripCalendarPanel';
 import TripFlightsCard from './tripView/TripFlightsCard';
-import { RemoteImage, fallbackPhotoUri, proxyImageUris } from './tripView/media';
 import { formatStartDate, getDayNavLabel, normalizeDaysWithInferredDates, parseIsoDate } from './tripView/dateUtils';
 
 function extractCover(tripData) {
@@ -39,35 +39,6 @@ function buildShareUrl(tripRow) {
 function normalizeArrowText(value) {
   if (typeof value !== 'string') return value;
   return value.replace(/\s*->\s*/g, ' → ');
-}
-
-function IconActionButton({ iconName, onPress, tone = 'default', accessibilityLabel, compact = false, disabled = false }) {
-  const palette = tone === 'danger'
-    ? { bg: '#fef2f2', border: '#fecaca', fg: '#b91c1c' }
-    : tone === 'primary'
-      ? { bg: '#eff6ff', border: '#bfdbfe', fg: '#1d4ed8' }
-      : { bg: '#ffffff', border: '#d1d5db', fg: '#111827' };
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      disabled={disabled}
-      onPress={onPress}
-      style={{
-        width: compact ? 36 : 42,
-        height: compact ? 36 : 42,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: palette.border,
-        backgroundColor: palette.bg,
-        alignItems: 'center',
-        justifyContent: 'center',
-        opacity: disabled ? 0.45 : 1,
-      }}
-    >
-      <Ionicons name={iconName} size={compact ? 16 : 18} color={palette.fg} />
-    </Pressable>
-  );
 }
 
 export default function TripViewScreen({ tripRow, currentUserId, savingSharedCopy = false, onSaveSharedCopy, onBack, onEdit, onDelete, onToast }) {
@@ -200,14 +171,13 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
 
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingHorizontal: 2 }}>
-        <IconActionButton iconName="chevron-back-outline" onPress={onBack} accessibilityLabel="Back to saved trips" />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <IconActionButton iconName="trash-outline" onPress={onDelete} tone="danger" accessibilityLabel="Delete trip" />
-          <IconActionButton iconName="create-outline" onPress={onEdit} tone="primary" accessibilityLabel="Edit trip" />
-          <IconActionButton iconName="share-social-outline" onPress={handleShareTrip} accessibilityLabel="Share trip" disabled={!shareUrl} />
-        </View>
-      </View>
+      <TripTopBar
+        onBack={onBack}
+        onDelete={onDelete}
+        onEdit={onEdit}
+        onShare={handleShareTrip}
+        shareDisabled={!shareUrl}
+      />
 
       <ScrollView
         ref={scrollRef}
@@ -215,70 +185,19 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
         contentContainerStyle={{ gap: 12, paddingBottom: 20 }}
         stickyHeaderIndices={[1]}
       >
-        <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 18, backgroundColor: '#ffffff', overflow: 'hidden' }}>
-          {cover ? (
-            <View style={{ width: '100%', height: 240 }}>
-              <RemoteImage uri={cover} fallbackUris={proxyImageUris(cover)} fallbackUri={fallbackPhotoUri(title)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-            </View>
-          ) : null}
-          <View style={{ padding: 16, gap: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-              <Text style={{ flex: 1, fontSize: 31, fontWeight: '800', color: '#111827' }}>{title}</Text>
-              <IconActionButton
-                iconName={hasOfflineCopy ? 'checkmark-done-outline' : 'download-outline'}
-                onPress={handleToggleOffline}
-                tone={hasOfflineCopy ? 'primary' : 'default'}
-                compact
-                accessibilityLabel={hasOfflineCopy ? 'Offline saved' : 'Save for offline'}
-              />
-            </View>
-            {isSharedNotOwned ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                <View style={{ borderWidth: 1, borderColor: '#fde68a', backgroundColor: '#fffbeb', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
-                  <Text style={{ color: '#92400e', fontSize: 12, fontWeight: '700' }}>Shared (read-only)</Text>
-                </View>
-                <Pressable
-                  onPress={onSaveSharedCopy}
-                  disabled={savingSharedCopy}
-                  style={{
-                    borderWidth: 1,
-                    borderColor: '#d1d5db',
-                    backgroundColor: '#ffffff',
-                    borderRadius: 999,
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    opacity: savingSharedCopy ? 0.55 : 1,
-                  }}
-                >
-                  <Text style={{ color: '#111827', fontSize: 12, fontWeight: '700' }}>
-                    {savingSharedCopy ? 'Saving...' : 'Save to My Trips'}
-                  </Text>
-                </Pressable>
-              </View>
-            ) : null}
-            {!isSharedNotOwned && copiedFrom?.ownerId ? (
-              <View style={{ borderWidth: 1, borderColor: '#ddd6fe', backgroundColor: '#f5f3ff', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start' }}>
-                <Text style={{ color: '#6d28d9', fontSize: 12, fontWeight: '700' }}>Copied from shared trip</Text>
-              </View>
-            ) : null}
-            <Text style={{ color: '#6b7280', fontSize: 14 }}>
-              {startDate ? `Starts ${startDate}` : 'Add dates in edit mode'} • {days.length} day(s)
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
-              {startDate ? (
-                <View style={{ borderWidth: 1, borderColor: '#fde68a', backgroundColor: '#fef3c7', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 }}>
-                  <Text style={{ color: '#92400e', fontSize: 12, fontWeight: '700' }}>{startDate}</Text>
-                </View>
-              ) : null}
-              <View style={{ borderWidth: 1, borderColor: '#dbeafe', backgroundColor: '#eff6ff', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 }}>
-                <Text style={{ color: '#1d4ed8', fontSize: 12, fontWeight: '700' }}>{days.length} days</Text>
-              </View>
-            </View>
-            {tripFooter ? (
-              <Text style={{ color: '#6b7280', fontSize: 13, marginTop: 2 }}>{tripFooter}</Text>
-            ) : null}
-          </View>
-        </View>
+        <TripHeaderCard
+          cover={cover}
+          title={title}
+          hasOfflineCopy={hasOfflineCopy}
+          onToggleOffline={handleToggleOffline}
+          isSharedNotOwned={isSharedNotOwned}
+          onSaveSharedCopy={onSaveSharedCopy}
+          savingSharedCopy={savingSharedCopy}
+          copiedFrom={copiedFrom}
+          startDate={startDate}
+          daysCount={days.length}
+          tripFooter={tripFooter}
+        />
 
         <View style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 16, backgroundColor: '#ffffff', padding: 12, gap: 8 }}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
