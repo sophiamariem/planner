@@ -4,6 +4,7 @@ export default function TripViewHeader({
   tripTitle,
   isSharedCloudTrip,
   canCollaborateOnSharedTrip,
+  cloudOwnerEmail,
   copiedFromOwnerId,
   onGoHome,
   view,
@@ -38,15 +39,20 @@ export default function TripViewHeader({
               <span className="text-xs font-semibold tracking-wide text-blue-700">PLNR</span>
             </button>
             {isSharedCloudTrip && (
-              <span
-                className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
-                  canCollaborateOnSharedTrip
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-amber-50 text-amber-700 border-amber-200"
-                }`}
-              >
-                {canCollaborateOnSharedTrip ? "You can edit" : "You can view only"}
-              </span>
+              <>
+                <span
+                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                    canCollaborateOnSharedTrip
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : "bg-amber-50 text-amber-700 border-amber-200"
+                  }`}
+                >
+                  {canCollaborateOnSharedTrip ? "You can edit" : "You can view only"}
+                </span>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-white/80 text-zinc-600 border-zinc-200 truncate max-w-[220px]">
+                  {cloudOwnerEmail ? `Shared by ${cloudOwnerEmail}` : "Shared trip"}
+                </span>
+              </>
             )}
             {!isSharedCloudTrip && copiedFromOwnerId && (
               <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-violet-50 text-violet-700 border-violet-200">

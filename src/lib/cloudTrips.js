@@ -208,11 +208,34 @@ export async function listMyTrips() {
   const user = await getCurrentUser();
   if (!user?.id) return [];
 
-  const response = await authedFetch(`/rest/v1/trips?owner_id=eq.${encodeURIComponent(user.id)}&select=id,slug,title,visibility,share_access,trip_data,owner_id,created_at,updated_at&order=updated_at.desc&limit=100`, {
-    method: 'GET',
+  const response = await authedFetch('/rest/v1/rpc/list_my_trips_including_shared', {
+    method: 'POST',
+    body: JSON.stringify({}),
   });
 
   return parseJson(response, 'Could not load trips.');
+}
+
+export async function getTripOwnerEmail(tripId) {
+  if (!isSupabaseConfigured || !tripId) return null;
+  const response = await authedFetch('/rest/v1/rpc/get_trip_owner_email', {
+    method: 'POST',
+    body: JSON.stringify({ p_trip_id: tripId }),
+  });
+  const data = await parseJson(response, 'Could not load trip owner.');
+  if (typeof data === 'string') return data;
+  return data?.owner_email || null;
+}
+
+export async function listTripOwnerEmails(tripIds = []) {
+  if (!isSupabaseConfigured) return [];
+  const list = Array.isArray(tripIds) ? tripIds.filter(Boolean) : [];
+  if (!list.length) return [];
+  const response = await authedFetch('/rest/v1/rpc/list_trip_owner_emails', {
+    method: 'POST',
+    body: JSON.stringify({ p_trip_ids: list }),
+  });
+  return parseJson(response, 'Could not load trip owners.');
 }
 
 export async function getMyCollaboratorRole(tripId) {
@@ -233,12 +256,13 @@ export async function loadCloudTripById(id) {
   const user = await getCurrentUser();
   if (!user?.id) throw new Error('Sign in first to open saved trips.');
 
-  const response = await authedFetch(`/rest/v1/trips?id=eq.${encodeURIComponent(id)}&owner_id=eq.${encodeURIComponent(user.id)}&select=id,slug,title,visibility,share_access,share_token,trip_data,owner_id,created_at,updated_at&limit=1`, {
-    method: 'GET',
+  const response = await authedFetch('/rest/v1/rpc/get_trip_for_user', {
+    method: 'POST',
+    body: JSON.stringify({ p_trip_id: id }),
   });
 
   const rows = await parseJson(response, 'Could not load saved trip.');
-  if (!rows.length) throw new Error('Trip not found.');
+  if (!rows?.length) throw new Error('Trip not found.');
   return rows[0];
 }
 

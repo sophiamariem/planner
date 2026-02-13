@@ -57,6 +57,7 @@ export default function AppOverlays({
   onDeleteTrip,
   extractCoverImage,
   formatVisibilityLabel,
+  tripOwnerEmailsByTripId,
   cloudVisibility,
   onChangeVisibility,
   showImportModal,
@@ -116,6 +117,8 @@ export default function AppOverlays({
         onClose={onCloseMyTripsModal}
         myTripsLoading={myTripsLoading}
         myTrips={myTrips}
+        user={user}
+        tripOwnerEmailsByTripId={tripOwnerEmailsByTripId}
         savedUpcomingTrips={savedUpcomingTrips}
         savedPastTrips={savedPastTrips}
         showPastSavedTrips={showPastSavedTrips}

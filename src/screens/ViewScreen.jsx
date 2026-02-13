@@ -8,6 +8,7 @@ export default function ViewScreen(props) {
     tripTitle,
     isSharedCloudTrip,
     canCollaborateOnSharedTrip,
+    cloudOwnerEmail,
     copiedFromOwnerId,
     onGoHome,
     view,
@@ -47,6 +48,7 @@ export default function ViewScreen(props) {
         tripTitle={tripTitle}
         isSharedCloudTrip={isSharedCloudTrip}
         canCollaborateOnSharedTrip={canCollaborateOnSharedTrip}
+        cloudOwnerEmail={cloudOwnerEmail}
         copiedFromOwnerId={copiedFromOwnerId}
         onGoHome={onGoHome}
         view={view}

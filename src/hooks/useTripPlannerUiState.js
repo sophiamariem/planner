@@ -32,6 +32,7 @@ export default function useTripPlannerUiState() {
   const [cloudVisibility, setCloudVisibility] = useState("private");
   const [cloudShareAccess, setCloudShareAccess] = useState("view");
   const [cloudOwnerId, setCloudOwnerId] = useState(null);
+  const [cloudOwnerEmail, setCloudOwnerEmail] = useState(null);
   const [cloudCollaboratorRole, setCloudCollaboratorRole] = useState(null);
   const [collaboratorEmail, setCollaboratorEmail] = useState("");
   const [collaborators, setCollaborators] = useState([]);
@@ -39,6 +40,7 @@ export default function useTripPlannerUiState() {
   const [cloudSaving, setCloudSaving] = useState(false);
   const [myTrips, setMyTrips] = useState([]);
   const [myTripsLoading, setMyTripsLoading] = useState(false);
+  const [tripOwnerEmailsByTripId, setTripOwnerEmailsByTripId] = useState({});
   const [showPastSavedTrips, setShowPastSavedTrips] = useState(false);
   const [user, setUser] = useState(null);
 
@@ -133,6 +135,7 @@ export default function useTripPlannerUiState() {
     cloudVisibility, setCloudVisibility,
     cloudShareAccess, setCloudShareAccess,
     cloudOwnerId, setCloudOwnerId,
+    cloudOwnerEmail, setCloudOwnerEmail,
     cloudCollaboratorRole, setCloudCollaboratorRole,
     collaboratorEmail, setCollaboratorEmail,
     collaborators, setCollaborators,
@@ -140,6 +143,7 @@ export default function useTripPlannerUiState() {
     cloudSaving, setCloudSaving,
     myTrips, setMyTrips,
     myTripsLoading, setMyTripsLoading,
+    tripOwnerEmailsByTripId, setTripOwnerEmailsByTripId,
     showPastSavedTrips, setShowPastSavedTrips,
     user, setUser,
     isAdminUser,

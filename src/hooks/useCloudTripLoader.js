@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { ensureTailwindCDN } from "../utils/tailwind";
 import { getTripFromURL, loadTripFromLocalStorage, validateTripData, getSourceFromURL, getCloudFromURL, isViewOnlyFromURL } from "../utils/tripData";
 import { isSupabaseConfigured, setSessionFromUrl } from "../lib/supabaseClient";
-import { getCurrentUser, listMyTrips, getMyCollaboratorRole, listTripCollaborators, loadCloudTripById, loadCloudTripByShareToken, loadCloudTripBySlug } from "../lib/cloudTrips";
+import { getCurrentUser, listMyTrips, listTripOwnerEmails, getTripOwnerEmail, getMyCollaboratorRole, listTripCollaborators, loadCloudTripById, loadCloudTripByShareToken, loadCloudTripBySlug } from "../lib/cloudTrips";
 
 export default function useCloudTripLoader({
   user,
@@ -25,7 +25,9 @@ export default function useCloudTripLoader({
   setCollaborators,
   setMyTripsLoading,
   setMyTrips,
+  setTripOwnerEmailsByTripId,
   setUser,
+  setCloudOwnerEmail,
 }) {
   const initializedRef = useRef(false);
 
@@ -37,13 +39,31 @@ export default function useCloudTripLoader({
     try {
       const rows = await listMyTrips();
       setMyTrips(rows);
+      const sharedTripIds = (rows || [])
+        .filter((trip) => trip?.owner_id && trip.owner_id !== resolvedUser.id)
+        .map((trip) => trip.id)
+        .filter(Boolean);
+      if (sharedTripIds.length) {
+        try {
+          const ownerRows = await listTripOwnerEmails(sharedTripIds);
+          const map = {};
+          for (const row of ownerRows || []) {
+            if (row?.trip_id) map[row.trip_id] = row.owner_email || null;
+          }
+          setTripOwnerEmailsByTripId(map);
+        } catch {
+          setTripOwnerEmailsByTripId({});
+        }
+      } else {
+        setTripOwnerEmailsByTripId({});
+      }
     } catch (error) {
       console.error("Error loading trips:", error);
       pushToast(error.message || "Could not load your saved trips.", "error");
     } finally {
       setMyTripsLoading(false);
     }
-  }, [setMyTripsLoading, setMyTrips, pushToast]);
+  }, [setMyTripsLoading, setMyTrips, setTripOwnerEmailsByTripId, pushToast]);
 
   const refreshCollaborators = useCallback(async (tripId = cloudTripId) => {
     if (!tripId || !isCloudOwnedByCurrentUser) return;
@@ -82,6 +102,7 @@ export default function useCloudTripLoader({
     setCloudShareAccess(row.share_access || "view");
     setCloudOwnerId(row.owner_id || null);
     setCloudCollaboratorRole(null);
+    setCloudOwnerEmail(null);
     setSourceUrl(null);
     setMode("view");
 
@@ -90,10 +111,17 @@ export default function useCloudTripLoader({
       if (currentUser?.id && row.owner_id && currentUser.id !== row.owner_id) {
         const role = await getMyCollaboratorRole(row.id);
         setCloudCollaboratorRole(role);
+        try {
+          const email = await getTripOwnerEmail(row.id);
+          setCloudOwnerEmail(email || null);
+        } catch {
+          setCloudOwnerEmail(null);
+        }
       }
     } catch (error) {
       console.error("Error checking collaborator role:", error);
       setCloudCollaboratorRole(null);
+      setCloudOwnerEmail(null);
     }
   }, [
     setTripData,
@@ -103,6 +131,7 @@ export default function useCloudTripLoader({
     setCloudVisibility,
     setCloudShareAccess,
     setCloudOwnerId,
+    setCloudOwnerEmail,
     setCloudCollaboratorRole,
     setSourceUrl,
     setMode,

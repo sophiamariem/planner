@@ -19,11 +19,13 @@ export default function useCloudDomain({
   setCloudVisibility,
   setCloudShareAccess,
   setCloudOwnerId,
+  setCloudOwnerEmail,
   setCloudCollaboratorRole,
   setCollaboratorsLoading,
   setCollaborators,
   setMyTripsLoading,
   setMyTrips,
+  setTripOwnerEmailsByTripId,
   setUser,
 }) {
   const cloud = useCloudTripLoader({
@@ -42,11 +44,13 @@ export default function useCloudDomain({
     setCloudVisibility,
     setCloudShareAccess,
     setCloudOwnerId,
+    setCloudOwnerEmail,
     setCloudCollaboratorRole,
     setCollaboratorsLoading,
     setCollaborators,
     setMyTripsLoading,
     setMyTrips,
+    setTripOwnerEmailsByTripId,
     setUser,
   });
 
