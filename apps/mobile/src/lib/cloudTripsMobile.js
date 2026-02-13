@@ -115,9 +115,12 @@ export async function listMyTrips() {
   const user = await getCurrentUser();
   if (!user?.id) return [];
 
-  const response = await authedFetch(`/rest/v1/trips?owner_id=eq.${encodeURIComponent(user.id)}&select=id,slug,title,visibility,trip_data,created_at,updated_at&order=updated_at.desc&limit=100`, {
-    method: 'GET',
+  // Includes trips shared with the user via trip_collaborators (see supabase/migrations/20260213005709_list_shared_trips_rpc.sql).
+  const response = await authedFetch('/rest/v1/rpc/list_my_trips_including_shared', {
+    method: 'POST',
+    body: JSON.stringify({}),
   });
+
   return parseJson(response, 'Could not load trips.');
 }
 
@@ -126,8 +129,9 @@ export async function loadCloudTripById(id) {
   const user = await getCurrentUser();
   if (!user?.id) throw new Error('Sign in first to open saved trips.');
 
-  const response = await authedFetch(`/rest/v1/trips?id=eq.${encodeURIComponent(id)}&owner_id=eq.${encodeURIComponent(user.id)}&select=id,slug,title,visibility,trip_data,created_at,updated_at&limit=1`, {
-    method: 'GET',
+  const response = await authedFetch('/rest/v1/rpc/get_trip_for_user', {
+    method: 'POST',
+    body: JSON.stringify({ p_trip_id: id }),
   });
 
   const rows = await parseJson(response, 'Could not load saved trip.');

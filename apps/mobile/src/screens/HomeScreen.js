@@ -49,15 +49,17 @@ function Pill({ label, tone = 'blue' }) {
     ? { bg: '#eff6ff', border: '#dbeafe', fg: '#1d4ed8' }
     : tone === 'emerald'
       ? { bg: '#ecfdf5', border: '#d1fae5', fg: '#047857' }
-      : tone === 'amber'
-        ? { bg: '#fffbeb', border: '#fde68a', fg: '#b45309' }
-        : tone === 'violet'
-          ? { bg: '#f5f3ff', border: '#ddd6fe', fg: '#6d28d9' }
-          : tone === 'fuchsia'
-            ? { bg: '#fdf4ff', border: '#f5d0fe', fg: '#a21caf' }
-            : tone === 'indigo'
-              ? { bg: '#eef2ff', border: '#c7d2fe', fg: '#4338ca' }
-              : { bg: '#f8fafc', border: '#e2e8f0', fg: '#475569' };
+    : tone === 'amber'
+      ? { bg: '#fffbeb', border: '#fde68a', fg: '#b45309' }
+    : tone === 'violet'
+      ? { bg: '#f5f3ff', border: '#ddd6fe', fg: '#6d28d9' }
+    : tone === 'fuchsia'
+      ? { bg: '#fdf4ff', border: '#f5d0fe', fg: '#a21caf' }
+    : tone === 'indigo'
+      ? { bg: '#eef2ff', border: '#c7d2fe', fg: '#4338ca' }
+    : tone === 'zinc'
+      ? { bg: '#f3f4f6', border: '#e5e7eb', fg: '#374151' }
+      : { bg: '#f8fafc', border: '#e2e8f0', fg: '#475569' };
 
   return (
     <View style={{ alignSelf: 'flex-start', borderRadius: 999, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.bg, paddingHorizontal: 8, paddingVertical: 3 }}>
@@ -192,10 +194,9 @@ function TripCard({ trip, onSelectTrip, onDeleteTrip, currentUserId = null }) {
   const cover = getCoverPhoto(trip);
   const visibility = String(trip?.visibility || '').toLowerCase();
   const isSharedWithMe = Boolean(currentUserId && trip?.owner_id && trip.owner_id !== currentUserId);
-  const myRole = String(trip?.my_role || '').toLowerCase();
-  const showVisibilityPill = visibility === 'unlisted' || visibility === 'public';
+  const showVisibilityPill = !isSharedWithMe; // visibility pills are about public sharing, not collaborator access
   const isCopiedFromShared = Boolean(trip?.trip_data?.tripConfig?.copiedFrom?.ownerId);
-  const showPills = Boolean(templateLabel || isCopiedFromShared || showVisibilityPill || isSharedWithMe || myRole);
+  const showPills = Boolean(templateLabel || isCopiedFromShared || showVisibilityPill || isSharedWithMe);
 
   return (
     <Pressable
@@ -247,24 +248,12 @@ function TripCard({ trip, onSelectTrip, onDeleteTrip, currentUserId = null }) {
         </View>
       ) : null}
       <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{trip.title || 'Untitled Trip'}</Text>
-      <Text style={{ color: '#6b7280', fontSize: 12 }}>
-        {trip.slug || 'no-slug'} • {formatVisibilityLabel(trip.visibility)}
-      </Text>
+      <Text style={{ color: '#6b7280', fontSize: 12 }}>{trip.slug || 'no-slug'}</Text>
       {showPills ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 }}>
           {isSharedWithMe ? (
             <View style={{ marginRight: 6, marginBottom: 6 }}>
               <Pill label="Shared with you" tone="blue" />
-            </View>
-          ) : null}
-          {isSharedWithMe && myRole === 'editor' ? (
-            <View style={{ marginRight: 6, marginBottom: 6 }}>
-              <Pill label="You can edit" tone="emerald" />
-            </View>
-          ) : null}
-          {isSharedWithMe && myRole === 'viewer' ? (
-            <View style={{ marginRight: 6, marginBottom: 6 }}>
-              <Pill label="View only" tone="amber" />
             </View>
           ) : null}
           {templateLabel ? (
@@ -277,12 +266,17 @@ function TripCard({ trip, onSelectTrip, onDeleteTrip, currentUserId = null }) {
               <Pill label="Copied from shared" tone="violet" />
             </View>
           ) : null}
-          {visibility === 'unlisted' ? (
+          {!isSharedWithMe && (visibility === 'private' || !visibility) ? (
+            <View style={{ marginRight: 6, marginBottom: 6 }}>
+              <Pill label="Not shared yet" tone="zinc" />
+            </View>
+          ) : null}
+          {!isSharedWithMe && visibility === 'unlisted' ? (
             <View style={{ marginRight: 6, marginBottom: 6 }}>
               <Pill label="Shared (link only)" tone="fuchsia" />
             </View>
           ) : null}
-          {visibility === 'public' ? (
+          {!isSharedWithMe && visibility === 'public' ? (
             <View style={{ marginRight: 6, marginBottom: 6 }}>
               <Pill label="Public" tone="indigo" />
             </View>

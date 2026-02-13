@@ -24,22 +24,14 @@ export default function MyTripsDrawer({
 
   const visibilityPill = (visibility) => {
     const v = String(visibility || "").toLowerCase();
+    if (v === "private" || !v) {
+      return { label: "Not shared yet", className: `${pillBase} bg-zinc-100 text-zinc-700 border-zinc-200` };
+    }
     if (v === "unlisted") {
       return { label: "Shared (link only)", className: `${pillBase} bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200` };
     }
     if (v === "public") {
       return { label: "Public", className: `${pillBase} bg-indigo-50 text-indigo-700 border-indigo-200` };
-    }
-    return null;
-  };
-
-  const rolePill = (role) => {
-    const r = String(role || "").toLowerCase();
-    if (r === "editor") {
-      return { label: "You can edit", className: `${pillBase} bg-emerald-50 text-emerald-700 border-emerald-200` };
-    }
-    if (r === "viewer") {
-      return { label: "View only", className: `${pillBase} bg-amber-50 text-amber-700 border-amber-200` };
     }
     return null;
   };
@@ -68,9 +60,8 @@ export default function MyTripsDrawer({
                     const isSharedWithMe = Boolean(currentUserId && trip?.owner_id && trip.owner_id !== currentUserId);
                     const isCopiedFromShared = Boolean(trip?.trip_data?.tripConfig?.copiedFrom?.ownerId);
                     const sharedBy = tripOwnerEmailsByTripId?.[trip.id] || null;
-                    const myRole = trip?.my_role || null;
-                    const sharedVisibility = visibilityPill(trip.visibility);
-                    const sharedRole = isSharedWithMe ? rolePill(myRole) : null;
+                    const sharedVisibility = !isSharedWithMe ? visibilityPill(trip.visibility) : null;
+                    const showPills = Boolean(isSharedWithMe || isCopiedFromShared || sharedVisibility || sharedBy);
                     return (
                       <div key={trip.id} className="rounded-xl border border-zinc-200 overflow-hidden bg-white">
                         <button
@@ -85,21 +76,16 @@ export default function MyTripsDrawer({
                           </div>
                           <div className="p-3">
                             <p className="font-medium text-zinc-900">{trip.title}</p>
-                            <p className="text-xs text-zinc-500 mt-1">
-                              {trip.slug || "no-slug"} • {formatVisibilityLabel(trip.visibility)}
-                            </p>
-                            {(isSharedWithMe || isCopiedFromShared || sharedVisibility) ? (
+                            <p className="text-xs text-zinc-500 mt-1">{trip.slug || "no-slug"}</p>
+                            {showPills ? (
                               <div className="mt-2 flex flex-wrap gap-2">
                                 {isSharedWithMe ? (
                                   <span className={`${pillBase} bg-blue-50 text-blue-700 border-blue-200`}>Shared with you</span>
                                 ) : null}
-                                {sharedRole ? (
-                                  <span className={sharedRole.className}>{sharedRole.label}</span>
-                                ) : null}
                                 {isCopiedFromShared ? (
                                   <span className={`${pillBase} bg-violet-50 text-violet-700 border-violet-200`}>Copied from shared</span>
                                 ) : null}
-                                {!isSharedWithMe && sharedVisibility ? (
+                                {sharedVisibility ? (
                                   <span className={sharedVisibility.className}>{sharedVisibility.label}</span>
                                 ) : null}
                                 {sharedBy ? (
@@ -149,9 +135,8 @@ export default function MyTripsDrawer({
                       const isSharedWithMe = Boolean(currentUserId && trip?.owner_id && trip.owner_id !== currentUserId);
                       const isCopiedFromShared = Boolean(trip?.trip_data?.tripConfig?.copiedFrom?.ownerId);
                       const sharedBy = tripOwnerEmailsByTripId?.[trip.id] || null;
-                      const myRole = trip?.my_role || null;
-                      const sharedVisibility = visibilityPill(trip.visibility);
-                      const sharedRole = isSharedWithMe ? rolePill(myRole) : null;
+                      const sharedVisibility = !isSharedWithMe ? visibilityPill(trip.visibility) : null;
+                      const showPills = Boolean(isSharedWithMe || isCopiedFromShared || sharedVisibility || sharedBy);
                       return (
                         <div key={trip.id} className="rounded-xl border border-zinc-200 overflow-hidden bg-white">
                           <button
@@ -166,21 +151,16 @@ export default function MyTripsDrawer({
                             </div>
                             <div className="p-3">
                               <p className="font-medium text-zinc-900">{trip.title}</p>
-                              <p className="text-xs text-zinc-500 mt-1">
-                                {trip.slug || "no-slug"} • {formatVisibilityLabel(trip.visibility)}
-                              </p>
-                              {(isSharedWithMe || isCopiedFromShared || sharedVisibility) ? (
+                              <p className="text-xs text-zinc-500 mt-1">{trip.slug || "no-slug"}</p>
+                              {showPills ? (
                                 <div className="mt-2 flex flex-wrap gap-2">
                                   {isSharedWithMe ? (
                                     <span className={`${pillBase} bg-blue-50 text-blue-700 border-blue-200`}>Shared with you</span>
                                   ) : null}
-                                  {sharedRole ? (
-                                    <span className={sharedRole.className}>{sharedRole.label}</span>
-                                  ) : null}
                                   {isCopiedFromShared ? (
                                     <span className={`${pillBase} bg-violet-50 text-violet-700 border-violet-200`}>Copied from shared</span>
                                   ) : null}
-                                  {!isSharedWithMe && sharedVisibility ? (
+                                  {sharedVisibility ? (
                                     <span className={sharedVisibility.className}>{sharedVisibility.label}</span>
                                   ) : null}
                                   {sharedBy ? (
