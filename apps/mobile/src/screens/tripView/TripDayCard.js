@@ -19,7 +19,7 @@ export default function TripDayCard({
   const routeUrl = String(day?.route || '').trim();
   const pins = Array.isArray(day?.pins) ? day.pins : [];
   const mapPreviewUrls = hasMap ? getMapPreviewUrls(pins) : [];
-  const canShowMapPreview = hasMap && Boolean(routeUrl) && pins.length > 0 && mapPreviewUrls.length > 0;
+  const canShowMapPreview = hasMap && pins.length > 0 && mapPreviewUrls.length > 0;
   const photos = Array.isArray(day?.photos) ? day.photos : [];
   const mapPreviewHeight = photos.length === 2 ? 220 : 280;
 
@@ -98,6 +98,29 @@ export default function TripDayCard({
         <DayPhotoLayout photos={photos} query={day?.photoQ || day?.title} />
       )}
 
+      {hasMap ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+          <Pressable
+            onPress={() => onOpenRoute?.(day)}
+            disabled={!onOpenRoute}
+            style={{
+              borderWidth: 1,
+              borderColor: '#e5e7eb',
+              borderRadius: 999,
+              backgroundColor: '#ffffff',
+              paddingHorizontal: 11,
+              paddingVertical: 5,
+              opacity: onOpenRoute ? 1 : 0.55,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="car" size={14} color="#111827" />
+              <Text style={{ color: '#111827', fontSize: 13, fontWeight: '700' }}>Open driving route</Text>
+            </View>
+          </Pressable>
+        </View>
+      ) : null}
+
       {Array.isArray(pins) && pins.length > 0 ? (
         <View style={{ gap: 6 }}>
           {canShowMapPreview && photos.length === 0 ? (
@@ -110,29 +133,6 @@ export default function TripDayCard({
                 resizeMode="cover"
               />
             </Pressable>
-          ) : null}
-
-          {hasMap ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-              <Pressable
-                onPress={() => onOpenRoute?.(day)}
-                disabled={!onOpenRoute || !routeUrl}
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#e5e7eb',
-                  borderRadius: 999,
-                  backgroundColor: '#ffffff',
-                  paddingHorizontal: 11,
-                  paddingVertical: 5,
-                  opacity: onOpenRoute && routeUrl ? 1 : 0.55,
-                }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Ionicons name="car" size={14} color="#111827" />
-                  <Text style={{ color: '#111827', fontSize: 13, fontWeight: '700' }}>Open driving route</Text>
-                </View>
-              </Pressable>
-            </View>
           ) : null}
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>

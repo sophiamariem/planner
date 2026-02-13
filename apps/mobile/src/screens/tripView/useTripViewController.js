@@ -20,6 +20,31 @@ function getMapQueryUrl(pin) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 }
 
+function buildDrivingRouteUrlFromPins(pins = []) {
+  const list = Array.isArray(pins) ? pins : [];
+  const toPoint = (pin) => {
+    if (Array.isArray(pin?.ll) && pin.ll.length === 2) {
+      const lat = Number(pin.ll[0]);
+      const lon = Number(pin.ll[1]);
+      if (Number.isFinite(lat) && Number.isFinite(lon)) return `${lat},${lon}`;
+    }
+    const q = String(pin?.q || pin?.name || '').trim();
+    return q || '';
+  };
+
+  const points = list.map(toPoint).filter(Boolean).slice(0, 10);
+  if (points.length < 2) return '';
+  const origin = points[0];
+  const destination = points[points.length - 1];
+  const waypoints = points.slice(1, -1);
+
+  const base = 'https://www.google.com/maps/dir/?api=1&travelmode=driving';
+  const o = `&origin=${encodeURIComponent(origin)}`;
+  const d = `&destination=${encodeURIComponent(destination)}`;
+  const w = waypoints.length ? `&waypoints=${encodeURIComponent(waypoints.join('|'))}` : '';
+  return `${base}${o}${d}${w}`;
+}
+
 function getOfflineKey(tripId) {
   return `trip-offline:${tripId}`;
 }
@@ -157,9 +182,9 @@ export default function useTripViewController({ tripRow, currentUserId, onToast 
   };
 
   const openDrivingRoute = async (day) => {
-    const url = String(day?.route || '').trim();
+    const url = String(day?.route || '').trim() || buildDrivingRouteUrlFromPins(day?.pins);
     if (!url) {
-      onToast?.('No driving route set for this day.');
+      onToast?.('Add at least 2 locations to create a driving route.');
       return;
     }
     try {

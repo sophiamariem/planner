@@ -98,7 +98,7 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
             }}
             getDayNavLabel={getDayNavLabel}
           />
-          {badgeLegend.length > 0 ? (
+          {viewMode === 'calendar' && badgeLegend.length > 0 ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
               {badgeLegend.map((badge, i) => (
                 <View key={`legend-${i}`} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 999, backgroundColor: '#ffffff', paddingHorizontal: 8, paddingVertical: 4 }}>

@@ -1,6 +1,8 @@
 import React from 'react';
 import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import PrimaryButton from '../../components/PrimaryButton';
+import { getMapPreviewUrls, RemoteImage } from '../tripView/media';
 import S from './uiStyles';
 
 function PhotoTile({ uri, onRemove }) {
@@ -124,6 +126,35 @@ export default function PlanDaysSection({
             ) : (
               <Text style={S.emptyTextSmall}>No locations added yet.</Text>
             )}
+          </View>
+
+          <View style={{ gap: 6, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, backgroundColor: '#fafafa', padding: 10 }}>
+            <Pressable
+              onPress={() => updateDayDraft(index, { hasMap: !item.hasMap })}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name={item.hasMap ? 'checkbox' : 'square-outline'} size={18} color="#111827" />
+                <Text style={[S.labelSmall, { marginBottom: 0 }]}>Show route map on card</Text>
+              </View>
+              <Text style={{ color: '#6b7280', fontSize: 12, fontWeight: '700' }}>{item.hasMap ? 'On' : 'Off'}</Text>
+            </Pressable>
+
+            {item.hasMap ? (
+              (item.pins || []).length > 0 && getMapPreviewUrls(item.pins).length > 0 ? (
+                <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, overflow: 'hidden', backgroundColor: '#f8fafc' }}>
+                  <RemoteImage
+                    uri={getMapPreviewUrls(item.pins)[0]}
+                    fallbackUris={getMapPreviewUrls(item.pins).slice(1)}
+                    fallbackUri=""
+                    style={{ width: '100%', height: 156, backgroundColor: '#f1f5f9' }}
+                    resizeMode="cover"
+                  />
+                </View>
+              ) : (
+                <Text style={S.emptyTextSmall}>Add at least one location to show the map preview.</Text>
+              )
+            ) : null}
           </View>
         </View>
       ))}

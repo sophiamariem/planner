@@ -124,6 +124,31 @@ function normalizeArrowText(value) {
   return value.replace(/\s*->\s*/g, ' → ');
 }
 
+function buildDrivingRouteUrlFromPins(pins = []) {
+  const list = Array.isArray(pins) ? pins : [];
+  const toPoint = (pin) => {
+    if (Array.isArray(pin?.ll) && pin.ll.length === 2) {
+      const lat = Number(pin.ll[0]);
+      const lon = Number(pin.ll[1]);
+      if (Number.isFinite(lat) && Number.isFinite(lon)) return `${lat},${lon}`;
+    }
+    const q = String(pin?.q || pin?.name || '').trim();
+    return q || '';
+  };
+
+  const points = list.map(toPoint).filter(Boolean).slice(0, 10);
+  if (points.length < 2) return '';
+  const origin = points[0];
+  const destination = points[points.length - 1];
+  const waypoints = points.slice(1, -1);
+
+  const base = 'https://www.google.com/maps/dir/?api=1&travelmode=driving';
+  const o = `&origin=${encodeURIComponent(origin)}`;
+  const d = `&destination=${encodeURIComponent(destination)}`;
+  const w = waypoints.length ? `&waypoints=${encodeURIComponent(waypoints.join('|'))}` : '';
+  return `${base}${o}${d}${w}`;
+}
+
 function defaultDayTitle(index, total) {
   if (!Number.isFinite(index)) return 'Day';
   if (index === 0) return 'Arrival';
@@ -157,6 +182,7 @@ function createDayDraft(index, total) {
     locationLoading: false,
     locationError: '',
     pins: [],
+    hasMap: false,
   };
 }
 
@@ -177,6 +203,7 @@ function hydrateDayDraft(day = {}, dayBadges = {}, index = 0, total = 3) {
     locationLoading: false,
     locationError: '',
     pins: Array.isArray(day.pins) ? day.pins.filter((p) => Array.isArray(p?.ll) && p.ll.length === 2) : [],
+    hasMap: Boolean(day?.hasMap),
   };
 }
 
@@ -594,6 +621,10 @@ export default function useNewTripController({ mode, initialTripData }) {
       d.setDate(start.getDate() + i);
       const prev = existingDays[i] || {};
       const draft = dayDrafts[i] || createDayDraft(i, dayCount);
+      const hasMap = Boolean(draft?.hasMap);
+      const nextPins = Array.isArray(draft.pins) ? draft.pins.filter((p) => Array.isArray(p?.ll) && p.ll.length === 2) : [];
+      const preservedRoute = typeof prev?.route === 'string' && /^https?:\/\//i.test(prev.route) ? prev.route : '';
+      const route = hasMap ? (preservedRoute || buildDrivingRouteUrlFromPins(nextPins)) : '';
       return {
         ...prev,
         id: prev.id || `${d.getDate()}-${i + 1}`,
@@ -603,7 +634,9 @@ export default function useNewTripController({ mode, initialTripData }) {
         title: normalizeDayTitle(draft.title, i, dayCount),
         notes: splitNotes(draft.notesText),
         photos: Array.isArray(draft.photos) ? draft.photos.filter(Boolean) : [],
-        pins: Array.isArray(draft.pins) ? draft.pins.filter((p) => Array.isArray(p?.ll) && p.ll.length === 2) : [],
+        pins: nextPins,
+        hasMap,
+        route,
       };
     });
 
