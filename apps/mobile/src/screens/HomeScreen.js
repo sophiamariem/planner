@@ -44,6 +44,28 @@ function getCoverPhoto(row) {
   return fromDay || null;
 }
 
+function Pill({ label, tone = 'blue' }) {
+  const palette = tone === 'blue'
+    ? { bg: '#eff6ff', border: '#dbeafe', fg: '#1d4ed8' }
+    : tone === 'emerald'
+      ? { bg: '#ecfdf5', border: '#d1fae5', fg: '#047857' }
+      : tone === 'amber'
+        ? { bg: '#fffbeb', border: '#fde68a', fg: '#b45309' }
+        : tone === 'violet'
+          ? { bg: '#f5f3ff', border: '#ddd6fe', fg: '#6d28d9' }
+          : tone === 'fuchsia'
+            ? { bg: '#fdf4ff', border: '#f5d0fe', fg: '#a21caf' }
+            : tone === 'indigo'
+              ? { bg: '#eef2ff', border: '#c7d2fe', fg: '#4338ca' }
+              : { bg: '#f8fafc', border: '#e2e8f0', fg: '#475569' };
+
+  return (
+    <View style={{ alignSelf: 'flex-start', borderRadius: 999, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.bg, paddingHorizontal: 8, paddingVertical: 3 }}>
+      <Text style={{ color: palette.fg, fontSize: 11, fontWeight: '700' }}>{label}</Text>
+    </View>
+  );
+}
+
 function parseFlightDateCandidates(text, fallbackYear) {
   const monthMap = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
   const src = String(text || '');
@@ -164,10 +186,16 @@ function compareIsoDesc(a, b) {
   return bb.localeCompare(aa);
 }
 
-function TripCard({ trip, onSelectTrip, onDeleteTrip }) {
+function TripCard({ trip, onSelectTrip, onDeleteTrip, currentUserId = null }) {
   const start = getStartDate(trip);
   const templateLabel = getTemplateLabel(trip);
   const cover = getCoverPhoto(trip);
+  const visibility = String(trip?.visibility || '').toLowerCase();
+  const isSharedWithMe = Boolean(currentUserId && trip?.owner_id && trip.owner_id !== currentUserId);
+  const myRole = String(trip?.my_role || '').toLowerCase();
+  const showVisibilityPill = visibility === 'unlisted' || visibility === 'public';
+  const isCopiedFromShared = Boolean(trip?.trip_data?.tripConfig?.copiedFrom?.ownerId);
+  const showPills = Boolean(templateLabel || isCopiedFromShared || showVisibilityPill || isSharedWithMe || myRole);
 
   return (
     <Pressable
@@ -222,14 +250,43 @@ function TripCard({ trip, onSelectTrip, onDeleteTrip }) {
       <Text style={{ color: '#6b7280', fontSize: 12 }}>
         {trip.slug || 'no-slug'} • {formatVisibilityLabel(trip.visibility)}
       </Text>
-      {templateLabel ? (
-        <View style={{ alignSelf: 'flex-start', marginTop: 2, borderRadius: 999, borderWidth: 1, borderColor: '#dbeafe', backgroundColor: '#eff6ff', paddingHorizontal: 8, paddingVertical: 3 }}>
-          <Text style={{ color: '#1d4ed8', fontSize: 11, fontWeight: '700' }}>{templateLabel}</Text>
-        </View>
-      ) : null}
-      {trip?.trip_data?.tripConfig?.copiedFrom?.ownerId ? (
-        <View style={{ alignSelf: 'flex-start', marginTop: 2, borderRadius: 999, borderWidth: 1, borderColor: '#ddd6fe', backgroundColor: '#f5f3ff', paddingHorizontal: 8, paddingVertical: 3 }}>
-          <Text style={{ color: '#6d28d9', fontSize: 11, fontWeight: '700' }}>Copied</Text>
+      {showPills ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 }}>
+          {isSharedWithMe ? (
+            <View style={{ marginRight: 6, marginBottom: 6 }}>
+              <Pill label="Shared with you" tone="blue" />
+            </View>
+          ) : null}
+          {isSharedWithMe && myRole === 'editor' ? (
+            <View style={{ marginRight: 6, marginBottom: 6 }}>
+              <Pill label="You can edit" tone="emerald" />
+            </View>
+          ) : null}
+          {isSharedWithMe && myRole === 'viewer' ? (
+            <View style={{ marginRight: 6, marginBottom: 6 }}>
+              <Pill label="View only" tone="amber" />
+            </View>
+          ) : null}
+          {templateLabel ? (
+            <View style={{ marginRight: 6, marginBottom: 6 }}>
+              <Pill label={templateLabel} tone="blue" />
+            </View>
+          ) : null}
+          {isCopiedFromShared ? (
+            <View style={{ marginRight: 6, marginBottom: 6 }}>
+              <Pill label="Copied from shared" tone="violet" />
+            </View>
+          ) : null}
+          {visibility === 'unlisted' ? (
+            <View style={{ marginRight: 6, marginBottom: 6 }}>
+              <Pill label="Shared (link only)" tone="fuchsia" />
+            </View>
+          ) : null}
+          {visibility === 'public' ? (
+            <View style={{ marginRight: 6, marginBottom: 6 }}>
+              <Pill label="Public" tone="indigo" />
+            </View>
+          ) : null}
         </View>
       ) : null}
       {start ? <Text style={{ color: '#4b5563', fontSize: 12 }}>Starts {start}</Text> : null}
@@ -325,7 +382,7 @@ export default function HomeScreen({ user, trips, loading, onRefresh, onSelectTr
             <View style={{ gap: 8 }}>
               <Text style={{ color: '#111827', fontSize: 15, fontWeight: '800' }}>Upcoming ({upcomingTrips.length})</Text>
               {upcomingTrips.length ? (
-                upcomingTrips.map((trip) => <TripCard key={trip.id} trip={trip} onSelectTrip={onSelectTrip} onDeleteTrip={onDeleteTrip} />)
+                upcomingTrips.map((trip) => <TripCard key={trip.id} trip={trip} onSelectTrip={onSelectTrip} onDeleteTrip={onDeleteTrip} currentUserId={user?.id || null} />)
               ) : (
                 <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 10, backgroundColor: '#fff' }}>
                   <Text style={{ color: '#6b7280', fontSize: 12 }}>No upcoming trips.</Text>
@@ -340,7 +397,7 @@ export default function HomeScreen({ user, trips, loading, onRefresh, onSelectTr
               </Pressable>
               {showPast ? (
                 pastTrips.length ? (
-                  pastTrips.map((trip) => <TripCard key={trip.id} trip={trip} onSelectTrip={onSelectTrip} onDeleteTrip={onDeleteTrip} />)
+                  pastTrips.map((trip) => <TripCard key={trip.id} trip={trip} onSelectTrip={onSelectTrip} onDeleteTrip={onDeleteTrip} currentUserId={user?.id || null} />)
                 ) : (
                   <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 10, backgroundColor: '#fff' }}>
                     <Text style={{ color: '#6b7280', fontSize: 12 }}>No past trips yet.</Text>
