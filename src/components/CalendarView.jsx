@@ -48,6 +48,9 @@ export default function CalendarView({
       )
     : [{ year, month }];
 
+  const isMultiMonth = monthsToRender.length > 1;
+  const dayCellHeight = isMultiMonth ? "h-16 md:h-20" : "h-20 md:h-24";
+
   return (
     <section className={`rounded-3xl p-5 ${palette.card} space-y-6`}>
       <div className="flex items-center justify-between">
@@ -57,7 +60,7 @@ export default function CalendarView({
         <div className="text-xs text-zinc-600">Tap a highlighted date</div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className={`grid grid-cols-1 gap-6 ${isMultiMonth ? "xl:grid-cols-2" : ""}`}>
         {monthsToRender.map(({ year: y, month: m }) => {
           const name = new Date(y, m, 1).toLocaleString(undefined, { month: "long", year: "numeric" });
           const firstDay = new Date(y, m, 1).getDay();
@@ -69,8 +72,8 @@ export default function CalendarView({
           while (cells.length % 7 !== 0) cells.push(null);
 
           return (
-            <div key={monthKey(y, m)} className="space-y-3">
-              <div className="text-sm font-bold text-zinc-800">{name}</div>
+            <div key={monthKey(y, m)} className={`space-y-3 ${isMultiMonth ? "" : "max-w-3xl mx-auto w-full"}`}>
+              <div className={`${isMultiMonth ? "text-sm" : "text-base"} font-bold text-zinc-800`}>{name}</div>
               <div className="grid grid-cols-7 text-[11px] font-semibold text-zinc-600 uppercase tracking-wider">
                 {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
                   <div key={`${name}-${d}`} className="px-2 py-1">
@@ -81,14 +84,14 @@ export default function CalendarView({
 
               <div className="grid grid-cols-7 gap-2">
                 {cells.map((dayNum, i) => {
-                  if (dayNum === null) return <div key={`${monthKey(y, m)}-blank-${i}`} className="h-16 md:h-20 rounded-2xl bg-transparent" />;
+                  if (dayNum === null) return <div key={`${monthKey(y, m)}-blank-${i}`} className={`${dayCellHeight} rounded-2xl bg-transparent`} />;
 
                   const iso = `${y}-${String(m + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
                   const dayObj = dayByIso.get(iso) || null;
                   const isActive = Boolean(dayObj);
                   const isSelected = isActive && Number(selectedId) === Number(dayObj.id);
 
-                  const base = "h-16 md:h-20 rounded-2xl flex flex-col items-center justify-center text-sm font-semibold transition-all active:scale-95";
+                  const base = `${dayCellHeight} rounded-2xl flex flex-col items-center justify-center ${isMultiMonth ? "text-sm" : "text-base"} font-semibold transition-all active:scale-95`;
                   const classes = isActive
                     ? (isSelected
                       ? "bg-gradient-to-b from-fuchsia-500 to-rose-500 text-white ring-2 ring-rose-400 shadow-md"
