@@ -156,6 +156,19 @@ export default function useTripViewController({ tripRow, currentUserId, onToast 
     }
   };
 
+  const openDrivingRoute = async (day) => {
+    const url = String(day?.route || '').trim();
+    if (!url) {
+      onToast?.('No driving route set for this day.');
+      return;
+    }
+    try {
+      await Linking.openURL(url);
+    } catch {
+      onToast?.('Could not open route right now.');
+    }
+  };
+
   const handleShareTrip = async () => {
     if (!shareUrl) {
       onToast?.('Short share link is unavailable right now.', 'error');
@@ -198,6 +211,7 @@ export default function useTripViewController({ tripRow, currentUserId, onToast 
     handleToggleOffline,
     handleJumpToDay,
     openPinInMaps,
+    openDrivingRoute,
     handleShareTrip,
   };
 }

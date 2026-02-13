@@ -35,6 +35,7 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
     handleToggleOffline,
     handleJumpToDay,
     openPinInMaps,
+    openDrivingRoute,
     handleShareTrip,
   } = useTripViewController({
     tripRow,
@@ -128,6 +129,7 @@ export default function TripViewScreen({ tripRow, currentUserId, savingSharedCop
                     dayOffsetsRef.current[index] = event.nativeEvent.layout.y;
                   }}
                   onOpenPin={openPinInMaps}
+                  onOpenRoute={openDrivingRoute}
                   normalizeArrowText={normalizeArrowText}
                 />
               ))}

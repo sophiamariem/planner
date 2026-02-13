@@ -12,8 +12,17 @@ export default function TripDayCard({
   isActive,
   onLayout,
   onOpenPin,
+  onOpenRoute,
   normalizeArrowText,
 }) {
+  const hasMap = Boolean(day?.hasMap);
+  const routeUrl = String(day?.route || '').trim();
+  const pins = Array.isArray(day?.pins) ? day.pins : [];
+  const mapPreviewUrls = hasMap ? getMapPreviewUrls(pins) : [];
+  const canShowMapPreview = hasMap && Boolean(routeUrl) && pins.length > 0 && mapPreviewUrls.length > 0;
+  const photos = Array.isArray(day?.photos) ? day.photos : [];
+  const mapPreviewHeight = photos.length === 2 ? 220 : 280;
+
   return (
     <View
       onLayout={onLayout}
@@ -65,29 +74,69 @@ export default function TripDayCard({
         <Text style={{ color: '#9ca3af', fontSize: 13 }}>No notes for this day.</Text>
       )}
 
-      <DayPhotoLayout photos={day?.photos || []} query={day?.photoQ || day?.title} />
-
-      {day?.route ? (
-        <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, backgroundColor: '#fafafa', paddingHorizontal: 12, paddingVertical: 8 }}>
-          <Text style={{ color: '#374151', fontSize: 13, fontWeight: '600' }}>Route: {normalizeArrowText(day.route)}</Text>
-        </View>
-      ) : null}
-
-      {Array.isArray(day?.pins) && day.pins.length > 0 ? (
-        <View style={{ gap: 6 }}>
-          {String(day.route || '').trim() && getMapPreviewUrls(day.pins).length > 0 ? (
-            <Pressable onPress={() => onOpenPin(day.pins[0])} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, overflow: 'hidden', backgroundColor: '#f8fafc' }}>
+      {canShowMapPreview && photos.length > 0 ? (
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'stretch' }}>
+          <View style={{ flex: 2.1 }}>
+            <DayPhotoLayout photos={photos} query={day?.photoQ || day?.title} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Pressable
+              onPress={() => onOpenPin(pins[0])}
+              style={{ width: '100%', height: mapPreviewHeight, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 16, overflow: 'hidden', backgroundColor: '#f8fafc' }}
+            >
               <RemoteImage
-                uri={getMapPreviewUrls(day.pins)[0]}
-                fallbackUris={getMapPreviewUrls(day.pins).slice(1)}
+                uri={mapPreviewUrls[0]}
+                fallbackUris={mapPreviewUrls.slice(1)}
+                fallbackUri=""
+                style={{ width: '100%', height: '100%', backgroundColor: '#f1f5f9' }}
+                resizeMode="cover"
+              />
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        <DayPhotoLayout photos={photos} query={day?.photoQ || day?.title} />
+      )}
+
+      {Array.isArray(pins) && pins.length > 0 ? (
+        <View style={{ gap: 6 }}>
+          {canShowMapPreview && photos.length === 0 ? (
+            <Pressable onPress={() => onOpenPin(pins[0])} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, overflow: 'hidden', backgroundColor: '#f8fafc' }}>
+              <RemoteImage
+                uri={mapPreviewUrls[0]}
+                fallbackUris={mapPreviewUrls.slice(1)}
                 fallbackUri=""
                 style={{ width: '100%', height: 156, backgroundColor: '#f1f5f9' }}
                 resizeMode="cover"
               />
             </Pressable>
           ) : null}
+
+          {hasMap ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              <Pressable
+                onPress={() => onOpenRoute?.(day)}
+                disabled={!onOpenRoute || !routeUrl}
+                style={{
+                  borderWidth: 1,
+                  borderColor: '#e5e7eb',
+                  borderRadius: 999,
+                  backgroundColor: '#ffffff',
+                  paddingHorizontal: 11,
+                  paddingVertical: 5,
+                  opacity: onOpenRoute && routeUrl ? 1 : 0.55,
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="car" size={14} color="#111827" />
+                  <Text style={{ color: '#111827', fontSize: 13, fontWeight: '700' }}>Open driving route</Text>
+                </View>
+              </Pressable>
+            </View>
+          ) : null}
+
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-            {day.pins.map((pin, pinIndex) => (
+            {pins.map((pin, pinIndex) => (
               <Pressable key={`${pin?.name || 'pin'}-${pinIndex}`} onPress={() => onOpenPin(pin)} style={{ borderWidth: 1, borderColor: '#dbeafe', borderRadius: 999, backgroundColor: '#eff6ff', paddingHorizontal: 11, paddingVertical: 5 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                   <Ionicons name="location-sharp" size={13} color="#1e3a8a" />
